@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>11.0</LangVersion>
+    <RootNamespace>KitsuneCommand.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUnit" Version="4.3.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KitsuneCommand\KitsuneCommand.csproj" />
+    <ProjectReference Include="..\KitsuneCommand.Abstractions\KitsuneCommand.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,54 @@
+/* KitsuneCommand Brand Colors */
+:root {
+  --kc-cyan: #00d4ff;
+  --kc-cyan-dark: #0099cc;
+  --kc-orange: #ff8c00;
+  --kc-orange-dark: #cc7000;
+  --kc-bg-primary: #0f1419;
+  --kc-bg-secondary: #1a2332;
+  --kc-bg-card: #1e2d3d;
+  --kc-text-primary: #e8eaed;
+  --kc-text-secondary: #9aa0a6;
+  --kc-border: #2d3748;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--kc-bg-primary);
+  color: var(--kc-text-primary);
+}
+
+#app {
+  height: 100%;
+}
+
+/* Dark mode by default */
+body {
+  color-scheme: dark;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--kc-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--kc-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--kc-text-secondary);
+}

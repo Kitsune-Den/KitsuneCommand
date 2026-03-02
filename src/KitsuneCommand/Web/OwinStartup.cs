@@ -1,0 +1,104 @@
+using System.Web.Http;
+using Autofac;
+using Autofac.Integration.WebApi;
+using KitsuneCommand.Configuration;
+using KitsuneCommand.Core;
+using KitsuneCommand.Web.Auth;
+using KitsuneCommand.Web.Middleware;
+using Microsoft.Owin;
+using Microsoft.Owin.FileSystems;
+using Microsoft.Owin.Security.OAuth;
+using Microsoft.Owin.StaticFiles;
+using Owin;
+
+namespace KitsuneCommand.Web
+{
+    /// <summary>
+    /// Configures the OWIN HTTP pipeline: middleware, auth, static files, and Web API.
+    /// </summary>
+    public class OwinStartup
+    {
+        private readonly AppSettings _settings;
+        private readonly IContainer _container;
+
+        public OwinStartup(AppSettings settings, IContainer container)
+        {
+            _settings = settings;
+            _container = container;
+        }
+
+        public void Configuration(IAppBuilder app)
+        {
+            // 1. Global error handling
+            app.Use<ErrorHandlingMiddleware>();
+
+            // 2. CORS (for development with Vite)
+            app.Use<CorsMiddleware>(_settings);
+
+            // 3. OAuth2 authorization server (token endpoint)
+            var authService = _container.Resolve<AuthService>();
+            authService.EnsureAdminExists();
+
+            var oauthOptions = new OAuthAuthorizationServerOptions
+            {
+                TokenEndpointPath = new PathString("/token"),
+                Provider = new OAuthProvider(authService),
+                AccessTokenExpireTimeSpan = TimeSpan.FromMinutes(_settings.AccessTokenExpireMinutes),
+                AllowInsecureHttp = true, // Running behind game server, not directly exposed
+            };
+
+            app.UseOAuthAuthorizationServer(oauthOptions);
+            app.UseOAuthBearerAuthentication(new OAuthBearerAuthenticationOptions());
+
+            // 4. Game-ready gate (blocks /api/ until game is loaded)
+            app.Use<GameReadyMiddleware>();
+
+            // 5. Static files (Vue frontend from wwwroot/)
+            var webRootPath = Path.Combine(ModEntry.ModPath, "wwwroot");
+            if (Directory.Exists(webRootPath))
+            {
+                var fileSystem = new PhysicalFileSystem(webRootPath);
+
+                app.UseDefaultFiles(new DefaultFilesOptions
+                {
+                    DefaultFileNames = new List<string> { "index.html" },
+                    FileSystem = fileSystem
+                });
+
+                app.UseStaticFiles(new StaticFileOptions
+                {
+                    FileSystem = fileSystem,
+                    ServeUnknownFileTypes = false
+                });
+            }
+
+            // 6. Web API with Autofac DI
+            var config = new HttpConfiguration();
+
+            config.MapHttpAttributeRoutes();
+
+            config.Routes.MapHttpRoute(
+                name: "DefaultApi",
+                routeTemplate: "api/{controller}/{id}",
+                defaults: new { id = RouteParameter.Optional }
+            );
+
+            // JSON serialization settings
+            config.Formatters.JsonFormatter.SerializerSettings = new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore,
+                DateFormatString = "yyyy-MM-ddTHH:mm:ss"
+            };
+
+            // Remove XML formatter - JSON only
+            config.Formatters.Remove(config.Formatters.XmlFormatter);
+
+            // Wire up Autofac
+            config.DependencyResolver = new AutofacWebApiDependencyResolver(_container);
+
+            app.UseAutofacMiddleware(_container);
+            app.UseAutofacWebApi(config);
+            app.UseWebApi(config);
+        }
+    }
+}

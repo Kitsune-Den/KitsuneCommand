@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>11.0</LangVersion>
+    <RootNamespace>KitsuneCommand.Abstractions</RootNamespace>
+    <AssemblyName>KitsuneCommand.Abstractions</AssemblyName>
+    <OutputType>Library</OutputType>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>
