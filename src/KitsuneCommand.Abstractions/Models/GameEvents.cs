@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace KitsuneCommand.Abstractions.Models
 {
     public class GameAwakeEvent { }
@@ -87,5 +89,28 @@ namespace KitsuneCommand.Abstractions.Models
     {
         public string Message { get; set; }
         public string LogLevel { get; set; }
+    }
+
+    public class PlayersPositionUpdateEvent
+    {
+        public List<PlayerPositionData> Players { get; set; } = new List<PlayerPositionData>();
+    }
+
+    public class PlayerPositionData
+    {
+        public int EntityId { get; set; }
+        public string PlayerName { get; set; }
+        public float X { get; set; }
+        public float Y { get; set; }
+        public float Z { get; set; }
+    }
+
+    public class PointsUpdateEvent
+    {
+        public string PlayerId { get; set; }
+        public string PlayerName { get; set; }
+        public int Points { get; set; }
+        public int Change { get; set; }
+        public string Reason { get; set; }
     }
 }

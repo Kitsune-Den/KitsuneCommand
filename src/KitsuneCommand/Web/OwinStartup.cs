@@ -93,9 +93,10 @@ namespace KitsuneCommand.Web
                 defaults: new { id = RouteParameter.Optional }
             );
 
-            // JSON serialization settings
+            // JSON serialization settings — camelCase so the Vue frontend can use response.data.data
             config.Formatters.JsonFormatter.SerializerSettings = new JsonSerializerSettings
             {
+                ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver(),
                 NullValueHandling = NullValueHandling.Ignore,
                 DateFormatString = "yyyy-MM-ddTHH:mm:ss"
             };
@@ -103,7 +104,6 @@ namespace KitsuneCommand.Web
             // Remove XML formatter - JSON only
             config.Formatters.Remove(config.Formatters.XmlFormatter);
 
-            // Wire up Autofac
             config.DependencyResolver = new AutofacWebApiDependencyResolver(_container);
 
             app.UseAutofacMiddleware(_container);

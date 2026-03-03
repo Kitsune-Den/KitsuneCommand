@@ -26,6 +26,12 @@ const router = createRouter({
           component: () => import('@/views/PlayersView.vue'),
         },
         {
+          path: 'players/:entityId',
+          name: 'PlayerDetail',
+          component: () => import('@/views/PlayerDetailView.vue'),
+          props: true,
+        },
+        {
           path: 'console',
           name: 'Console',
           component: () => import('@/views/ConsoleView.vue'),
@@ -39,6 +45,46 @@ const router = createRouter({
           path: 'chat',
           name: 'Chat',
           component: () => import('@/views/ChatView.vue'),
+        },
+        {
+          path: 'teleport/cities',
+          name: 'TeleportCities',
+          component: () => import('@/views/TeleportCitiesView.vue'),
+        },
+        {
+          path: 'teleport/homes',
+          name: 'TeleportHomes',
+          component: () => import('@/views/TeleportHomesView.vue'),
+        },
+        {
+          path: 'teleport/history',
+          name: 'TeleportHistory',
+          component: () => import('@/views/TeleportHistoryView.vue'),
+        },
+        {
+          path: 'cdkeys',
+          name: 'CdKeys',
+          component: () => import('@/views/CdKeysView.vue'),
+        },
+        {
+          path: 'cdkeys/redemptions',
+          name: 'CdKeyRedemptions',
+          component: () => import('@/views/CdKeyRedemptionsView.vue'),
+        },
+        {
+          path: 'economy/points',
+          name: 'Points',
+          component: () => import('@/views/PointsView.vue'),
+        },
+        {
+          path: 'economy/store',
+          name: 'Store',
+          component: () => import('@/views/StoreView.vue'),
+        },
+        {
+          path: 'economy/history',
+          name: 'PurchaseHistory',
+          component: () => import('@/views/PurchaseHistoryView.vue'),
         },
         {
           path: 'settings',

@@ -4,7 +4,9 @@ using KitsuneCommand.Configuration;
 using KitsuneCommand.Data;
 using KitsuneCommand.Features;
 using KitsuneCommand.Plugins;
+using KitsuneCommand.Services;
 using KitsuneCommand.Web;
+using KitsuneCommand.Web.Auth;
 using KitsuneCommand.WebSocket;
 
 namespace KitsuneCommand.Core
@@ -19,6 +21,7 @@ namespace KitsuneCommand.Core
         private WebServerHost _webServer;
         private WebSocketHost _wsServer;
         private ModEventBus _eventBus;
+        private ChatCommandFeature _chatCommandFeature;
 
         public void Initialize()
         {
@@ -46,7 +49,10 @@ namespace KitsuneCommand.Core
             RegisterModEventHandlers();
             Log.Out("[KitsuneCommand] Game event handlers registered.");
 
-            // 7. Start web server (deferred until GameStartDone for most endpoints)
+            // 7. Initialize token validator for WebSocket auth
+            TokenValidator.Initialize("KitsuneCommand");
+
+            // 8. Start web server (deferred until GameStartDone for most endpoints)
             _webServer = new WebServerHost(settings, _container);
             _webServer.Start();
             Log.Out($"[KitsuneCommand] Web server started on {settings.WebUrl}");
@@ -106,9 +112,24 @@ namespace KitsuneCommand.Core
             ModEntry.IsGameStartDone = true;
             Log.Out("[KitsuneCommand] Game start complete. All systems active.");
 
+            // Initialize player tracking
+            var playerManager = _container.Resolve<LivePlayerManager>();
+            playerManager.Initialize();
+
+            // Initialize map tile renderer
+            var mapRenderer = _container.Resolve<MapTileRenderer>();
+            mapRenderer.Initialize();
+
+            // Initialize chat persistence
+            var chatPersistence = _container.Resolve<ChatPersistenceService>();
+            chatPersistence.Initialize();
+
             // Initialize feature modules
             var featureManager = _container.Resolve<FeatureManager>();
             featureManager.InitializeAll();
+
+            // Resolve chat command feature for direct command dispatch
+            _chatCommandFeature = _container.Resolve<ChatCommandFeature>();
 
             _eventBus.Publish(new GameStartDoneEvent());
         }
@@ -118,6 +139,9 @@ namespace KitsuneCommand.Core
             Log.Out("[KitsuneCommand] Shutting down...");
 
             _eventBus.Publish(new GameShutdownEvent());
+
+            // Shutdown player tracking
+            try { _container?.Resolve<LivePlayerManager>()?.Shutdown(); } catch { }
 
             _wsServer?.Stop();
             _webServer?.Stop();
@@ -217,14 +241,41 @@ namespace KitsuneCommand.Core
 
         private ModEvents.EModEventResult OnChatMessage(ref ModEvents.SChatMessageData _data)
         {
+            var message = _data.Message;
+            var playerId = _data.ClientInfo?.CrossplatformId?.CombinedString;
+            var entityId = _data.SenderEntityId;
+
+            // Check if this is a chat command before publishing
+            var isCommand = _chatCommandFeature != null
+                            && _chatCommandFeature.IsRunning
+                            && _chatCommandFeature.Settings.Enabled
+                            && !string.IsNullOrEmpty(message)
+                            && !string.IsNullOrEmpty(playerId)
+                            && entityId > 0
+                            && message.StartsWith(_chatCommandFeature.Settings.Prefix);
+
+            // Always publish the chat event (for chat log / WebSocket broadcast)
             _eventBus.Publish(new ChatMessageEvent
             {
-                PlayerId = _data.ClientInfo?.CrossplatformId?.CombinedString,
-                EntityId = _data.SenderEntityId,
+                PlayerId = playerId,
+                EntityId = entityId,
                 SenderName = _data.MainName,
                 ChatType = (ChatType)(int)_data.ChatType,
-                Message = _data.Message
+                Message = message
             });
+
+            // If it's a command, dispatch it
+            if (isCommand)
+            {
+                try
+                {
+                    _chatCommandFeature.HandleCommand(playerId, entityId, _data.MainName, message);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[KitsuneCommand] Chat command error: {ex.Message}");
+                }
+            }
 
             return ModEvents.EModEventResult.Continue;
         }

@@ -44,6 +44,18 @@ if (Test-Path $interopSrc) {
     Write-Warning "SQLite.Interop.dll not found at $interopSrc — SQLite may fail at runtime!"
 }
 
+# Copy libSkiaSharp native binary (required by SkiaSharp for map rendering)
+# Must be in x64/ subfolder so the game's mod loader doesn't try to load it as a managed assembly
+$skiaSharpNative = "$env:USERPROFILE/.nuget/packages/skiasharp.nativeassets.win32/3.116.1/runtimes/win-x64/native/libSkiaSharp.dll"
+if (Test-Path $skiaSharpNative) {
+    $nativeDir = "$modDir/x64"
+    New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
+    Copy-Item $skiaSharpNative $nativeDir
+    Write-Host "  Copied libSkiaSharp.dll to x64/ (native)" -ForegroundColor Gray
+} else {
+    Write-Warning "libSkiaSharp.dll not found — Map rendering may fail at runtime!"
+}
+
 # Copy System.ComponentModel.DataAnnotations (required by System.Web.Http, not in Unity/Mono)
 $dataAnnotations = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.ComponentModel.DataAnnotations.dll'
 if (Test-Path $dataAnnotations) {
@@ -51,6 +63,15 @@ if (Test-Path $dataAnnotations) {
     Write-Host "  Copied System.ComponentModel.DataAnnotations.dll" -ForegroundColor Gray
 } else {
     Write-Warning "System.ComponentModel.DataAnnotations.dll not found — Web API may fail at runtime!"
+}
+
+# Copy System.Runtime.InteropServices.RuntimeInformation (required by SkiaSharp 3.x, not in Unity/Mono)
+$runtimeInfo = 'C:\Program Files\dotnet\sdk\8.0.418\Microsoft\Microsoft.NET.Build.Extensions\net462\lib\System.Runtime.InteropServices.RuntimeInformation.dll'
+if (Test-Path $runtimeInfo) {
+    Copy-Item $runtimeInfo $modDir
+    Write-Host "  Copied System.Runtime.InteropServices.RuntimeInformation.dll" -ForegroundColor Gray
+} else {
+    Write-Warning "System.Runtime.InteropServices.RuntimeInformation.dll not found — Map rendering may fail at runtime!"
 }
 
 # Copy config

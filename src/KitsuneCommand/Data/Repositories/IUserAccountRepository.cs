@@ -10,6 +10,8 @@ namespace KitsuneCommand.Data.Repositories
         int Create(UserAccount account);
         void Update(UserAccount account);
         void UpdateLastLogin(string username);
+        void UpdatePassword(int id, string passwordHash);
         int Count();
+        int CountActiveAdmins();
     }
 }

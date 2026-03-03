@@ -168,4 +168,9 @@ async function handleLogin() {
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+
+@media (max-width: 640px) {
+  .login-card { padding: 1.5rem; margin: 1rem; }
+  .login-title { font-size: 1.5rem; }
+}
 </style>

@@ -18,5 +18,8 @@ namespace KitsuneCommand.Abstractions.Models
         public float TotalPlayTime { get; set; }
         public string Ip { get; set; }
         public bool IsOnline { get; set; }
+        public float Score { get; set; }
+        public long LastLogin { get; set; }
+        public bool IsAdmin { get; set; }
     }
 }

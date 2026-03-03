@@ -3,6 +3,7 @@ using Autofac.Integration.WebApi;
 using KitsuneCommand.Configuration;
 using KitsuneCommand.Data;
 using KitsuneCommand.Features;
+using KitsuneCommand.Services;
 using KitsuneCommand.Web.Auth;
 
 namespace KitsuneCommand.Core
@@ -23,6 +24,9 @@ namespace KitsuneCommand.Core
             builder.RegisterType<ModEventBus>().As<IModEventBus>().AsSelf().SingleInstance();
             builder.RegisterType<ConfigManager>().AsSelf().SingleInstance();
             builder.RegisterType<AuthService>().AsSelf().SingleInstance();
+            builder.RegisterType<LivePlayerManager>().AsSelf().SingleInstance();
+            builder.RegisterType<MapTileRenderer>().AsSelf().SingleInstance();
+            builder.RegisterType<ChatPersistenceService>().AsSelf().SingleInstance();
 
             // Database connection factory
             builder.Register(c => new DbConnectionFactory(settings.DatabasePath))
@@ -38,6 +42,9 @@ namespace KitsuneCommand.Core
 
             // Register all Web API controllers
             builder.RegisterApiControllers(mainAssembly);
+
+            // Chat command service (used by ChatCommandFeature)
+            builder.RegisterType<ChatCommandService>().AsSelf().SingleInstance();
 
             // Register feature modules
             builder.RegisterAssemblyTypes(mainAssembly)

@@ -52,3 +52,17 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--kc-text-secondary);
 }
+
+/* ── Responsive: Tablet ≤768px ── */
+@media (max-width: 768px) {
+  /* PrimeVue dialogs fit mobile screens */
+  .p-dialog {
+    max-width: 95vw !important;
+    width: 95vw !important;
+  }
+
+  /* DataTables scroll horizontally */
+  .p-datatable-table-container {
+    overflow-x: auto;
+  }
+}

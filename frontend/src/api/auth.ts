@@ -34,3 +34,19 @@ export async function refreshToken(token: string): Promise<TokenResponse> {
 
   return response.data
 }
+
+export interface UserInfo {
+  username: string
+  role: string
+  userId: string
+  displayName: string
+}
+
+export async function getCurrentUser(): Promise<UserInfo> {
+  const response = await apiClient.get('/api/auth/me')
+  return response.data.data
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post('/api/auth/change-password', { currentPassword, newPassword })
+}

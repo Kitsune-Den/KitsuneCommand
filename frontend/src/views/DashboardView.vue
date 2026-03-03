@@ -1,12 +1,54 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { getServerInfo, getServerStats, type ServerInfo, type ServerStats } from '@/api/server'
+import { usePlayersStore } from '@/stores/players'
+import { useServerStore } from '@/stores/server'
 import Card from 'primevue/card'
 
 const serverInfo = ref<ServerInfo | null>(null)
 const serverStats = ref<ServerStats | null>(null)
 const loading = ref(true)
 const error = ref('')
+const playersStore = usePlayersStore()
+const serverStore = useServerStore()
+
+const recentActivity = computed(() => serverStore.activity.slice(0, 15))
+
+const gameTimeDisplay = computed(() => {
+  if (serverStore.gameDay === 0 && serverStore.gameHour === 0) {
+    return serverInfo.value ? `Day ${serverInfo.value.currentDay} - ${serverInfo.value.currentTime}` : 'N/A'
+  }
+  const h = String(serverStore.gameHour).padStart(2, '0')
+  const m = String(serverStore.gameMinute).padStart(2, '0')
+  return `Day ${serverStore.gameDay} - ${h}:${m}`
+})
+
+function activityIcon(type: string) {
+  switch (type) {
+    case 'login': return 'pi pi-sign-in'
+    case 'logout': return 'pi pi-sign-out'
+    case 'chat': return 'pi pi-comment'
+    case 'kill': return 'pi pi-bolt'
+    default: return 'pi pi-info-circle'
+  }
+}
+
+function activityColor(type: string) {
+  switch (type) {
+    case 'login': return 'color: #22c55e'
+    case 'logout': return 'color: #ef4444'
+    case 'chat': return 'color: var(--kc-cyan)'
+    case 'kill': return 'color: var(--kc-orange)'
+    default: return 'color: var(--kc-text-secondary)'
+  }
+}
+
+function timeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  return `${Math.floor(seconds / 3600)}h ago`
+}
 
 async function fetchData() {
   try {
@@ -22,16 +64,11 @@ async function fetchData() {
 
 onMounted(() => {
   fetchData()
-  // Refresh stats every 5 seconds
   const interval = setInterval(async () => {
     try {
       serverStats.value = await getServerStats()
-    } catch {
-      // Silently fail for periodic updates
-    }
+    } catch { /* silently fail */ }
   }, 5000)
-
-  // Cleanup on unmount
   return () => clearInterval(interval)
 })
 </script>
@@ -58,7 +95,7 @@ onMounted(() => {
             <div class="stat">
               <i class="pi pi-users stat-icon cyan"></i>
               <div>
-                <div class="stat-value">{{ serverStats?.playerCount ?? 0 }}</div>
+                <div class="stat-value">{{ playersStore.onlineCount || serverStats?.playerCount || 0 }}</div>
                 <div class="stat-label">Players Online</div>
               </div>
             </div>
@@ -102,48 +139,66 @@ onMounted(() => {
         </Card>
       </div>
 
-      <!-- Server Info -->
-      <Card class="info-card" v-if="serverInfo">
-        <template #title>Server Information</template>
-        <template #content>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Server Name</span>
-              <span class="info-value">{{ serverInfo.serverName }}</span>
+      <div class="dashboard-panels">
+        <!-- Server Info -->
+        <Card class="info-card" v-if="serverInfo">
+          <template #title>Server Information</template>
+          <template #content>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Server Name</span>
+                <span class="info-value">{{ serverInfo.serverName }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">World</span>
+                <span class="info-value">{{ serverInfo.gameWorld }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Game Time</span>
+                <span class="info-value">
+                  {{ gameTimeDisplay }}
+                  <span v-if="serverStore.isBloodMoon" style="color: #ef4444; margin-left: 0.5rem">BLOOD MOON</span>
+                </span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Max Players</span>
+                <span class="info-value">{{ serverInfo.maxPlayers }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Difficulty</span>
+                <span class="info-value">{{ serverInfo.difficulty }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Game Version</span>
+                <span class="info-value">{{ serverInfo.version }}</span>
+              </div>
             </div>
-            <div class="info-item">
-              <span class="info-label">World</span>
-              <span class="info-value">{{ serverInfo.gameWorld }}</span>
+          </template>
+        </Card>
+
+        <!-- Activity Feed -->
+        <Card class="activity-card">
+          <template #title>Recent Activity</template>
+          <template #content>
+            <div v-if="recentActivity.length === 0" class="empty-activity">
+              <p>No activity yet. Events will appear here in real-time.</p>
             </div>
-            <div class="info-item">
-              <span class="info-label">Game Day</span>
-              <span class="info-value">Day {{ serverInfo.currentDay }} - {{ serverInfo.currentTime }}</span>
+            <div v-else class="activity-list">
+              <div v-for="item in recentActivity" :key="item.id" class="activity-item">
+                <i :class="activityIcon(item.type)" :style="activityColor(item.type)" />
+                <span class="activity-text">{{ item.message }}</span>
+                <span class="activity-time">{{ timeAgo(item.timestamp) }}</span>
+              </div>
             </div>
-            <div class="info-item">
-              <span class="info-label">Max Players</span>
-              <span class="info-value">{{ serverInfo.maxPlayers }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Difficulty</span>
-              <span class="info-value">{{ serverInfo.difficulty }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Game Version</span>
-              <span class="info-value">{{ serverInfo.version }}</span>
-            </div>
-          </div>
-        </template>
-      </Card>
+          </template>
+        </Card>
+      </div>
     </template>
   </div>
 </template>
 
 <style scoped>
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-}
+.page-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; }
 
 .stats-grid {
   display: grid;
@@ -152,79 +207,42 @@ onMounted(() => {
   margin-bottom: 1.5rem;
 }
 
-.stat-card {
-  background: var(--kc-bg-card);
-  border: 1px solid var(--kc-border);
-}
+.stat-card { background: var(--kc-bg-card); border: 1px solid var(--kc-border); }
+.stat { display: flex; align-items: center; gap: 1rem; }
+.stat-icon { font-size: 1.75rem; }
+.stat-icon.cyan { color: var(--kc-cyan); }
+.stat-icon.orange { color: var(--kc-orange); }
+.stat-value { font-size: 1.5rem; font-weight: 700; color: var(--kc-text-primary); }
+.stat-label { font-size: 0.8rem; color: var(--kc-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
 
-.stat {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.stat-icon {
-  font-size: 1.75rem;
-}
-
-.stat-icon.cyan {
-  color: var(--kc-cyan);
-}
-
-.stat-icon.orange {
-  color: var(--kc-orange);
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--kc-text-primary);
-}
-
-.stat-label {
-  font-size: 0.8rem;
-  color: var(--kc-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.info-card {
-  background: var(--kc-bg-card);
-  border: 1px solid var(--kc-border);
-}
-
-.info-grid {
+.dashboard-panels {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
 
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+@media (max-width: 900px) {
+  .dashboard-panels { grid-template-columns: 1fr; }
 }
 
-.info-label {
-  font-size: 0.8rem;
-  color: var(--kc-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+@media (max-width: 640px) {
+  .stats-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 }
 
-.info-value {
-  font-size: 1rem;
-  color: var(--kc-text-primary);
-}
+.info-card, .activity-card { background: var(--kc-bg-card); border: 1px solid var(--kc-border); }
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+.info-item { display: flex; flex-direction: column; gap: 0.25rem; }
+.info-label { font-size: 0.8rem; color: var(--kc-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+.info-value { font-size: 1rem; color: var(--kc-text-primary); }
 
-.loading-state,
-.error-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 4rem 0;
-  color: var(--kc-text-secondary);
+.activity-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto; }
+.activity-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0; font-size: 0.85rem; }
+.activity-text { flex: 1; color: var(--kc-text-primary); }
+.activity-time { color: var(--kc-text-secondary); font-size: 0.75rem; white-space: nowrap; }
+.empty-activity { color: var(--kc-text-secondary); font-size: 0.9rem; padding: 1rem 0; }
+
+.loading-state, .error-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1rem; padding: 4rem 0; color: var(--kc-text-secondary);
 }
 </style>

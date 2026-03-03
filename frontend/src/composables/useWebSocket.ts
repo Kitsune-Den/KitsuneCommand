@@ -15,6 +15,8 @@ export type ModEventType =
   | 'PlayerSpawning'
   | 'SavePlayerData'
   | 'SkyChanged'
+  | 'PlayersPositionUpdate'
+  | 'PointsUpdate'
   | 'CommandResult'
   | 'Welcome'
 

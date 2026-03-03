@@ -67,10 +67,27 @@ namespace KitsuneCommand.Data.Repositories
             );
         }
 
+        public void UpdatePassword(int id, string passwordHash)
+        {
+            using var conn = _db.CreateConnection();
+            conn.Execute(
+                "UPDATE user_accounts SET password_hash = @PasswordHash WHERE id = @Id",
+                new { Id = id, PasswordHash = passwordHash }
+            );
+        }
+
         public int Count()
         {
             using var conn = _db.CreateConnection();
             return conn.ExecuteScalar<int>("SELECT COUNT(*) FROM user_accounts");
+        }
+
+        public int CountActiveAdmins()
+        {
+            using var conn = _db.CreateConnection();
+            return conn.ExecuteScalar<int>(
+                "SELECT COUNT(*) FROM user_accounts WHERE role = 'admin' AND is_active = 1"
+            );
         }
     }
 }

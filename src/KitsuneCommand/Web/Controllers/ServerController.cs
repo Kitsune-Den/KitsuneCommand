@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using KitsuneCommand.Core;
+using KitsuneCommand.Web.Auth;
 using KitsuneCommand.Web.Models;
 
 namespace KitsuneCommand.Web.Controllers
@@ -69,6 +70,7 @@ namespace KitsuneCommand.Web.Controllers
         /// </summary>
         [HttpPost]
         [Route("command")]
+        [RoleAuthorize("admin")]
         public IHttpActionResult ExecuteCommand([FromBody] CommandRequest request)
         {
             if (string.IsNullOrWhiteSpace(request?.Command))

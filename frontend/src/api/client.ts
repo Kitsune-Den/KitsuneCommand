@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from 'primevue/usetoast'
 import router from '@/router'
 
 const apiClient = axios.create({
@@ -19,7 +20,7 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor: handle 401 (token expired)
+// Response interceptor: handle 401 (token expired) and 403 (forbidden)
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -27,6 +28,18 @@ apiClient.interceptors.response.use(
       const auth = useAuthStore()
       auth.logout()
       await router.push({ name: 'Login' })
+    } else if (error.response?.status === 403) {
+      try {
+        const toast = useToast()
+        toast.add({
+          severity: 'error',
+          summary: 'Access Denied',
+          detail: 'You do not have permission to perform this action.',
+          life: 4000,
+        })
+      } catch {
+        // Toast may not be available outside component context
+      }
     }
     return Promise.reject(error)
   }

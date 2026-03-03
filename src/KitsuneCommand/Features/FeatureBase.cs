@@ -13,7 +13,7 @@ namespace KitsuneCommand.Features
 
         public string Name => GetType().Name.Replace("Feature", "");
         public bool IsRunning { get; private set; }
-        public TSettings Settings { get; private set; }
+        public TSettings Settings { get; protected set; }
 
         protected FeatureBase(ModEventBus eventBus, ConfigManager config)
         {
