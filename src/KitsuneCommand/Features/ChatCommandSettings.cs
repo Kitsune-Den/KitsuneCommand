@@ -48,5 +48,13 @@ namespace KitsuneCommand.Features
 
         /// <summary>Enable /vip command for claiming VIP gifts.</summary>
         public bool VipEnabled { get; set; } = true;
+
+        // ── Ticket Commands ─────────────────────────────────────────
+
+        /// <summary>Enable /ticket and /tickets commands.</summary>
+        public bool TicketEnabled { get; set; } = true;
+
+        /// <summary>Cooldown in seconds for creating tickets.</summary>
+        public int TicketCooldownSeconds { get; set; } = 60;
     }
 }

@@ -87,6 +87,11 @@ function confirmForceSkip() {
   })
 }
 
+function copyToClipboard(text: string) {
+  navigator.clipboard.writeText(text)
+  toast.add({ severity: 'info', summary: t('dashboard.copied'), life: 2000 })
+}
+
 function formatNumber(num: number): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
@@ -293,6 +298,20 @@ onMounted(() => {
                 <span class="info-value">{{ t('dashboard.everyDays', { n: bloodMoonDisplay.frequency, day: bloodMoonDisplay.nextDay }) }}</span>
               </div>
               <div class="info-item">
+                <span class="info-label">{{ t('dashboard.localIp') }}</span>
+                <span class="info-value monospace copyable" @click="copyToClipboard(serverInfo.localIp)">
+                  {{ serverInfo.localIp }}
+                  <i class="pi pi-copy copy-icon" />
+                </span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">{{ t('dashboard.publicIp') }}</span>
+                <span class="info-value monospace copyable" @click="copyToClipboard(serverInfo.publicIp)">
+                  {{ serverInfo.publicIp }}
+                  <i class="pi pi-copy copy-icon" />
+                </span>
+              </div>
+              <div class="info-item">
                 <span class="info-label">{{ t('dashboard.kitsuneCommand') }}</span>
                 <span class="info-value">v{{ serverInfo.kitsuneCommandVersion }}</span>
               </div>
@@ -429,7 +448,12 @@ onMounted(() => {
 .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
 .info-item { display: flex; flex-direction: column; gap: 0.25rem; }
 .info-label { font-size: 0.8rem; color: var(--kc-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
-.info-value { font-size: 1rem; color: var(--kc-text-primary); }
+.info-value { font-size: 1rem; }
+.info-value.monospace { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; }
+.info-value.copyable { cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; transition: color 0.15s; }
+.info-value.copyable:hover { color: var(--kc-cyan); }
+.copy-icon { font-size: 0.8rem; opacity: 0.4; transition: opacity 0.15s; }
+.info-value.copyable:hover .copy-icon { opacity: 1; }
 
 .activity-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto; }
 .activity-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0; font-size: 0.85rem; }

@@ -10,6 +10,10 @@ namespace KitsuneCommand.WebSocket
     public static class EventBroadcaster
     {
         private static WebSocketServer _server;
+        internal static readonly JsonSerializerSettings CamelCase = new JsonSerializerSettings
+        {
+            ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
+        };
 
         public static void Initialize(WebSocketServer server, ModEventBus eventBus)
         {
@@ -32,6 +36,8 @@ namespace KitsuneCommand.WebSocket
             eventBus.Subscribe<PlayersPositionUpdateEvent>(e => Broadcast("PlayersPositionUpdate", e));
             eventBus.Subscribe<PointsUpdateEvent>(e => Broadcast("PointsUpdate", e));
             eventBus.Subscribe<BloodMoonVoteUpdateEvent>(e => Broadcast("BloodMoonVoteUpdate", e));
+            eventBus.Subscribe<TicketCreatedEvent>(e => Broadcast("TicketCreated", e));
+            eventBus.Subscribe<TicketUpdatedEvent>(e => Broadcast("TicketUpdated", e));
         }
 
         private static void Broadcast<T>(string eventType, T data)
@@ -46,7 +52,7 @@ namespace KitsuneCommand.WebSocket
                     Data = data
                 };
 
-                var json = JsonConvert.SerializeObject(message);
+                var json = JsonConvert.SerializeObject(message, CamelCase);
                 _server.WebSocketServices["/ws"]?.Sessions?.Broadcast(json);
             }
             catch (Exception ex)

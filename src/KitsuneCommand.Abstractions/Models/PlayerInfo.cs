@@ -21,5 +21,6 @@ namespace KitsuneCommand.Abstractions.Models
         public float Score { get; set; }
         public long LastLogin { get; set; }
         public bool IsAdmin { get; set; }
+        public int AdminLevel { get; set; } = 1000;
     }
 }

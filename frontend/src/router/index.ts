@@ -67,6 +67,11 @@ const router = createRouter({
           component: () => import('@/views/ChatView.vue'),
         },
         {
+          path: 'tickets',
+          name: 'Tickets',
+          component: () => import('@/views/TicketsView.vue'),
+        },
+        {
           path: 'teleport/cities',
           name: 'TeleportCities',
           component: () => import('@/views/TeleportCitiesView.vue'),

@@ -29,6 +29,11 @@ html, body {
   height: 100%;
 }
 
+/* Override PrimeVue Card text color for dark theme */
+.p-card {
+  --p-card-color: var(--kc-text-primary);
+}
+
 /* Dark mode by default */
 body {
   color-scheme: dark;

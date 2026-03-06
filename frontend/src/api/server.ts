@@ -16,6 +16,8 @@ export interface ServerInfo {
   onlinePlayers: number
   version: string
   kitsuneCommandVersion: string
+  localIp: string
+  publicIp: string
 }
 
 export interface ServerStats {

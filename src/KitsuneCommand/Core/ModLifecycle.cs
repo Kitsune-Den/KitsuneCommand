@@ -2,6 +2,7 @@ using Autofac;
 using HarmonyLib;
 using KitsuneCommand.Configuration;
 using KitsuneCommand.Data;
+using KitsuneCommand.Data.Repositories;
 using KitsuneCommand.Features;
 using KitsuneCommand.Plugins;
 using KitsuneCommand.Services;
@@ -22,6 +23,7 @@ namespace KitsuneCommand.Core
         private WebSocketHost _wsServer;
         private ModEventBus _eventBus;
         private ChatCommandFeature _chatCommandFeature;
+        private IPlayerMetadataRepository _metadataRepo;
 
         public void Initialize()
         {
@@ -143,6 +145,9 @@ namespace KitsuneCommand.Core
             // Resolve chat command feature for direct command dispatch
             _chatCommandFeature = _container.Resolve<ChatCommandFeature>();
 
+            // Resolve player metadata repo for chat name colors
+            _metadataRepo = _container.Resolve<IPlayerMetadataRepository>();
+
             _eventBus.Publish(new GameStartDoneEvent());
         }
 
@@ -257,6 +262,24 @@ namespace KitsuneCommand.Core
             var message = _data.Message;
             var playerId = _data.ClientInfo?.CrossplatformId?.CombinedString;
             var entityId = _data.SenderEntityId;
+            var senderName = _data.MainName;
+
+            // Apply name color from player metadata if configured
+            if (!string.IsNullOrEmpty(playerId) && _metadataRepo != null)
+            {
+                try
+                {
+                    var metadata = _metadataRepo.GetByPlayerId(playerId);
+                    if (metadata?.NameColor != null)
+                    {
+                        senderName = $"[{metadata.NameColor}]{_data.MainName}[-]";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[KitsuneCommand] Failed to apply name color: {ex.Message}");
+                }
+            }
 
             // Check if this is a chat command before publishing
             var isCommand = _chatCommandFeature != null
@@ -268,11 +291,12 @@ namespace KitsuneCommand.Core
                             && message.StartsWith(_chatCommandFeature.Settings.Prefix);
 
             // Always publish the chat event (for chat log / WebSocket broadcast)
+            // senderName may include color codes from player metadata
             _eventBus.Publish(new ChatMessageEvent
             {
                 PlayerId = playerId,
                 EntityId = entityId,
-                SenderName = _data.MainName,
+                SenderName = senderName,
                 ChatType = (ChatType)(int)_data.ChatType,
                 Message = message
             });

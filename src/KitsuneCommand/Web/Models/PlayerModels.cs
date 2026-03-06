@@ -53,4 +53,22 @@ namespace KitsuneCommand.Web.Models
         public float Y { get; set; }
         public float Z { get; set; }
     }
+
+    public class UpdatePlayerMetadataRequest
+    {
+        public string NameColor { get; set; }
+        public string CustomTag { get; set; }
+        public string Notes { get; set; }
+    }
+
+    public class SetAdminLevelRequest
+    {
+        public int Level { get; set; }
+    }
+
+    public class GiveItemResult
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+    }
 }

@@ -21,6 +21,7 @@ const navItems = computed(() => [
   { label: t('nav.players'), icon: 'pi pi-users', route: '/players' },
   { label: t('nav.map'), icon: 'pi pi-map', route: '/map' },
   { label: t('nav.chat'), icon: 'pi pi-comments', route: '/chat' },
+  { label: t('nav.tickets'), icon: 'pi pi-ticket', route: '/tickets' },
   { label: t('nav.teleport'), icon: 'pi pi-compass', route: '/teleport/cities' },
   { label: t('nav.vipGifts'), icon: 'pi pi-gift', route: '/vipgifts' },
   { label: t('nav.schedules'), icon: 'pi pi-clock', route: '/schedules' },
@@ -129,7 +130,7 @@ onUnmounted(() => {
             v-else
             :to="item.route!"
             class="nav-item"
-            active-class="nav-item--active"
+            :class="{ 'nav-item--active': item.route === '/' ? route.path === '/' : route.path.startsWith(item.route!) }"
             :title="sidebarCollapsed ? item.label : undefined"
           >
             <i :class="item.icon" class="nav-icon"></i>

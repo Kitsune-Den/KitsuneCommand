@@ -122,4 +122,19 @@ namespace KitsuneCommand.Abstractions.Models
         public int TotalOnline { get; set; }
         public int BloodMoonDay { get; set; }
     }
+
+    public class TicketCreatedEvent
+    {
+        public int TicketId { get; set; }
+        public string PlayerId { get; set; }
+        public string PlayerName { get; set; }
+        public string Subject { get; set; }
+    }
+
+    public class TicketUpdatedEvent
+    {
+        public int TicketId { get; set; }
+        public string Status { get; set; }
+        public string UpdatedBy { get; set; }
+    }
 }

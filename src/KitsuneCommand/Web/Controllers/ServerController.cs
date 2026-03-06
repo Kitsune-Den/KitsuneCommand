@@ -1,7 +1,9 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Threading;
 using System.Web.Http;
 using KitsuneCommand.Core;
@@ -42,7 +44,9 @@ namespace KitsuneCommand.Web.Controllers
                 currentTime = world != null ? GameUtils.WorldTimeToString(world.worldTime) : "N/A",
                 onlinePlayers = gameManager?.World?.Players?.Count ?? 0,
                 version = Constants.cVersionInformation.LongString,
-                kitsuneCommandVersion = "2.0.0"
+                kitsuneCommandVersion = "2.0.0",
+                localIp = GetLocalIp(),
+                publicIp = GetPublicIp()
             };
 
             return Ok(ApiResponse.Ok(info));
@@ -175,6 +179,43 @@ namespace KitsuneCommand.Web.Controllers
             }, null);
 
             return Ok(ApiResponse.Ok($"Server shutdown initiated with {delay} second delay."));
+        }
+
+        private static string GetLocalIp()
+        {
+            try
+            {
+                var host = Dns.GetHostEntry(Dns.GetHostName());
+                var ip = host.AddressList.FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork);
+                return ip?.ToString() ?? "N/A";
+            }
+            catch
+            {
+                return "N/A";
+            }
+        }
+
+        private static string _cachedPublicIp;
+        private static DateTime _publicIpCacheTime = DateTime.MinValue;
+
+        private static string GetPublicIp()
+        {
+            if (_cachedPublicIp != null && (DateTime.UtcNow - _publicIpCacheTime).TotalMinutes < 10)
+                return _cachedPublicIp;
+
+            try
+            {
+                using (var client = new WebClient())
+                {
+                    _cachedPublicIp = client.DownloadString("https://api.ipify.org").Trim();
+                    _publicIpCacheTime = DateTime.UtcNow;
+                    return _cachedPublicIp;
+                }
+            }
+            catch
+            {
+                return _cachedPublicIp ?? "N/A";
+            }
         }
     }
 

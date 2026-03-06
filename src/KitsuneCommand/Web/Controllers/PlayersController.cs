@@ -1,5 +1,7 @@
 using System.Web.Http;
+using KitsuneCommand.Abstractions.Models;
 using KitsuneCommand.Core;
+using KitsuneCommand.Data.Repositories;
 using KitsuneCommand.Web.Auth;
 using KitsuneCommand.Web.Models;
 
@@ -13,10 +15,12 @@ namespace KitsuneCommand.Web.Controllers
     public class PlayersController : ApiController
     {
         private readonly LivePlayerManager _playerManager;
+        private readonly IPointsRepository _pointsRepo;
 
-        public PlayersController(LivePlayerManager playerManager)
+        public PlayersController(LivePlayerManager playerManager, IPointsRepository pointsRepo)
         {
             _playerManager = playerManager;
+            _pointsRepo = pointsRepo;
         }
 
         /// <summary>
@@ -28,6 +32,62 @@ namespace KitsuneCommand.Web.Controllers
         {
             var players = _playerManager.GetAllOnline();
             return Ok(ApiResponse.Ok(players));
+        }
+
+        /// <summary>
+        /// Get all known players (online + offline) with pagination.
+        /// Online players include full live stats; offline players show name and last-seen time.
+        /// </summary>
+        [HttpGet]
+        [Route("known")]
+        public IHttpActionResult GetKnownPlayers(int pageIndex = 0, int pageSize = 100, string search = null)
+        {
+            var knownPlayers = _pointsRepo.GetAll(pageIndex, pageSize, search);
+            var total = _pointsRepo.GetTotalCount(search);
+
+            // Build a lookup of online players by playerId
+            var onlinePlayers = _playerManager.GetAllOnline();
+            var onlineByPlayerId = new Dictionary<string, PlayerInfo>();
+            foreach (var op in onlinePlayers)
+            {
+                if (!string.IsNullOrEmpty(op.PlayerId))
+                    onlineByPlayerId[op.PlayerId] = op;
+            }
+
+            var result = new List<PlayerInfo>();
+            foreach (var known in knownPlayers)
+            {
+                if (onlineByPlayerId.TryGetValue(known.Id, out var online))
+                {
+                    result.Add(online);
+                }
+                else
+                {
+                    // Build a minimal offline record
+                    long lastSeenTicks = 0;
+                    if (!string.IsNullOrEmpty(known.LastSignInAt) &&
+                        DateTime.TryParse(known.LastSignInAt, out var lastSeen))
+                    {
+                        lastSeenTicks = new DateTimeOffset(lastSeen, TimeSpan.Zero).ToUnixTimeSeconds();
+                    }
+                    else if (!string.IsNullOrEmpty(known.CreatedAt) &&
+                             DateTime.TryParse(known.CreatedAt, out var created))
+                    {
+                        lastSeenTicks = new DateTimeOffset(created, TimeSpan.Zero).ToUnixTimeSeconds();
+                    }
+
+                    result.Add(new PlayerInfo
+                    {
+                        PlayerId = known.Id,
+                        PlayerName = known.PlayerName ?? "Unknown",
+                        IsOnline = false,
+                        LastLogin = lastSeenTicks,
+                        EntityId = -1
+                    });
+                }
+            }
+
+            return Ok(ApiResponse.Ok(new { items = result, total, pageIndex, pageSize }));
         }
 
         /// <summary>
@@ -125,7 +185,8 @@ namespace KitsuneCommand.Web.Controllers
         {
             var player = _playerManager.GetByEntityId(entityId);
             if (player == null)
-                return NotFound();
+                return Content(System.Net.HttpStatusCode.NotFound,
+                    ApiResponse.Error(404, $"Player with entity {entityId} not found or not online."));
 
             if (string.IsNullOrWhiteSpace(request?.ItemName))
                 return BadRequest("ItemName is required.");
@@ -133,8 +194,24 @@ namespace KitsuneCommand.Web.Controllers
             var count = request.Count > 0 ? request.Count : 1;
             var quality = request.Quality > 0 ? request.Quality : 1;
 
-            var output = ExecuteConsoleCommand($"give {entityId} {request.ItemName} {count} {quality}");
-            return Ok(ApiResponse.Ok(new { output }));
+            try
+            {
+                var result = _playerManager.GiveItemToPlayer(entityId, request.ItemName, count, quality);
+                if (result == null)
+                    return Content(System.Net.HttpStatusCode.InternalServerError,
+                        ApiResponse.Error(500, "Give item timed out — the game server main thread may be busy."));
+
+                if (!result.Success)
+                    return Content(System.Net.HttpStatusCode.BadRequest, ApiResponse.Error(400, result.Message));
+
+                return Ok(ApiResponse.Ok(new { message = result.Message }));
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[KitsuneCommand] GiveItem error: {ex}");
+                return Content(System.Net.HttpStatusCode.InternalServerError,
+                    ApiResponse.Error(500, $"Server error: {ex.Message}"));
+            }
         }
 
         /// <summary>
@@ -151,6 +228,39 @@ namespace KitsuneCommand.Web.Controllers
 
             var output = ExecuteConsoleCommand(
                 $"teleportplayer {entityId} {(int)request.X} {(int)request.Y} {(int)request.Z}");
+            return Ok(ApiResponse.Ok(new { output }));
+        }
+
+        /// <summary>
+        /// Change a player's in-game admin permission level.
+        /// </summary>
+        [HttpPost]
+        [Route("{entityId:int}/admin-level")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult SetAdminLevel(int entityId, [FromBody] SetAdminLevelRequest request)
+        {
+            var player = _playerManager.GetByEntityId(entityId);
+            if (player == null)
+                return NotFound();
+
+            if (request == null)
+                return BadRequest("Request body is required.");
+
+            // Prefer PlayerId (EOS crossplatform ID) for admin commands, fall back to PlatformId
+            var adminId = !string.IsNullOrEmpty(player.PlayerId) ? player.PlayerId : player.PlatformId;
+
+            string output;
+            if (request.Level >= 1000)
+            {
+                // Remove admin privileges
+                output = ExecuteConsoleCommand($"admin remove {adminId}");
+            }
+            else
+            {
+                // Set admin level (0 = admin, 1 = moderator)
+                output = ExecuteConsoleCommand($"admin add {adminId} {request.Level}");
+            }
+
             return Ok(ApiResponse.Ok(new { output }));
         }
 

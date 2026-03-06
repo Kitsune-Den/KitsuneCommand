@@ -46,6 +46,7 @@ export function useAppWebSocket() {
         score: 0,
         lastLogin: 0,
         isAdmin: false,
+        adminLevel: 1000,
       })
       serverStore.addActivity('login', `${data.playerName} joined the server`)
     })

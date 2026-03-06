@@ -2,11 +2,13 @@ import apiClient from './client'
 
 export interface ConfigFieldDef {
   key: string
-  type: 'text' | 'number' | 'bool' | 'select'
+  type: 'text' | 'number' | 'bool' | 'select' | 'password'
   defaultValue: string
   min?: number
   max?: number
   options?: string[]
+  labels?: string[]
+  description?: string
 }
 
 export interface ConfigFieldGroup {

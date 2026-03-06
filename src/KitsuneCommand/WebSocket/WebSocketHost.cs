@@ -24,6 +24,8 @@ namespace KitsuneCommand.WebSocket
             try
             {
                 _server = new WebSocketServer(_settings.WebSocketPort);
+                _server.KeepClean = false; // Don't auto-close idle connections
+                _server.WaitTime = TimeSpan.FromSeconds(30);
                 _server.AddWebSocketService<TelnetBehavior>("/ws");
                 _server.Start();
 

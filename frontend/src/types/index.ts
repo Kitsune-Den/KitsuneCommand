@@ -18,6 +18,7 @@ export interface PlayerInfo {
   score: number
   lastLogin: number
   isAdmin: boolean
+  adminLevel: number
 }
 
 export interface InventorySlot {
@@ -258,6 +259,8 @@ export interface ChatCommandSettings {
   pointsEnabled: boolean
   storeEnabled: boolean
   vipEnabled: boolean
+  ticketEnabled: boolean
+  ticketCooldownSeconds: number
 }
 
 // ─── CD Key Types ────────────────────────────────────
@@ -334,4 +337,58 @@ export interface GameItemInfo {
   hasQuality: boolean
   maxStack: number
   groups: string[]
+}
+
+// ─── Ticket Types ────────────────────────────────────
+
+export interface Ticket {
+  id: number
+  createdAt: string
+  updatedAt: string
+  playerId: string
+  playerName: string | null
+  subject: string
+  status: 'open' | 'in_progress' | 'closed'
+  priority: number
+  assignedTo: string | null
+}
+
+export interface TicketMessage {
+  id: number
+  createdAt: string
+  ticketId: number
+  senderType: 'player' | 'admin'
+  senderId: string | null
+  senderName: string | null
+  message: string
+  delivered: number
+}
+
+export interface TicketDetail extends Ticket {
+  messages: TicketMessage[]
+}
+
+export interface TicketSettings {
+  enabled: boolean
+  maxOpenTicketsPerPlayer: number
+  cooldownSeconds: number
+  discordWebhookUrl: string
+  discordNotifyOnCreate: boolean
+  discordNotifyOnReply: boolean
+  discordNotifyOnClose: boolean
+}
+
+export interface TicketStats {
+  openCount: number
+  inProgressCount: number
+  closedCount: number
+}
+
+// ─── Player Metadata ─────────────────────────────────
+export interface PlayerMetadata {
+  playerId: string
+  nameColor: string | null
+  customTag: string | null
+  notes: string | null
+  updatedAt: string
 }

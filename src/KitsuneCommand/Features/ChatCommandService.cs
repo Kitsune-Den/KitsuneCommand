@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Linq;
 using KitsuneCommand.Abstractions.Models;
 using KitsuneCommand.Core;
 using KitsuneCommand.Data.Entities;
 using KitsuneCommand.Data.Repositories;
+using KitsuneCommand.Services;
 using Newtonsoft.Json;
 
 namespace KitsuneCommand.Features
@@ -22,9 +24,11 @@ namespace KitsuneCommand.Features
         private readonly ITeleRecordRepository _teleRecordRepo;
         private readonly IVipGiftRepository _vipGiftRepo;
         private readonly ISettingsRepository _settingsRepo;
+        private readonly ITicketRepository _ticketRepo;
         private readonly LivePlayerManager _playerManager;
         private readonly ModEventBus _eventBus;
         private readonly BloodMoonVoteFeature _bloodMoonVoteFeature;
+        private readonly DiscordWebhookService _discordService;
 
         // Cooldown tracking: playerId -> { commandGroup -> lastUsedUtc }
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, DateTime>> _cooldowns
@@ -38,10 +42,12 @@ namespace KitsuneCommand.Features
             IPurchaseHistoryRepository purchaseRepo,
             ITeleRecordRepository teleRecordRepo,
             IVipGiftRepository vipGiftRepo,
+            ITicketRepository ticketRepo,
             ISettingsRepository settingsRepo,
             LivePlayerManager playerManager,
             ModEventBus eventBus,
-            BloodMoonVoteFeature bloodMoonVoteFeature)
+            BloodMoonVoteFeature bloodMoonVoteFeature,
+            DiscordWebhookService discordService)
         {
             _homeRepo = homeRepo;
             _cityRepo = cityRepo;
@@ -50,10 +56,12 @@ namespace KitsuneCommand.Features
             _purchaseRepo = purchaseRepo;
             _teleRecordRepo = teleRecordRepo;
             _vipGiftRepo = vipGiftRepo;
+            _ticketRepo = ticketRepo;
             _settingsRepo = settingsRepo;
             _playerManager = playerManager;
             _eventBus = eventBus;
             _bloodMoonVoteFeature = bloodMoonVoteFeature;
+            _discordService = discordService;
         }
 
         /// <summary>
@@ -136,6 +144,17 @@ namespace KitsuneCommand.Features
                     case "vip":
                         if (!settings.VipEnabled) { Reply(entityId, "VIP commands are disabled."); return true; }
                         HandleVipClaim(playerId, entityId, playerName);
+                        return true;
+
+                    // ── Ticket Commands ────────────────────────────────────
+                    case "ticket":
+                        if (!settings.TicketEnabled) { Reply(entityId, "Ticket commands are disabled."); return true; }
+                        HandleTicket(playerId, entityId, playerName, args, settings);
+                        return true;
+
+                    case "tickets":
+                        if (!settings.TicketEnabled) { Reply(entityId, "Ticket commands are disabled."); return true; }
+                        HandleTicketList(playerId, entityId);
                         return true;
 
                     // ── Blood Moon Vote Commands ─────────────────────────
@@ -532,6 +551,135 @@ namespace KitsuneCommand.Features
 
             if (claimed > 1)
                 Reply(entityId, $"All {claimed} VIP gifts claimed!");
+        }
+
+        // ─── Ticket Commands ──────────────────────────────────────────
+
+        private void HandleTicket(string playerId, int entityId, string playerName, string args, ChatCommandSettings settings)
+        {
+            // /ticket <id> — view a specific ticket
+            if (int.TryParse(args.Trim(), out var ticketId))
+            {
+                HandleTicketView(playerId, entityId, ticketId);
+                return;
+            }
+
+            // /ticket <message> — create a new ticket
+            if (string.IsNullOrWhiteSpace(args))
+            {
+                Reply(entityId, "Usage: /ticket <message> to create a ticket, or /ticket <id> to view one.");
+                return;
+            }
+
+            if (!CheckCooldown(playerId, entityId, "ticket", settings.TicketCooldownSeconds))
+                return;
+
+            var ticketSettings = GetTicketSettings();
+            var openCount = _ticketRepo.GetOpenCountByPlayerId(playerId);
+            if (openCount >= ticketSettings.MaxOpenTicketsPerPlayer)
+            {
+                Reply(entityId, $"You already have {openCount} open ticket(s). Max is {ticketSettings.MaxOpenTicketsPerPlayer}.");
+                return;
+            }
+
+            var subject = args.Length > 80 ? args.Substring(0, 80) : args;
+            var ticket = new Ticket
+            {
+                PlayerId = playerId,
+                PlayerName = playerName,
+                Subject = subject,
+                Status = "open",
+                Priority = 1
+            };
+
+            var newId = _ticketRepo.Create(ticket);
+            ticket.Id = newId;
+
+            // Add the full message as the first ticket message
+            var message = new TicketMessage
+            {
+                TicketId = newId,
+                SenderType = "player",
+                SenderId = playerId,
+                SenderName = playerName,
+                Message = args,
+                Delivered = 1
+            };
+            _ticketRepo.AddMessage(message);
+
+            _eventBus.Publish(new TicketCreatedEvent
+            {
+                TicketId = newId,
+                PlayerId = playerId,
+                PlayerName = playerName,
+                Subject = subject
+            });
+
+            // Discord notification
+            if (ticketSettings.DiscordNotifyOnCreate && !string.IsNullOrWhiteSpace(ticketSettings.DiscordWebhookUrl))
+            {
+                _discordService.SendTicketCreated(ticketSettings.DiscordWebhookUrl, ticket, args);
+            }
+
+            Reply(entityId, $"Ticket #{newId} created. An admin will respond soon.");
+        }
+
+        private void HandleTicketList(string playerId, int entityId)
+        {
+            var tickets = _ticketRepo.GetByPlayerId(playerId).ToList();
+            if (tickets.Count == 0)
+            {
+                Reply(entityId, "You have no tickets. Use /ticket <message> to create one.");
+                return;
+            }
+
+            var openTickets = tickets.Where(t => t.Status != "closed").ToList();
+            if (openTickets.Count == 0)
+            {
+                Reply(entityId, $"You have {tickets.Count} ticket(s), all closed.");
+                return;
+            }
+
+            var lines = openTickets.Select(t => $"#{t.Id} [{t.Status}] {t.Subject}");
+            Reply(entityId, $"Your tickets: {string.Join(" | ", lines)}");
+        }
+
+        private void HandleTicketView(string playerId, int entityId, int ticketId)
+        {
+            var ticket = _ticketRepo.GetById(ticketId);
+            if (ticket == null || ticket.PlayerId != playerId)
+            {
+                Reply(entityId, $"Ticket #{ticketId} not found.");
+                return;
+            }
+
+            Reply(entityId, $"Ticket #{ticket.Id} [{ticket.Status}]: {ticket.Subject}");
+
+            var messages = _ticketRepo.GetMessages(ticketId).ToList();
+            var recent = messages.Skip(System.Math.Max(0, messages.Count - 3)).ToList();
+            foreach (var msg in recent)
+            {
+                Reply(entityId, $"  [{msg.SenderType}] {msg.SenderName}: {msg.Message}");
+            }
+
+            if (messages.Count > 3)
+                Reply(entityId, $"  ({messages.Count - 3} earlier message(s) not shown)");
+        }
+
+        private TicketSettings GetTicketSettings()
+        {
+            try
+            {
+                var json = _settingsRepo.Get("Ticket");
+                if (!string.IsNullOrEmpty(json))
+                {
+                    var loaded = JsonConvert.DeserializeObject<TicketSettings>(json);
+                    if (loaded != null) return loaded;
+                }
+            }
+            catch { /* fall through to defaults */ }
+
+            return new TicketSettings();
         }
 
         // ─── Blood Moon Vote Commands ─────────────────────────────────

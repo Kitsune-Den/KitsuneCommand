@@ -30,6 +30,7 @@ const rawXml = ref('')
 const rawXmlOriginal = ref('')
 const worlds = ref<string[]>([])
 const confirmDialogVisible = ref(false)
+const passwordVisible = ref<Record<string, boolean>>({})
 
 const isDirty = computed(() => {
   if (activeTab.value === 'raw') {
@@ -120,11 +121,15 @@ async function handleSave() {
 }
 
 function getFieldValue(key: string): string {
-  return properties.value[key] ?? ''
+  const lower = key.toLowerCase()
+  const match = Object.keys(properties.value).find(k => k.toLowerCase() === lower)
+  return match ? properties.value[match] : ''
 }
 
 function setFieldValue(key: string, value: string) {
-  properties.value[key] = value
+  const lower = key.toLowerCase()
+  const match = Object.keys(properties.value).find(k => k.toLowerCase() === lower)
+  properties.value[match ?? key] = value
 }
 
 function getBoolValue(key: string): boolean {
@@ -136,13 +141,16 @@ function setBoolValue(key: string, value: boolean) {
   setFieldValue(key, value ? 'true' : 'false')
 }
 
-function getSelectOptions(field: { key: string; options?: string[] }) {
+function getSelectOptions(field: { key: string; options?: string[]; labels?: string[] }) {
   // Special case: GameWorld includes detected worlds
   if (field.key === 'GameWorld') {
     const opts = [...(field.options || []), ...worlds.value]
     return [...new Set(opts)].map(v => ({ label: v, value: v }))
   }
-  return (field.options || []).map(v => ({ label: v, value: v }))
+  return (field.options || []).map((v, i) => ({
+    label: field.labels?.[i] ?? v,
+    value: v
+  }))
 }
 
 onMounted(loadConfig)
@@ -198,7 +206,8 @@ onMounted(loadConfig)
           <AccordionContent>
             <div class="field-grid">
               <div v-for="field in group.fields" :key="field.key" class="field-item">
-                <label class="field-label">{{ field.key }}</label>
+                <label class="field-label">{{ t('config.field.' + field.key, field.key) }}</label>
+                <small v-if="field.description" class="field-description">{{ field.description }}</small>
 
                 <!-- Text field -->
                 <InputText
@@ -207,6 +216,23 @@ onMounted(loadConfig)
                   @update:modelValue="setFieldValue(field.key, String($event ?? ''))"
                   class="field-input"
                 />
+
+                <!-- Password field -->
+                <div v-else-if="field.type === 'password'" class="password-field">
+                  <InputText
+                    :modelValue="getFieldValue(field.key)"
+                    @update:modelValue="setFieldValue(field.key, String($event ?? ''))"
+                    :type="passwordVisible[field.key] ? 'text' : 'password'"
+                    class="field-input"
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    @click="passwordVisible[field.key] = !passwordVisible[field.key]"
+                  >
+                    <i :class="passwordVisible[field.key] ? 'pi pi-eye-slash' : 'pi pi-eye'" />
+                  </button>
+                </div>
 
                 <!-- Number field -->
                 <InputNumber
@@ -342,8 +368,39 @@ onMounted(loadConfig)
   font-family: monospace;
 }
 
+.field-description {
+  font-size: 0.7rem;
+  color: var(--kc-text-secondary);
+  opacity: 0.7;
+  line-height: 1.3;
+  margin-top: -0.1rem;
+}
+
 .field-input {
   width: 100%;
+}
+
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--kc-text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  font-size: 0.9rem;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.password-toggle:hover {
+  opacity: 1;
 }
 
 .bool-field {

@@ -10,8 +10,9 @@ import {
   getStoreSettings, updateStoreSettings,
 } from '@/api/settings'
 import { getVoteSettings, updateVoteSettings } from '@/api/bloodmoonvote'
+import { getTicketSettings, updateTicketSettings } from '@/api/tickets'
 import type { UserResponse, CreateUserRequest } from '@/api/users'
-import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings } from '@/types'
+import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings, TicketSettings } from '@/types'
 import { usePermissions } from '@/composables/usePermissions'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -236,6 +237,8 @@ const chatCmdSettings = ref<ChatCommandSettings>({
   pointsEnabled: true,
   storeEnabled: true,
   vipEnabled: true,
+  ticketEnabled: true,
+  ticketCooldownSeconds: 60,
 })
 const loadingChatCmd = ref(false)
 const savingChatCmd = ref(false)
@@ -413,6 +416,43 @@ async function handleSaveBmVote() {
   }
 }
 
+// ---- Tickets Tab ----
+const ticketSettings = ref<TicketSettings>({
+  enabled: true,
+  maxOpenTicketsPerPlayer: 3,
+  cooldownSeconds: 60,
+  discordWebhookUrl: '',
+  discordNotifyOnCreate: true,
+  discordNotifyOnReply: true,
+  discordNotifyOnClose: true,
+})
+const loadingTicketSettings = ref(false)
+const savingTicketSettings = ref(false)
+
+async function fetchTicketSettings() {
+  loadingTicketSettings.value = true
+  try {
+    ticketSettings.value = await getTicketSettings()
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadSettings'), life: 3000 })
+  } finally {
+    loadingTicketSettings.value = false
+  }
+}
+
+async function handleSaveTicketSettings() {
+  savingTicketSettings.value = true
+  try {
+    await updateTicketSettings(ticketSettings.value)
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.ticketSettingsUpdated'), life: 3000 })
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
+  } finally {
+    savingTicketSettings.value = false
+  }
+}
+
 onMounted(() => {
   if (isAdmin.value) {
     fetchUsers()
@@ -421,6 +461,7 @@ onMounted(() => {
     fetchTeleportSettings()
     fetchStoreSettings()
     fetchBmVoteSettings()
+    fetchTicketSettings()
   }
 })
 </script>
@@ -438,6 +479,7 @@ onMounted(() => {
         <Tab v-if="isAdmin" value="4">{{ t('settings.teleport') }}</Tab>
         <Tab v-if="isAdmin" value="5">{{ t('settings.store') }}</Tab>
         <Tab v-if="isAdmin" value="6">{{ t('settings.bloodMoonVote') }}</Tab>
+        <Tab v-if="isAdmin" value="7">{{ t('settings.tickets') }}</Tab>
       </TabList>
       <TabPanels>
         <!-- Account Tab -->
@@ -889,6 +931,62 @@ onMounted(() => {
               icon="pi pi-save"
               @click="handleSaveBmVote"
               :loading="savingBmVote"
+              severity="info"
+              class="save-btn"
+            />
+          </div>
+        </TabPanel>
+
+        <!-- Tickets Tab -->
+        <TabPanel v-if="isAdmin" value="7">
+          <div class="settings-section" v-if="!loadingTicketSettings">
+            <Card class="settings-card">
+              <template #title>{{ t('settings.ticketGeneral') }}</template>
+              <template #subtitle>{{ t('settings.ticketGeneralSubtitle') }}</template>
+              <template #content>
+                <div class="form-row">
+                  <label class="form-label">{{ t('settings.enabled') }}</label>
+                  <ToggleSwitch v-model="ticketSettings.enabled" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.maxOpenTickets') }}</label>
+                  <InputNumber v-model="ticketSettings.maxOpenTicketsPerPlayer" :min="1" :max="20" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.ticketCooldown') }}</label>
+                  <InputNumber v-model="ticketSettings.cooldownSeconds" :min="0" :max="3600" class="form-input" suffix=" sec" />
+                </div>
+              </template>
+            </Card>
+
+            <Card class="settings-card">
+              <template #title>{{ t('settings.discordIntegration') }}</template>
+              <template #subtitle>{{ t('settings.discordIntegrationSubtitle') }}</template>
+              <template #content>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.discordWebhookUrl') }}</label>
+                  <InputText v-model="ticketSettings.discordWebhookUrl" type="password" class="form-input" :placeholder="t('settings.discordWebhookPlaceholder')" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">{{ t('settings.notifyOnCreate') }}</label>
+                  <ToggleSwitch v-model="ticketSettings.discordNotifyOnCreate" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">{{ t('settings.notifyOnReply') }}</label>
+                  <ToggleSwitch v-model="ticketSettings.discordNotifyOnReply" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">{{ t('settings.notifyOnClose') }}</label>
+                  <ToggleSwitch v-model="ticketSettings.discordNotifyOnClose" />
+                </div>
+              </template>
+            </Card>
+
+            <Button
+              :label="t('settings.saveSettings')"
+              icon="pi pi-save"
+              @click="handleSaveTicketSettings"
+              :loading="savingTicketSettings"
               severity="info"
               class="save-btn"
             />

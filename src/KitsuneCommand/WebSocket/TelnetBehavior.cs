@@ -69,7 +69,7 @@ namespace KitsuneCommand.WebSocket
                     EventType = "CommandResult",
                     Data = new { command, output = "Error: Insufficient permissions. Viewers cannot execute commands." }
                 };
-                Send(JsonConvert.SerializeObject(denied));
+                Send(JsonConvert.SerializeObject(denied, EventBroadcaster.CamelCase));
                 return;
             }
 
@@ -87,7 +87,7 @@ namespace KitsuneCommand.WebSocket
                         Data = new { command, output = result, executedBy = _username }
                     };
 
-                    Send(JsonConvert.SerializeObject(reply));
+                    Send(JsonConvert.SerializeObject(reply, EventBroadcaster.CamelCase));
                 }
                 catch (Exception ex)
                 {
@@ -97,7 +97,7 @@ namespace KitsuneCommand.WebSocket
                         Data = new { command, output = $"Error: {ex.Message}" }
                     };
 
-                    Send(JsonConvert.SerializeObject(error));
+                    Send(JsonConvert.SerializeObject(error, EventBroadcaster.CamelCase));
                 }
             }, null);
         }
