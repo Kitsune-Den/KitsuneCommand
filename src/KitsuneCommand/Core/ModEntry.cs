@@ -45,7 +45,7 @@ namespace KitsuneCommand.Core
             // System.Data.SQLite is built from source with SQLITE_STANDARD, so its
             // P/Invoke target is "sqlite3" (not "SQLite.Interop.dll"). On Linux,
             // Mono's global config maps sqlite3 -> libsqlite3.so.0 automatically.
-            // On Windows, we ship sqlite3.dll (renamed from SQLite.Interop.dll).
+            // On Windows, we ship the official sqlite3.dll from sqlite.org.
             if (PlatformHelper.IsLinux)
             {
                 var nativePath = Path.Combine(_modInstance.Path, "linux-x64");
@@ -75,7 +75,7 @@ namespace KitsuneCommand.Core
                 }
             }
 
-            Log.Out($"[KitsuneCommand] Initializing KitsuneCommand v2.1.0 on {(PlatformHelper.IsLinux ? "Linux" : "Windows")}...");
+            Log.Out($"[KitsuneCommand] Initializing KitsuneCommand v2.2.0 on {(PlatformHelper.IsLinux ? "Linux" : "Windows")}...");
 
             _lifecycle = new ModLifecycle();
             _lifecycle.Initialize();

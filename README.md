@@ -11,7 +11,7 @@
 
 ---
 
-KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that provides a RESTful API and a modern web management panel. Built as a clean-room V2 rewrite of [ServerKit](https://github.com/IceCoffee1024/7DaysToDie-ServerKit) with a modern Vue 3 frontend and improved security.
+KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that provides a RESTful API and a modern web management panel. Runs on both **Windows** and **Linux** servers. Built as a clean-room V2 rewrite of [ServerKit](https://github.com/IceCoffee1024/7DaysToDie-ServerKit) with a modern Vue 3 frontend and improved security.
 
 ## Features
 
@@ -85,7 +85,7 @@ KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that pr
          wwwroot/
          Plugins/
          x64/                       # Windows native libraries
-           SQLite.Interop.dll
+           sqlite3.dll
            libSkiaSharp.dll
          linux-x64/                 # Linux native libraries
            libSkiaSharp.so
@@ -123,8 +123,10 @@ KitsuneCommand/
 │   │   ├── views/                    # Page components
 │   │   └── __tests__/                # Vitest test files
 │   └── vitest.config.ts
+├── build-sqlite/                      # System.Data.SQLite source (SQLITE_STANDARD)
 ├── tools/
-│   └── build.ps1                     # Full build + package script
+│   ├── build.ps1                     # Full build + package script (Windows/Linux/both)
+│   └── build.sh                      # Linux build script
 ├── KitsuneCommand.sln
 └── README.md
 ```
@@ -161,11 +163,13 @@ dotnet build src/KitsuneCommand/KitsuneCommand.csproj -c Release
 ### Full Build + Package
 
 ```powershell
-.\tools\build.ps1
+.\tools\build.ps1                    # Build for both platforms
+.\tools\build.ps1 -Platform windows  # Windows only
+.\tools\build.ps1 -Platform linux    # Linux only
 # Output: dist/KitsuneCommand/ (ready to copy to Mods/)
 ```
 
-This builds both frontend and backend, then packages everything into a deployable mod folder.
+This builds both frontend and backend, then packages everything into a deployable mod folder with the correct native libraries for each platform.
 
 ### Deploy to Server
 
