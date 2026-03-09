@@ -37,13 +37,10 @@
     -->
     <ProjectReference Include="..\..\build-sqlite\System.Data.SQLite.Build.csproj" />
     <!--
-      Keep the NuGet package with ExcludeAssets="compile;runtime" so dotnet restore
-      downloads the native SQLite.Interop.dll but doesn't use the obfuscated managed DLL.
-      The build script sources SQLite.Interop.dll from bin/Release/x64/ for Windows.
+      Windows: ships official sqlite3.dll from sqlite.org (has standard exports).
+      Linux: uses system libsqlite3.so.0 (Mono global config maps "sqlite3" automatically).
+      The NuGet SQLite.Interop.dll is NOT used — it doesn't export standard sqlite3 functions.
     -->
-    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119">
-      <ExcludeAssets>compile;runtime</ExcludeAssets>
-    </PackageReference>
     <PackageReference Include="Dapper" Version="2.1.35" />
   </ItemGroup>
 

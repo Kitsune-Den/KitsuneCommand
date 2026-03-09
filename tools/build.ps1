@@ -42,17 +42,17 @@ Copy-Item "src/$modName/ModInfo.xml" $modDir
 if ($Platform -eq "windows" -or $Platform -eq "both") {
     Write-Host "`n  [Windows native libraries]" -ForegroundColor Cyan
 
-    # sqlite3.dll (renamed from SQLite.Interop.dll)
+    # sqlite3.dll (official SQLite native library)
     # System.Data.SQLite is built with SQLITE_STANDARD, so P/Invoke target is "sqlite3".
-    # We ship the native SQLite library as sqlite3.dll so Mono can find it.
-    $interopSrc = "$binDir/x64/SQLite.Interop.dll"
-    if (Test-Path $interopSrc) {
+    # We ship the official sqlite3.dll (NOT SQLite.Interop.dll, which doesn't export standard functions).
+    $sqliteSrc = "src/$modName/x64/sqlite3.dll"
+    if (Test-Path $sqliteSrc) {
         $nativeDir = "$modDir/x64"
         New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
-        Copy-Item $interopSrc "$nativeDir/sqlite3.dll"
-        Write-Host "    Copied SQLite.Interop.dll as sqlite3.dll to x64/" -ForegroundColor Gray
+        Copy-Item $sqliteSrc $nativeDir
+        Write-Host "    Copied sqlite3.dll (official) to x64/" -ForegroundColor Gray
     } else {
-        Write-Warning "SQLite.Interop.dll not found at $interopSrc"
+        Write-Warning "sqlite3.dll not found at $sqliteSrc. Download from https://sqlite.org/download.html"
     }
 
     # libSkiaSharp.dll (Windows)
