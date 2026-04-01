@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Web.Http;
+using KitsuneCommand.Configuration;
 using KitsuneCommand.Web.Auth;
 using KitsuneCommand.Web.Models;
 
@@ -8,20 +9,22 @@ namespace KitsuneCommand.Web.Controllers
     /// <summary>
     /// Authentication endpoints: current user info, password change.
     /// </summary>
-    [Authorize]
     [RoutePrefix("api/auth")]
     public class AuthController : ApiController
     {
         private readonly AuthService _authService;
+        private readonly AppSettings _settings;
 
-        public AuthController(AuthService authService)
+        public AuthController(AuthService authService, AppSettings settings)
         {
             _authService = authService;
+            _settings = settings;
         }
 
         /// <summary>
         /// Returns the currently authenticated user's info from their token claims.
         /// </summary>
+        [Authorize]
         [HttpGet]
         [Route("me")]
         public IHttpActionResult GetCurrentUser()
@@ -44,6 +47,7 @@ namespace KitsuneCommand.Web.Controllers
         /// <summary>
         /// Changes the current user's password.
         /// </summary>
+        [Authorize]
         [HttpPost]
         [Route("change-password")]
         public IHttpActionResult ChangePassword([FromBody] ChangePasswordRequest request)

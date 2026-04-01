@@ -18,7 +18,7 @@ namespace KitsuneCommand.Web.Auth
             {
                 return BCrypt.Net.BCrypt.Verify(password, hash);
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }

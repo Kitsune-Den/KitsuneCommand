@@ -11,16 +11,21 @@ export interface TokenResponse {
 }
 
 export async function login(username: string, password: string): Promise<TokenResponse> {
-  const params = new URLSearchParams()
-  params.append('grant_type', 'password')
-  params.append('username', username)
-  params.append('password', password)
-
-  const response = await apiClient.post<TokenResponse>('/token', params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  // Login uses a standalone listener on port 8890 due to OWIN/Mono compatibility issues
+  const baseUrl = window.location.hostname
+  const loginUrl = `http://${baseUrl}:8890/api/auth/login/`
+  const response = await fetch(loginUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
   })
 
-  return response.data
+  if (!response.ok) {
+    const err = await response.json()
+    throw { response: { data: err, status: response.status } }
+  }
+
+  return response.json()
 }
 
 export async function refreshToken(token: string): Promise<TokenResponse> {

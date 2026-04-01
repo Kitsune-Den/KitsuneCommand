@@ -34,6 +34,30 @@ namespace KitsuneCommand.Web.Auth
         }
 
         /// <summary>
+        /// Creates a bearer token for the given user.
+        /// </summary>
+        public static string CreateToken(string username, string role, string userId, string displayName, TimeSpan expiresIn)
+        {
+            if (_tokenFormat == null)
+                throw new InvalidOperationException("TokenValidator not initialized");
+
+            var identity = new ClaimsIdentity("Bearer");
+            identity.AddClaim(new Claim(ClaimTypes.Name, username));
+            identity.AddClaim(new Claim(ClaimTypes.Role, role));
+            identity.AddClaim(new Claim("user_id", userId));
+            identity.AddClaim(new Claim("display_name", displayName));
+
+            var properties = new AuthenticationProperties
+            {
+                IssuedUtc = DateTimeOffset.UtcNow,
+                ExpiresUtc = DateTimeOffset.UtcNow.Add(expiresIn)
+            };
+
+            var ticket = new AuthenticationTicket(identity, properties);
+            return _tokenFormat.Protect(ticket);
+        }
+
+        /// <summary>
         /// Validates a bearer token and extracts the username and role.
         /// Returns true if the token is valid and not expired.
         /// </summary>
