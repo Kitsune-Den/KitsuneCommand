@@ -11,8 +11,9 @@ import {
 } from '@/api/settings'
 import { getVoteSettings, updateVoteSettings } from '@/api/bloodmoonvote'
 import { getTicketSettings, updateTicketSettings } from '@/api/tickets'
+import { getDiscordSettings, updateDiscordSettings, getDiscordStatus, testDiscordConnection } from '@/api/discord'
 import type { UserResponse, CreateUserRequest } from '@/api/users'
-import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings, TicketSettings } from '@/types'
+import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings, TicketSettings, DiscordSettings, DiscordStatus } from '@/types'
 import { usePermissions } from '@/composables/usePermissions'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -453,6 +454,74 @@ async function handleSaveTicketSettings() {
   }
 }
 
+// ---- Discord Bot Tab ----
+const discordSettings = ref<DiscordSettings>({
+  enabled: false,
+  botToken: '',
+  chatBridgeEnabled: true,
+  chatBridgeChannelId: '',
+  eventNotificationsEnabled: true,
+  eventChannelId: '',
+  notifyPlayerJoin: true,
+  notifyPlayerLeave: true,
+  notifyServerStart: true,
+  notifyServerStop: true,
+  notifyBloodMoon: true,
+  slashCommandsEnabled: true,
+  serverName: '7 Days to Die Server',
+  showPlayerCountInStatus: true,
+})
+const discordStatus = ref<DiscordStatus>({ isConnected: false, botUsername: '', latencyMs: -1 })
+const loadingDiscordSettings = ref(false)
+const savingDiscordSettings = ref(false)
+const testingDiscord = ref(false)
+
+async function fetchDiscordSettings() {
+  loadingDiscordSettings.value = true
+  try {
+    discordSettings.value = await getDiscordSettings()
+    discordStatus.value = await getDiscordStatus()
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadSettings'), life: 3000 })
+  } finally {
+    loadingDiscordSettings.value = false
+  }
+}
+
+async function handleSaveDiscordSettings() {
+  savingDiscordSettings.value = true
+  try {
+    await updateDiscordSettings(discordSettings.value)
+    toast.add({ severity: 'success', summary: t('common.success'), detail: 'Discord settings updated.', life: 3000 })
+    // Refresh status after saving (bot may have restarted)
+    setTimeout(async () => { discordStatus.value = await getDiscordStatus() }, 3000)
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
+  } finally {
+    savingDiscordSettings.value = false
+  }
+}
+
+async function handleTestDiscord() {
+  testingDiscord.value = true
+  try {
+    const msg = await testDiscordConnection()
+    toast.add({ severity: 'success', summary: t('common.success'), detail: msg, life: 3000 })
+  } catch (err: any) {
+    const detail = err.response?.data?.message || 'Test failed.'
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
+  } finally {
+    testingDiscord.value = false
+  }
+}
+
+async function refreshDiscordStatus() {
+  try {
+    discordStatus.value = await getDiscordStatus()
+  } catch { /* ignore */ }
+}
+
 onMounted(() => {
   if (isAdmin.value) {
     fetchUsers()
@@ -462,6 +531,7 @@ onMounted(() => {
     fetchStoreSettings()
     fetchBmVoteSettings()
     fetchTicketSettings()
+    fetchDiscordSettings()
   }
 })
 </script>
@@ -480,6 +550,7 @@ onMounted(() => {
         <Tab v-if="isAdmin" value="5">{{ t('settings.store') }}</Tab>
         <Tab v-if="isAdmin" value="6">{{ t('settings.bloodMoonVote') }}</Tab>
         <Tab v-if="isAdmin" value="7">{{ t('settings.tickets') }}</Tab>
+        <Tab v-if="isAdmin" value="8">Discord</Tab>
       </TabList>
       <TabPanels>
         <!-- Account Tab -->
@@ -987,6 +1058,118 @@ onMounted(() => {
               icon="pi pi-save"
               @click="handleSaveTicketSettings"
               :loading="savingTicketSettings"
+              severity="info"
+              class="save-btn"
+            />
+          </div>
+        </TabPanel>
+        <!-- Discord Bot Tab -->
+        <TabPanel v-if="isAdmin" value="8">
+          <div class="settings-section" v-if="!loadingDiscordSettings">
+            <Card class="settings-card">
+              <template #title>Connection</template>
+              <template #subtitle>Configure the Discord bot connection</template>
+              <template #content>
+                <div class="form-row">
+                  <label class="form-label">Enabled</label>
+                  <ToggleSwitch v-model="discordSettings.enabled" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Bot Token</label>
+                  <InputText v-model="discordSettings.botToken" type="password" class="form-input" placeholder="Paste your Discord bot token" />
+                </div>
+                <div class="form-row" style="gap: 0.75rem; align-items: center;">
+                  <Tag :severity="discordStatus.isConnected ? 'success' : 'danger'" :value="discordStatus.isConnected ? 'Connected' : 'Disconnected'" />
+                  <span v-if="discordStatus.isConnected" style="color: var(--text-secondary); font-size: 0.85rem;">
+                    {{ discordStatus.botUsername }} &middot; {{ discordStatus.latencyMs }}ms
+                  </span>
+                  <Button label="Refresh" icon="pi pi-refresh" severity="secondary" size="small" text @click="refreshDiscordStatus" />
+                  <Button label="Test" icon="pi pi-bolt" severity="info" size="small" text :loading="testingDiscord" @click="handleTestDiscord" />
+                </div>
+              </template>
+            </Card>
+
+            <Card class="settings-card">
+              <template #title>Chat Bridge</template>
+              <template #subtitle>Bridge in-game chat with a Discord channel</template>
+              <template #content>
+                <div class="form-row">
+                  <label class="form-label">Enable Chat Bridge</label>
+                  <ToggleSwitch v-model="discordSettings.chatBridgeEnabled" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Channel ID</label>
+                  <InputText v-model="discordSettings.chatBridgeChannelId" class="form-input" placeholder="Right-click channel > Copy Channel ID" />
+                </div>
+              </template>
+            </Card>
+
+            <Card class="settings-card">
+              <template #title>Event Notifications</template>
+              <template #subtitle>Push server events to a Discord channel</template>
+              <template #content>
+                <div class="form-row">
+                  <label class="form-label">Enable Notifications</label>
+                  <ToggleSwitch v-model="discordSettings.eventNotificationsEnabled" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Channel ID</label>
+                  <InputText v-model="discordSettings.eventChannelId" class="form-input" placeholder="Right-click channel > Copy Channel ID" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">Player Join</label>
+                  <ToggleSwitch v-model="discordSettings.notifyPlayerJoin" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">Player Leave</label>
+                  <ToggleSwitch v-model="discordSettings.notifyPlayerLeave" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">Server Start</label>
+                  <ToggleSwitch v-model="discordSettings.notifyServerStart" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">Server Stop</label>
+                  <ToggleSwitch v-model="discordSettings.notifyServerStop" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">Blood Moon</label>
+                  <ToggleSwitch v-model="discordSettings.notifyBloodMoon" />
+                </div>
+              </template>
+            </Card>
+
+            <Card class="settings-card">
+              <template #title>Slash Commands</template>
+              <template #subtitle>Discord slash commands (/status, /players, /time)</template>
+              <template #content>
+                <div class="form-row">
+                  <label class="form-label">Enable Slash Commands</label>
+                  <ToggleSwitch v-model="discordSettings.slashCommandsEnabled" />
+                </div>
+              </template>
+            </Card>
+
+            <Card class="settings-card">
+              <template #title>Display</template>
+              <template #subtitle>Bot presence and display settings</template>
+              <template #content>
+                <div class="form-group">
+                  <label class="form-label">Server Name</label>
+                  <InputText v-model="discordSettings.serverName" class="form-input" placeholder="Shown in embed footers" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">Show Player Count in Status</label>
+                  <ToggleSwitch v-model="discordSettings.showPlayerCountInStatus" />
+                </div>
+              </template>
+            </Card>
+
+            <Button
+              label="Save Discord Settings"
+              icon="pi pi-save"
+              @click="handleSaveDiscordSettings"
+              :loading="savingDiscordSettings"
               severity="info"
               class="save-btn"
             />

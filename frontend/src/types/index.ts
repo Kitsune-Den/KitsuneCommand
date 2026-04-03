@@ -384,6 +384,30 @@ export interface TicketStats {
   closedCount: number
 }
 
+// ─── Discord Bot ─────────────────────────────────────
+export interface DiscordSettings {
+  enabled: boolean
+  botToken: string
+  chatBridgeEnabled: boolean
+  chatBridgeChannelId: string
+  eventNotificationsEnabled: boolean
+  eventChannelId: string
+  notifyPlayerJoin: boolean
+  notifyPlayerLeave: boolean
+  notifyServerStart: boolean
+  notifyServerStop: boolean
+  notifyBloodMoon: boolean
+  slashCommandsEnabled: boolean
+  serverName: string
+  showPlayerCountInStatus: boolean
+}
+
+export interface DiscordStatus {
+  isConnected: boolean
+  botUsername: string
+  latencyMs: number
+}
+
 // ─── Player Metadata ─────────────────────────────────
 export interface PlayerMetadata {
   playerId: string
