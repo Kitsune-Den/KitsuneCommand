@@ -321,6 +321,7 @@ onMounted(loadConfig)
   color: var(--kc-text-secondary);
   font-family: monospace;
   margin-top: 0.25rem;
+  opacity: 0.7;
 }
 
 .header-actions {
@@ -348,36 +349,98 @@ onMounted(loadConfig)
   color: var(--kc-text-secondary);
 }
 
+/* Accordion dark theme overrides */
+.form-view :deep(.p-accordionpanel) {
+  border: 1px solid var(--kc-border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  background: var(--kc-bg-secondary);
+}
+
+.form-view :deep(.p-accordionheader) {
+  background: var(--kc-bg-secondary);
+  border: none;
+  color: var(--kc-text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.85rem 1.25rem;
+  transition: background 0.15s;
+}
+
+.form-view :deep(.p-accordionheader:hover) {
+  background: var(--kc-bg-card);
+}
+
+.form-view :deep(.p-accordionheader[aria-expanded="true"]) {
+  border-bottom: 1px solid var(--kc-border);
+}
+
+.form-view :deep(.p-accordioncontent-content) {
+  background: transparent;
+  border: none;
+  padding: 1rem 1.25rem;
+}
+
+/* Field grid */
 .field-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1rem;
-  padding: 0.5rem 0;
+  gap: 1.25rem;
+  padding: 0.25rem 0;
 }
 
 .field-item {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .field-label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--kc-text-secondary);
+  color: var(--kc-text-primary);
   font-family: monospace;
+  letter-spacing: 0.02em;
 }
 
 .field-description {
   font-size: 0.7rem;
   color: var(--kc-text-secondary);
-  opacity: 0.7;
+  opacity: 0.65;
   line-height: 1.3;
   margin-top: -0.1rem;
 }
 
+/* Form input dark theme overrides */
 .field-input {
   width: 100%;
+}
+
+.form-view :deep(.p-inputtext),
+.form-view :deep(.p-inputnumber-input),
+.form-view :deep(.p-select) {
+  background: var(--kc-bg-primary);
+  color: var(--kc-text-primary);
+  border: 1px solid var(--kc-border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  transition: border-color 0.15s;
+}
+
+.form-view :deep(.p-inputtext:focus),
+.form-view :deep(.p-inputnumber-input:focus),
+.form-view :deep(.p-select.p-focus) {
+  border-color: var(--kc-cyan-dark);
+  box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.15);
+}
+
+.form-view :deep(.p-select-label) {
+  color: var(--kc-text-primary);
+}
+
+.form-view :deep(.p-select-dropdown) {
+  color: var(--kc-text-secondary);
 }
 
 .password-field {
@@ -395,12 +458,13 @@ onMounted(loadConfig)
   cursor: pointer;
   padding: 0.25rem;
   font-size: 0.9rem;
-  opacity: 0.6;
+  opacity: 0.5;
   transition: opacity 0.15s;
 }
 
 .password-toggle:hover {
   opacity: 1;
+  color: var(--kc-cyan);
 }
 
 .bool-field {
@@ -415,6 +479,7 @@ onMounted(loadConfig)
   color: var(--kc-text-secondary);
 }
 
+/* Raw XML editor */
 .raw-view {
   flex: 1;
 }
@@ -423,13 +488,20 @@ onMounted(loadConfig)
   width: 100%;
   font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
   font-size: 0.85rem;
-  background: #0d1117;
+  background: var(--kc-bg-primary);
   color: #e6edf3;
   border: 1px solid var(--kc-border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 1rem;
   resize: vertical;
   min-height: 400px;
+  line-height: 1.6;
+}
+
+.raw-textarea:focus {
+  border-color: var(--kc-cyan-dark);
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.15);
 }
 
 @media (max-width: 768px) {
