@@ -51,6 +51,7 @@ src/KitsuneCommand/7dtd-binaries/
 .env.local
 .env.*.local
 frontend/.env.development
+frontend/coverage/
 
 # Decompiled reference files
 localization_decompiled.cs
