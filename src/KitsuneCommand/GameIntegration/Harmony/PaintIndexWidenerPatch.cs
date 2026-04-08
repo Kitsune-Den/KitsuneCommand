@@ -26,7 +26,9 @@ namespace KitsuneCommand.GameIntegration.Harmony
     ///   Index 255 (0xFF) is the magic sentinel - don't assign a paint to slot 255
     ///   if you need mixed patched/unpatched compatibility.
     /// </summary>
-    [HarmonyPatch(typeof(NetPackageSetBlockTexture))]
+    // NOTE: No [HarmonyPatch] attribute — this patch is applied manually in ModLifecycle.PatchByHarmony()
+    // only when PaintUnlocked (0_PaintUnlocked) is detected. Without it, vanilla clients sending
+    // paint packets would crash the server's network deserializer.
     public static class PaintIndexWidenerPatch
     {
         private const byte ExtendedIndexMagic = 0xFF;
