@@ -36,6 +36,7 @@ namespace KitsuneCommand.Core
             builder.RegisterType<BackupService>().AsSelf().SingleInstance();
             builder.RegisterType<DiscordWebhookService>().AsSelf().SingleInstance();
             builder.RegisterType<DiscordBotService>().AsSelf().SingleInstance();
+            builder.RegisterType<NexusModDiscoveryService>().AsSelf().SingleInstance();
 
             // Database connection factory
             builder.Register(c => new DbConnectionFactory(settings.DatabasePath))

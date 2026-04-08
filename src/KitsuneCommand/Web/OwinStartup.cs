@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+using System.Reflection;
 using System.Web.Http;
+using System.Web.Http.Dispatcher;
 using Autofac;
 using Autofac.Integration.WebApi;
 using KitsuneCommand.Configuration;
@@ -85,6 +88,12 @@ namespace KitsuneCommand.Web
             // 6. Web API with Autofac DI
             var config = new HttpConfiguration();
 
+            // Use a safe assembly resolver that only returns KitsuneCommand assemblies.
+            // The default resolver scans ALL loaded assemblies, which crashes when it
+            // encounters HarmonyLib (references Mono.Cecil which isn't present).
+            config.Services.Replace(typeof(System.Web.Http.Dispatcher.IAssembliesResolver),
+                new SafeAssembliesResolver());
+
             config.MapHttpAttributeRoutes();
 
             config.Routes.MapHttpRoute(
@@ -111,6 +120,19 @@ namespace KitsuneCommand.Web
             app.UseAutofacMiddleware(_container);
             app.UseAutofacWebApi(config);
             app.UseWebApi(config);
+        }
+    }
+
+    /// <summary>
+    /// Custom assembly resolver that only returns KitsuneCommand's own assembly.
+    /// The default resolver scans ALL loaded assemblies, which crashes when it
+    /// encounters HarmonyLib (it references Mono.Cecil which 7D2D doesn't ship).
+    /// </summary>
+    internal class SafeAssembliesResolver : IAssembliesResolver
+    {
+        public ICollection<Assembly> GetAssemblies()
+        {
+            return new[] { typeof(SafeAssembliesResolver).Assembly };
         }
     }
 }

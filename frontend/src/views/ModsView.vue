@@ -11,10 +11,17 @@ import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
 import FileUpload from 'primevue/fileupload'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
+import TabPanel from 'primevue/tabpanel'
+import ModDiscoveryTab from '@/components/ModDiscoveryTab.vue'
 
 const { t } = useI18n()
 const toast = useToast()
 
+const activeTab = ref('0')
 const loading = ref(true)
 const mods = ref<ModInfo[]>([])
 const search = ref('')
@@ -103,97 +110,114 @@ onMounted(loadMods)
   <div class="mods-view">
     <div class="page-header">
       <h1 class="page-title">{{ t('mods.title') }}</h1>
-      <div class="header-actions">
-        <FileUpload
-          mode="basic"
-          accept=".zip"
-          :auto="true"
-          :maxFileSize="200000000"
-          chooseLabel="Upload Mod (.zip)"
-          chooseIcon="pi pi-upload"
-          :disabled="uploading"
-          @select="handleUpload"
-          class="upload-btn"
-        />
-      </div>
     </div>
 
-    <Message severity="warn" :closable="false" class="restart-banner">
-      {{ t('mods.restartRequired') }}
-    </Message>
+    <Tabs v-model:value="activeTab">
+      <TabList>
+        <Tab value="0"><i class="pi pi-box" style="margin-right: 0.5rem" />{{ t('mods.installed') }}</Tab>
+        <Tab value="1"><i class="pi pi-compass" style="margin-right: 0.5rem" />{{ t('mods.discover') }}</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel value="0">
+          <div class="tab-content">
+            <div class="installed-header">
+              <FileUpload
+                mode="basic"
+                accept=".zip"
+                :auto="true"
+                :maxFileSize="200000000"
+                chooseLabel="Upload Mod (.zip)"
+                chooseIcon="pi pi-upload"
+                :disabled="uploading"
+                @select="handleUpload"
+                class="upload-btn"
+              />
+            </div>
 
-    <div class="search-bar">
-      <span class="p-input-icon-left" style="width: 100%">
-        <i class="pi pi-search" />
-        <InputText v-model="search" :placeholder="t('mods.searchPlaceholder')" class="search-input" />
-      </span>
-    </div>
+            <Message severity="warn" :closable="false" class="restart-banner">
+              {{ t('mods.restartRequired') }}
+            </Message>
 
-    <DataTable
-      :value="filteredMods"
-      :loading="loading"
-      stripedRows
-      :paginator="filteredMods.length > 20"
-      :rows="20"
-      class="mods-table"
-    >
-      <Column field="displayName" :header="t('mods.name')" sortable>
-        <template #body="{ data }">
-          <div class="mod-name-cell">
-            <span class="mod-name">{{ data.displayName }}</span>
-            <Tag v-if="data.isProtected" severity="info" value="KitsuneCommand" class="protected-tag" />
-            <Tag v-if="!data.isEnabled" severity="warn" :value="t('common.disabled')" />
+            <div class="search-bar">
+              <span class="p-input-icon-left" style="width: 100%">
+                <i class="pi pi-search" />
+                <InputText v-model="search" :placeholder="t('mods.searchPlaceholder')" class="search-input" />
+              </span>
+            </div>
+
+            <DataTable
+              :value="filteredMods"
+              :loading="loading"
+              stripedRows
+              :paginator="filteredMods.length > 20"
+              :rows="20"
+              class="mods-table"
+            >
+              <Column field="displayName" :header="t('mods.name')" sortable>
+                <template #body="{ data }">
+                  <div class="mod-name-cell">
+                    <span class="mod-name">{{ data.displayName }}</span>
+                    <Tag v-if="data.isProtected" severity="info" value="KitsuneCommand" class="protected-tag" />
+                    <Tag v-if="!data.isEnabled" severity="warn" :value="t('common.disabled')" />
+                  </div>
+                  <span v-if="data.description" class="mod-desc">{{ data.description }}</span>
+                </template>
+              </Column>
+              <Column field="version" :header="t('mods.version')" style="width: 100px">
+                <template #body="{ data }">
+                  {{ data.version || '—' }}
+                </template>
+              </Column>
+              <Column field="author" :header="t('mods.author')" style="width: 140px">
+                <template #body="{ data }">
+                  {{ data.author || '—' }}
+                </template>
+              </Column>
+              <Column field="folderSize" :header="t('mods.size')" sortable style="width: 100px">
+                <template #body="{ data }">
+                  {{ formatSize(data.folderSize) }}
+                </template>
+              </Column>
+              <Column :header="t('common.actions')" style="width: 120px">
+                <template #body="{ data }">
+                  <div class="action-buttons" v-if="!data.isProtected">
+                    <Button
+                      :icon="data.isEnabled ? 'pi pi-eye-slash' : 'pi pi-eye'"
+                      text
+                      rounded
+                      size="small"
+                      :severity="data.isEnabled ? 'warn' : 'success'"
+                      @click="handleToggle(data)"
+                      :title="data.isEnabled ? t('mods.disable') : t('mods.enable')"
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      text
+                      rounded
+                      size="small"
+                      severity="danger"
+                      @click="confirmDelete(data)"
+                      :title="t('common.delete')"
+                    />
+                  </div>
+                  <Tag v-else value="Protected" severity="secondary" />
+                </template>
+              </Column>
+              <template #empty>
+                <div class="empty-state">
+                  <i class="pi pi-box" style="font-size: 2rem; color: var(--kc-text-secondary)" />
+                  <p>{{ t('mods.noMods') }}</p>
+                </div>
+              </template>
+            </DataTable>
           </div>
-          <span v-if="data.description" class="mod-desc">{{ data.description }}</span>
-        </template>
-      </Column>
-      <Column field="version" :header="t('mods.version')" style="width: 100px">
-        <template #body="{ data }">
-          {{ data.version || '—' }}
-        </template>
-      </Column>
-      <Column field="author" :header="t('mods.author')" style="width: 140px">
-        <template #body="{ data }">
-          {{ data.author || '—' }}
-        </template>
-      </Column>
-      <Column field="folderSize" :header="t('mods.size')" sortable style="width: 100px">
-        <template #body="{ data }">
-          {{ formatSize(data.folderSize) }}
-        </template>
-      </Column>
-      <Column :header="t('common.actions')" style="width: 120px">
-        <template #body="{ data }">
-          <div class="action-buttons" v-if="!data.isProtected">
-            <Button
-              :icon="data.isEnabled ? 'pi pi-eye-slash' : 'pi pi-eye'"
-              text
-              rounded
-              size="small"
-              :severity="data.isEnabled ? 'warn' : 'success'"
-              @click="handleToggle(data)"
-              :title="data.isEnabled ? t('mods.disable') : t('mods.enable')"
-            />
-            <Button
-              icon="pi pi-trash"
-              text
-              rounded
-              size="small"
-              severity="danger"
-              @click="confirmDelete(data)"
-              :title="t('common.delete')"
-            />
-          </div>
-          <Tag v-else value="Protected" severity="secondary" />
-        </template>
-      </Column>
-      <template #empty>
-        <div class="empty-state">
-          <i class="pi pi-box" style="font-size: 2rem; color: var(--kc-text-secondary)" />
-          <p>{{ t('mods.noMods') }}</p>
-        </div>
-      </template>
-    </DataTable>
+        </TabPanel>
+
+        <TabPanel value="1">
+          <ModDiscoveryTab />
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
 
     <!-- Delete confirmation -->
     <Dialog
@@ -227,6 +251,17 @@ onMounted(loadMods)
 .page-title {
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.installed-header {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .restart-banner {
@@ -278,5 +313,6 @@ onMounted(loadMods)
 
 @media (max-width: 768px) {
   .page-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .installed-header { justify-content: flex-start; }
 }
 </style>

@@ -50,6 +50,7 @@ src/KitsuneCommand/7dtd-binaries/
 .env
 .env.local
 .env.*.local
+frontend/.env.development
 
 # Decompiled reference files
 localization_decompiled.cs
