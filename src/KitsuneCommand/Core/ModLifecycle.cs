@@ -72,11 +72,53 @@ namespace KitsuneCommand.Core
                 _harmony = new Harmony("com.kitsunecommand.mod");
                 _harmony.PatchAll(typeof(ModLifecycle).Assembly);
                 Log.Out("[KitsuneCommand] Harmony patches applied.");
+
+                // PaintIndexWidenerPatch is NOT auto-discovered (no [HarmonyPatch] class attribute).
+                // Only apply it when PaintUnlocked is installed — without it, vanilla clients sending
+                // paint packets would crash the server's network deserializer.
+                ApplyPaintPatchIfNeeded();
             }
             catch (Exception ex)
             {
                 Log.Error($"[KitsuneCommand] Failed to apply Harmony patches: {ex.Message}");
                 Log.Exception(ex);
+            }
+        }
+
+        private void ApplyPaintPatchIfNeeded()
+        {
+            var modsPath = Path.Combine(ModEntry.ModPath, "..");
+            var paintUnlockedExists = Directory.Exists(Path.Combine(modsPath, "0_PaintUnlocked"))
+                                   || Directory.Exists(Path.Combine(modsPath, "PaintUnlocked"));
+
+            if (!paintUnlockedExists)
+            {
+                Log.Out("[KitsuneCommand] PaintUnlocked not detected — PaintIndexWidenerPatch skipped.");
+                return;
+            }
+
+            try
+            {
+                var targetType = typeof(NetPackageSetBlockTexture);
+                var patchType = typeof(GameIntegration.Harmony.PaintIndexWidenerPatch);
+
+                _harmony.Patch(
+                    AccessTools.Method(targetType, "Setup"),
+                    postfix: new HarmonyMethod(AccessTools.Method(patchType, "SetupPostfix")));
+
+                _harmony.Patch(
+                    AccessTools.Method(targetType, "write"),
+                    prefix: new HarmonyMethod(AccessTools.Method(patchType, "WritePrefix")));
+
+                _harmony.Patch(
+                    AccessTools.Method(targetType, "read"),
+                    prefix: new HarmonyMethod(AccessTools.Method(patchType, "ReadPrefix")));
+
+                Log.Out("[KitsuneCommand] PaintIndexWidenerPatch applied (PaintUnlocked detected).");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[KitsuneCommand] Failed to apply PaintIndexWidenerPatch: {ex.Message}");
             }
         }
 
