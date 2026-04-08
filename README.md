@@ -9,6 +9,16 @@
   Monitoring | Management | Map
 </p>
 
+<p align="center">
+  <a href="https://github.com/AdaInTheLab/KitsuneCommand/actions/workflows/tests.yml"><img src="https://github.com/AdaInTheLab/KitsuneCommand/actions/workflows/tests.yml/badge.svg" alt="Tests" /></a>
+  <a href="https://github.com/AdaInTheLab/KitsuneCommand/releases/latest"><img src="https://img.shields.io/github/v/release/AdaInTheLab/KitsuneCommand?include_prereleases&label=release" alt="Release" /></a>
+  <a href="https://github.com/AdaInTheLab/KitsuneCommand/blob/main/LICENSE"><img src="https://img.shields.io/github/license/AdaInTheLab/KitsuneCommand" alt="License" /></a>
+  <a href="https://github.com/AdaInTheLab/KitsuneCommand/pulls"><img src="https://img.shields.io/github/issues-pr/AdaInTheLab/KitsuneCommand" alt="PRs" /></a>
+  <img src="https://img.shields.io/badge/7D2D-V2.0-orange" alt="7 Days to Die V2" />
+  <img src="https://img.shields.io/badge/.NET_4.8-C%23_11-purple" alt=".NET 4.8" />
+  <img src="https://img.shields.io/badge/Vue_3-TypeScript-blue" alt="Vue 3" />
+</p>
+
 ---
 
 KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that provides a RESTful API and a modern web management panel. Runs on both **Windows** and **Linux** servers. Built as a clean-room V2 rewrite of [ServerKit](https://github.com/IceCoffee1024/7DaysToDie-ServerKit) with a modern Vue 3 frontend and improved security.
