@@ -14,6 +14,12 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/__tests__/setup.ts'],
     include: ['src/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.ts', 'src/**/*.vue'],
+      exclude: ['src/__tests__/**', 'src/main.ts', 'src/i18n/**'],
+    },
   },
   resolve: {
     alias: {
