@@ -2,13 +2,24 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { usePlayersStore } from '@/stores/players'
 
-const mockPlayer = (overrides = {}) => ({
+const mockPlayer = (overrides: Record<string, any> = {}) => ({
   playerId: 'player1',
   entityId: 100,
   playerName: 'Alice',
+  platformId: 'Steam_123',
   isOnline: true,
   health: 100,
+  stamina: 100,
   level: 10,
+  zombieKills: 0,
+  playerKills: 0,
+  deaths: 0,
+  totalPlayTime: 0,
+  ip: '127.0.0.1',
+  score: 0,
+  lastLogin: 0,
+  isAdmin: false,
+  adminLevel: 0,
   positionX: 0,
   positionY: 0,
   positionZ: 0,
@@ -58,7 +69,7 @@ describe('Players Store', () => {
   it('updatePositions updates player coordinates', () => {
     const store = usePlayersStore()
     store.addPlayer(mockPlayer())
-    store.updatePositions([{ entityId: 100, x: 10, y: 20, z: 30 }])
+    store.updatePositions([{ entityId: 100, playerName: 'Alice', x: 10, y: 20, z: 30 }])
     const player = store.getPlayer(100)
     expect(player?.positionX).toBe(10)
     expect(player?.positionY).toBe(20)

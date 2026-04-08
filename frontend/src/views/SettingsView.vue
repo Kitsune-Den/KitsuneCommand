@@ -1066,104 +1066,108 @@ onMounted(() => {
         <!-- Discord Bot Tab -->
         <TabPanel v-if="isAdmin" value="8">
           <div class="settings-section" v-if="!loadingDiscordSettings">
-            <Card class="settings-card">
-              <template #title>Connection</template>
-              <template #subtitle>Configure the Discord bot connection</template>
-              <template #content>
-                <div class="form-row">
-                  <label class="form-label">Enabled</label>
-                  <ToggleSwitch v-model="discordSettings.enabled" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Bot Token</label>
-                  <InputText v-model="discordSettings.botToken" type="password" class="form-input" placeholder="Paste your Discord bot token" />
-                </div>
-                <div class="form-row" style="gap: 0.75rem; align-items: center;">
-                  <Tag :severity="discordStatus.isConnected ? 'success' : 'danger'" :value="discordStatus.isConnected ? 'Connected' : 'Disconnected'" />
-                  <span v-if="discordStatus.isConnected" style="color: var(--text-secondary); font-size: 0.85rem;">
-                    {{ discordStatus.botUsername }} &middot; {{ discordStatus.latencyMs }}ms
-                  </span>
-                  <Button label="Refresh" icon="pi pi-refresh" severity="secondary" size="small" text @click="refreshDiscordStatus" />
-                  <Button label="Test" icon="pi pi-bolt" severity="info" size="small" text :loading="testingDiscord" @click="handleTestDiscord" />
-                </div>
-              </template>
-            </Card>
+            <div class="discord-grid">
+              <!-- Left column: Connection + Display -->
+              <div class="discord-col">
+                <Card class="settings-card discord-card">
+                  <template #title>Connection</template>
+                  <template #subtitle>Configure the Discord bot connection</template>
+                  <template #content>
+                    <div class="toggle-row">
+                      <label>Enabled</label>
+                      <ToggleSwitch v-model="discordSettings.enabled" />
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Bot Token</label>
+                      <InputText v-model="discordSettings.botToken" type="password" class="form-input" placeholder="Paste your Discord bot token" />
+                    </div>
+                    <div class="discord-status-row">
+                      <Tag :severity="discordStatus.isConnected ? 'success' : 'danger'" :value="discordStatus.isConnected ? 'Connected' : 'Disconnected'" />
+                      <span v-if="discordStatus.isConnected" class="discord-status-info">
+                        {{ discordStatus.botUsername }} &middot; {{ discordStatus.latencyMs }}ms
+                      </span>
+                      <Button label="Refresh" icon="pi pi-refresh" severity="secondary" size="small" text @click="refreshDiscordStatus" />
+                      <Button label="Test" icon="pi pi-bolt" severity="info" size="small" text :loading="testingDiscord" @click="handleTestDiscord" />
+                    </div>
+                  </template>
+                </Card>
 
-            <Card class="settings-card">
-              <template #title>Chat Bridge</template>
-              <template #subtitle>Bridge in-game chat with a Discord channel</template>
-              <template #content>
-                <div class="form-row">
-                  <label class="form-label">Enable Chat Bridge</label>
-                  <ToggleSwitch v-model="discordSettings.chatBridgeEnabled" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Channel ID</label>
-                  <InputText v-model="discordSettings.chatBridgeChannelId" class="form-input" placeholder="Right-click channel > Copy Channel ID" />
-                </div>
-              </template>
-            </Card>
+                <Card class="settings-card discord-card">
+                  <template #title>Display</template>
+                  <template #subtitle>Bot presence and embed settings</template>
+                  <template #content>
+                    <div class="form-group">
+                      <label class="form-label">Server Name</label>
+                      <InputText v-model="discordSettings.serverName" class="form-input" placeholder="Shown in embed footers" />
+                    </div>
+                    <div class="toggle-row">
+                      <label>Show Player Count in Status</label>
+                      <ToggleSwitch v-model="discordSettings.showPlayerCountInStatus" />
+                    </div>
+                    <div class="toggle-row">
+                      <label>Slash Commands</label>
+                      <ToggleSwitch v-model="discordSettings.slashCommandsEnabled" />
+                    </div>
+                    <small class="settings-hint">/status, /players, /time</small>
+                  </template>
+                </Card>
+              </div>
 
-            <Card class="settings-card">
-              <template #title>Event Notifications</template>
-              <template #subtitle>Push server events to a Discord channel</template>
-              <template #content>
-                <div class="form-row">
-                  <label class="form-label">Enable Notifications</label>
-                  <ToggleSwitch v-model="discordSettings.eventNotificationsEnabled" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Channel ID</label>
-                  <InputText v-model="discordSettings.eventChannelId" class="form-input" placeholder="Right-click channel > Copy Channel ID" />
-                </div>
-                <div class="form-row">
-                  <label class="form-label">Player Join</label>
-                  <ToggleSwitch v-model="discordSettings.notifyPlayerJoin" />
-                </div>
-                <div class="form-row">
-                  <label class="form-label">Player Leave</label>
-                  <ToggleSwitch v-model="discordSettings.notifyPlayerLeave" />
-                </div>
-                <div class="form-row">
-                  <label class="form-label">Server Start</label>
-                  <ToggleSwitch v-model="discordSettings.notifyServerStart" />
-                </div>
-                <div class="form-row">
-                  <label class="form-label">Server Stop</label>
-                  <ToggleSwitch v-model="discordSettings.notifyServerStop" />
-                </div>
-                <div class="form-row">
-                  <label class="form-label">Blood Moon</label>
-                  <ToggleSwitch v-model="discordSettings.notifyBloodMoon" />
-                </div>
-              </template>
-            </Card>
+              <!-- Right column: Chat Bridge + Events -->
+              <div class="discord-col">
+                <Card class="settings-card discord-card">
+                  <template #title>Chat Bridge</template>
+                  <template #subtitle>Bridge in-game chat with a Discord channel</template>
+                  <template #content>
+                    <div class="toggle-row">
+                      <label>Enable Chat Bridge</label>
+                      <ToggleSwitch v-model="discordSettings.chatBridgeEnabled" />
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Channel ID</label>
+                      <InputText v-model="discordSettings.chatBridgeChannelId" class="form-input" placeholder="Right-click channel > Copy Channel ID" />
+                    </div>
+                  </template>
+                </Card>
 
-            <Card class="settings-card">
-              <template #title>Slash Commands</template>
-              <template #subtitle>Discord slash commands (/status, /players, /time)</template>
-              <template #content>
-                <div class="form-row">
-                  <label class="form-label">Enable Slash Commands</label>
-                  <ToggleSwitch v-model="discordSettings.slashCommandsEnabled" />
-                </div>
-              </template>
-            </Card>
-
-            <Card class="settings-card">
-              <template #title>Display</template>
-              <template #subtitle>Bot presence and display settings</template>
-              <template #content>
-                <div class="form-group">
-                  <label class="form-label">Server Name</label>
-                  <InputText v-model="discordSettings.serverName" class="form-input" placeholder="Shown in embed footers" />
-                </div>
-                <div class="form-row">
-                  <label class="form-label">Show Player Count in Status</label>
-                  <ToggleSwitch v-model="discordSettings.showPlayerCountInStatus" />
-                </div>
-              </template>
-            </Card>
+                <Card class="settings-card discord-card">
+                  <template #title>Event Notifications</template>
+                  <template #subtitle>Push server events to a Discord channel</template>
+                  <template #content>
+                    <div class="toggle-row">
+                      <label>Enable Notifications</label>
+                      <ToggleSwitch v-model="discordSettings.eventNotificationsEnabled" />
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Channel ID</label>
+                      <InputText v-model="discordSettings.eventChannelId" class="form-input" placeholder="Right-click channel > Copy Channel ID" />
+                    </div>
+                    <div class="discord-events-grid">
+                      <div class="toggle-row compact">
+                        <label>Player Join</label>
+                        <ToggleSwitch v-model="discordSettings.notifyPlayerJoin" />
+                      </div>
+                      <div class="toggle-row compact">
+                        <label>Player Leave</label>
+                        <ToggleSwitch v-model="discordSettings.notifyPlayerLeave" />
+                      </div>
+                      <div class="toggle-row compact">
+                        <label>Server Start</label>
+                        <ToggleSwitch v-model="discordSettings.notifyServerStart" />
+                      </div>
+                      <div class="toggle-row compact">
+                        <label>Server Stop</label>
+                        <ToggleSwitch v-model="discordSettings.notifyServerStop" />
+                      </div>
+                      <div class="toggle-row compact">
+                        <label>Blood Moon</label>
+                        <ToggleSwitch v-model="discordSettings.notifyBloodMoon" />
+                      </div>
+                    </div>
+                  </template>
+                </Card>
+              </div>
+            </div>
 
             <Button
               label="Save Discord Settings"
@@ -1374,9 +1378,54 @@ onMounted(() => {
   color: var(--kc-text-secondary);
 }
 
+.discord-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.discord-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.discord-card {
+  max-width: none;
+}
+
+.discord-status-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.discord-status-info {
+  color: var(--kc-text-secondary);
+  font-size: 0.85rem;
+}
+
+.discord-events-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 1.5rem;
+}
+
+.toggle-row.compact {
+  margin-bottom: 0.25rem;
+}
+
+.toggle-row.compact label {
+  font-size: 0.85rem;
+}
+
 @media (max-width: 768px) {
   .settings-card { max-width: none; }
   .chat-cmd-settings { max-width: none; }
   .form-row { flex-direction: column; gap: 0; }
+  .discord-grid { grid-template-columns: 1fr; }
+  .discord-events-grid { grid-template-columns: 1fr; }
 }
 </style>

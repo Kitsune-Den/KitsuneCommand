@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
+import { createPinia } from 'pinia'
 import ModDiscoveryTab from '@/components/ModDiscoveryTab.vue'
 import PrimeVue from 'primevue/config'
 
