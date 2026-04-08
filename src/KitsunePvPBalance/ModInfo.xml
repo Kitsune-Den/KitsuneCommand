@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+    <Name value="KitsunePvPBalance" />
+    <DisplayName value="Kitsune PvP Balance - Configurable PvP Damage" />
+    <Version value="1.0.0" />
+    <Description value="Server-side configurable PvP damage multiplier. Reduce or increase player-vs-player damage without affecting PvE combat. Works standalone or alongside KitsuneCommand." />
+    <Author value="AdaInTheLab" />
+    <Website value="https://github.com/AdaInTheLab/KitsuneCommand" />
+</xml>

@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -8,6 +8,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KitsuneCommand.Abstractions", "src\KitsuneCommand.Abstractions\KitsuneCommand.Abstractions.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F12345678901}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KitsuneCommand.Tests", "src\KitsuneCommand.Tests\KitsuneCommand.Tests.csproj", "{C3D4E5F6-A7B8-9012-CDEF-123456789012}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4B5D8F42-77E2-49C6-BB86-266AEA10AC83}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KitsunePvPBalance", "src\KitsunePvPBalance\KitsunePvPBalance.csproj", "{E003E32A-D7DC-4489-B350-E8954F0D0CC9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,5 +31,12 @@ Global
 		{C3D4E5F6-A7B8-9012-CDEF-123456789012}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C3D4E5F6-A7B8-9012-CDEF-123456789012}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C3D4E5F6-A7B8-9012-CDEF-123456789012}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E003E32A-D7DC-4489-B350-E8954F0D0CC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E003E32A-D7DC-4489-B350-E8954F0D0CC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E003E32A-D7DC-4489-B350-E8954F0D0CC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E003E32A-D7DC-4489-B350-E8954F0D0CC9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E003E32A-D7DC-4489-B350-E8954F0D0CC9} = {4B5D8F42-77E2-49C6-BB86-266AEA10AC83}
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,6 @@
+{
+  "Enabled": true,
+  "DamageMultiplier": 0.5,
+  "HeadshotMultiplier": 1.0,
+  "LogPvPHits": false
+}

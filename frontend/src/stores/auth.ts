@@ -2,12 +2,14 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login as apiLogin, type TokenResponse } from '@/api/auth'
 
+const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
+
 export const useAuthStore = defineStore('auth', () => {
-  const accessToken = ref<string | null>(localStorage.getItem('kc_access_token'))
-  const refreshToken = ref<string | null>(localStorage.getItem('kc_refresh_token'))
-  const username = ref<string | null>(localStorage.getItem('kc_username'))
-  const displayName = ref<string | null>(localStorage.getItem('kc_display_name'))
-  const role = ref<string | null>(localStorage.getItem('kc_role'))
+  const accessToken = ref<string | null>(DEV_BYPASS ? 'dev-bypass-token' : localStorage.getItem('kc_access_token'))
+  const refreshToken = ref<string | null>(DEV_BYPASS ? null : localStorage.getItem('kc_refresh_token'))
+  const username = ref<string | null>(DEV_BYPASS ? 'admin' : localStorage.getItem('kc_username'))
+  const displayName = ref<string | null>(DEV_BYPASS ? 'Dev Admin' : localStorage.getItem('kc_display_name'))
+  const role = ref<string | null>(DEV_BYPASS ? 'admin' : localStorage.getItem('kc_role'))
 
   const isAuthenticated = computed(() => !!accessToken.value)
 
