@@ -75,7 +75,7 @@ namespace KitsuneCommand.Core
                 }
             }
 
-            Log.Out($"[KitsuneCommand] Initializing KitsuneCommand v2.2.1 on {(PlatformHelper.IsLinux ? "Linux" : "Windows")}...");
+            Log.Out($"[KitsuneCommand] Initializing KitsuneCommand v2.5.0 on {(PlatformHelper.IsLinux ? "Linux" : "Windows")}...");
 
             _lifecycle = new ModLifecycle();
             _lifecycle.Initialize();
