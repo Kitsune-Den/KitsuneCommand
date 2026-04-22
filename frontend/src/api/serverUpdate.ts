@@ -28,3 +28,22 @@ export async function saveServerConfigBak(content: string): Promise<string> {
   const res = await apiClient.put('/api/server-update/config-bak', { content })
   return res.data.data ?? res.data.message ?? 'Saved.'
 }
+
+export interface SteamAuthResult {
+  success: boolean
+  message: string
+  needsGuardCode?: boolean
+}
+
+/**
+ * Authenticate the Steam username configured in settings. Password + Guard code
+ * are sent over the wire, passed to steamcmd's stdin server-side, and never stored.
+ * On success, steamcmd caches credentials so future auto-updates don't prompt.
+ */
+export async function authenticateSteam(password: string, guardCode?: string): Promise<SteamAuthResult> {
+  const res = await apiClient.post('/api/server-update/steam-auth', {
+    password,
+    guardCode: guardCode || '',
+  })
+  return res.data.data as SteamAuthResult
+}

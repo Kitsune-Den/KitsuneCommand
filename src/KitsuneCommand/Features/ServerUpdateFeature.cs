@@ -1,5 +1,8 @@
+using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using KitsuneCommand.Configuration;
 using KitsuneCommand.Core;
 using KitsuneCommand.Data.Repositories;
@@ -116,6 +119,136 @@ namespace KitsuneCommand.Features
                 Log.Error($"[KitsuneCommand] Failed to write {_serverConfigBakPath}: {ex.Message}");
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Run `steamcmd +login <user> +quit` as a subprocess with the given password and
+        /// (optional) Steam Guard code piped to stdin. On success, steamcmd caches the session
+        /// in ~/.steam, and future +login calls from the pre-start script use the cache
+        /// without prompting.
+        ///
+        /// Password and guardCode are passed via stdin (not command-line args) so they don't
+        /// show up in `ps aux`. They are NOT stored by KC - this method never persists them.
+        /// Only steamcmd's own cache file holds anything long-lived after this call.
+        /// </summary>
+        public SteamAuthResult AuthenticateSteam(string password, string guardCode)
+        {
+            var result = new SteamAuthResult();
+            var username = Settings?.SteamUsername;
+
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                result.Success = false;
+                result.Message = "Steam username not set. Save a username in Server Update settings first.";
+                return result;
+            }
+
+            // Tight allowlist on the username we pass to the shell. Steam usernames are
+            // alphanumerics plus _ . - (no spaces). Reject anything else to avoid injection
+            // even though we're not using a shell here.
+            if (!Regex.IsMatch(username, @"^[a-zA-Z0-9._-]+$"))
+            {
+                result.Success = false;
+                result.Message = "Invalid Steam username format.";
+                return result;
+            }
+
+            if (password == null) password = "";
+
+            string steamcmdPath = File.Exists("/usr/games/steamcmd") ? "/usr/games/steamcmd" : "steamcmd";
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = steamcmdPath,
+                Arguments = $"+login {username} +quit",
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            var outputBuffer = new StringBuilder();
+            var errorBuffer = new StringBuilder();
+
+            try
+            {
+                using (var p = new Process { StartInfo = psi })
+                {
+                    p.OutputDataReceived += (s, e) => { if (e.Data != null) outputBuffer.AppendLine(e.Data); };
+                    p.ErrorDataReceived  += (s, e) => { if (e.Data != null) errorBuffer.AppendLine(e.Data); };
+
+                    p.Start();
+                    p.BeginOutputReadLine();
+                    p.BeginErrorReadLine();
+
+                    // Feed password, then Guard code if provided. steamcmd reads them as it hits
+                    // the prompts. If a prompt never arrives (e.g. cached creds still valid), the
+                    // extra input is harmless - stdin closes and steamcmd ignores it.
+                    p.StandardInput.WriteLine(password);
+                    if (!string.IsNullOrWhiteSpace(guardCode))
+                        p.StandardInput.WriteLine(guardCode);
+                    p.StandardInput.Close();
+
+                    // 60s should be plenty - interactive login usually finishes in under 15s.
+                    if (!p.WaitForExit(60000))
+                    {
+                        try { p.Kill(); } catch { }
+                        result.Success = false;
+                        result.Message = "steamcmd timed out (60s). Session may be stuck waiting for input.";
+                        return result;
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                result.Success = false;
+                result.Message = $"Failed to run steamcmd: {ex.Message}";
+                return result;
+            }
+
+            var stdout = outputBuffer.ToString();
+            var stderr = errorBuffer.ToString();
+            var combined = stdout + "\n" + stderr;
+
+            if (combined.IndexOf("Waiting for user info...OK", StringComparison.OrdinalIgnoreCase) >= 0
+                || combined.IndexOf("Logged in OK", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                result.Success = true;
+                result.Message = "Logged in successfully. Credentials cached.";
+                return result;
+            }
+
+            // Specific failure signals
+            if (combined.IndexOf("Steam Guard", StringComparison.OrdinalIgnoreCase) >= 0
+                && combined.IndexOf("OK", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                result.Success = false;
+                result.Message = "Steam Guard code required or incorrect.";
+                result.NeedsGuardCode = true;
+                return result;
+            }
+            if (combined.IndexOf("Login Failure", StringComparison.OrdinalIgnoreCase) >= 0
+                || combined.IndexOf("InvalidPassword", StringComparison.OrdinalIgnoreCase) >= 0
+                || combined.IndexOf("Account Logon Denied", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                result.Success = false;
+                result.Message = "Login failed. Check username and password.";
+                return result;
+            }
+
+            // Unknown - dump a short tail of the output for debugging
+            var snippet = combined.Length > 400 ? combined.Substring(combined.Length - 400) : combined;
+            result.Success = false;
+            result.Message = "steamcmd returned unexpected output. Tail: " + snippet.Replace("\r", " ").Replace("\n", " | ");
+            return result;
+        }
+
+        public class SteamAuthResult
+        {
+            public bool Success { get; set; }
+            public string Message { get; set; }
+            public bool NeedsGuardCode { get; set; }
         }
 
         private void WriteConfFile()

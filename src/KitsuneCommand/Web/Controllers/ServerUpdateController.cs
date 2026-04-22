@@ -101,5 +101,39 @@ namespace KitsuneCommand.Web.Controllers
         {
             public string Content { get; set; }
         }
+
+        /// <summary>
+        /// Run `steamcmd +login` with the given password + optional Guard code to cache the
+        /// Steam credentials on the server. Password and Guard code are passed via subprocess
+        /// stdin (not command-line) and are NOT stored by KC. After a successful call,
+        /// steamcmd's cache lets the pre-start script run auto-updates without prompting.
+        /// </summary>
+        [HttpPost]
+        [Route("steam-auth")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult SteamAuth([FromBody] SteamAuthRequest model)
+        {
+            if (model == null || string.IsNullOrEmpty(model.Password))
+                return BadRequest("Password is required.");
+
+            var feature = GetFeature();
+            if (feature == null)
+                return Ok(ApiResponse.Error(404, "ServerUpdate feature not available."));
+
+            var result = feature.AuthenticateSteam(model.Password, model.GuardCode);
+
+            // Don't leak the password back in any form. The model object goes out of scope
+            // on return; we never persist it.
+            model.Password = null;
+            model.GuardCode = null;
+
+            return Ok(ApiResponse.Ok(result));
+        }
+
+        public class SteamAuthRequest
+        {
+            public string Password { get; set; }
+            public string GuardCode { get; set; }
+        }
     }
 }
