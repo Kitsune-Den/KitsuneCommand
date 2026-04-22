@@ -181,6 +181,83 @@ namespace KitsuneCommand.Web.Controllers
             return Ok(ApiResponse.Ok($"Server shutdown initiated with {delay} second delay."));
         }
 
+        /// <summary>
+        /// Restart the server. Two-step:
+        ///   1. Try `sudo -n systemctl restart 7daystodie.service` (non-interactive).
+        ///      Works if install-linux-updater.sh has been run (adds the sudoers entry).
+        ///   2. If systemctl fails, fall back to in-game shutdown with a short delay.
+        ///      This relies on systemd having `Restart=always` configured to bounce it.
+        ///
+        /// If neither path works, the server stays down - tell the admin to run the installer.
+        /// </summary>
+        [HttpPost]
+        [Route("restart")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult Restart([FromBody] RestartRequest request)
+        {
+            var serviceName = request?.ServiceName ?? "7daystodie.service";
+            // sanitize - only allow alphanumerics, dashes, dots, underscores
+            if (!System.Text.RegularExpressions.Regex.IsMatch(serviceName, @"^[a-zA-Z0-9._-]+$"))
+                return BadRequest("Invalid service name.");
+
+            // Try systemctl first (Linux path).
+            if (TryStart("sudo", $"-n systemctl restart {serviceName}", out var stderr, 5000))
+            {
+                return Ok(ApiResponse.Ok($"Restart triggered via systemctl ({serviceName}). Server bouncing."));
+            }
+
+            global::Log.Warning($"[KitsuneCommand] systemctl restart failed or not available ({stderr}). Falling back to in-game shutdown.");
+
+            // Fallback: in-game shutdown with short delay, rely on systemd Restart=always.
+            ModEntry.MainThreadContext.Post(_ =>
+            {
+                try
+                {
+                    SdtdConsole.Instance.ExecuteSync("shutdown 5", null);
+                }
+                catch (Exception ex)
+                {
+                    global::Log.Error($"[KitsuneCommand] Fallback shutdown command failed: {ex.Message}");
+                }
+            }, null);
+
+            return Ok(ApiResponse.Ok("Restart requested via in-game shutdown (5s delay). If systemd Restart=always is not set, server will stay down - run scripts/linux-updater/install-linux-updater.sh to configure."));
+        }
+
+        private static bool TryStart(string fileName, string arguments, out string stderr, int timeoutMs)
+        {
+            stderr = null;
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = fileName,
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true,
+                };
+                using (var p = Process.Start(psi))
+                {
+                    if (p == null) return false;
+                    if (!p.WaitForExit(timeoutMs))
+                    {
+                        try { p.Kill(); } catch { }
+                        stderr = "timed out";
+                        return false;
+                    }
+                    stderr = p.StandardError.ReadToEnd()?.Trim();
+                    return p.ExitCode == 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                stderr = ex.Message;
+                return false;
+            }
+        }
+
         private static string GetLocalIp()
         {
             try
@@ -227,5 +304,11 @@ namespace KitsuneCommand.Web.Controllers
     public class ShutdownRequest
     {
         public int DelaySeconds { get; set; } = 10;
+    }
+
+    public class RestartRequest
+    {
+        /// <summary>Optional override for the systemd service name. Defaults to "7daystodie.service".</summary>
+        public string ServiceName { get; set; }
     }
 }

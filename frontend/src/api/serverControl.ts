@@ -53,3 +53,8 @@ export async function shutdownServer(delaySeconds: number = 10): Promise<string>
   const res = await apiClient.post('/api/server/shutdown', { delaySeconds })
   return res.data.message
 }
+
+export async function restartServer(): Promise<string> {
+  const res = await apiClient.post('/api/server/restart', {})
+  return res.data.data ?? res.data.message ?? 'Restart triggered.'
+}

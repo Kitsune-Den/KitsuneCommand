@@ -30,6 +30,7 @@ const navItems = computed(() => [
   { label: t('nav.itemDatabase'), icon: 'pi pi-database', route: '/items' },
   { type: 'divider', label: t('nav.serverManagement') },
   { label: t('nav.serverControl'), icon: 'pi pi-server', route: '/server' },
+  { label: t('nav.serverUpdate'), icon: 'pi pi-sync', route: '/server-update' },
   { label: t('nav.console'), icon: 'pi pi-code', route: '/console' },
   { label: t('nav.configEditor'), icon: 'pi pi-file-edit', route: '/config' },
   { label: t('nav.mods'), icon: 'pi pi-box', route: '/mods' },
