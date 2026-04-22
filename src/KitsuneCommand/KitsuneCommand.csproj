@@ -117,6 +117,19 @@
     <Reference Include="System.IO.Compression.FileSystem" />
   </ItemGroup>
 
+  <!--
+    System.ComponentModel.DataAnnotations is required by System.Web.Http (Web API) for its
+    metadata pipeline. On Windows full .NET it's resolved from the GAC, but on Mono/Linux
+    the GAC doesn't ship it, so OWIN startup throws TypeLoadException and the entire API
+    backend (port 8888) silently never starts. Private=true copies the DLL into bin/, which
+    build.sh / build.ps1 then glob into the mod dist folder.
+  -->
+  <ItemGroup>
+    <Reference Include="System.ComponentModel.DataAnnotations">
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
   <!-- Copy Config and wwwroot to output -->
   <ItemGroup>
     <None Include="Config\**" CopyToOutputDirectory="PreserveNewest" LinkBase="Config" />
