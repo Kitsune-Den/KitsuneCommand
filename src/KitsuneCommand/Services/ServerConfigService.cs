@@ -93,17 +93,16 @@ namespace KitsuneCommand.Services
 
         /// <summary>
         /// Updates properties in the config file, preserving structure and comments.
-        /// Creates a .bak backup before writing.
+        /// Writes to BOTH serverconfig.xml AND serverconfig.xml.bak. The .bak copy is the
+        /// "sticky golden copy" that kitsune-pre-start.sh restores on every server start
+        /// (to survive steamcmd updates overwriting the file with TFP defaults). Keeping
+        /// them in sync means the UI's saves actually persist across restarts.
         /// </summary>
         public void SaveConfig(Dictionary<string, string> properties)
         {
             var path = GetConfigPath();
             if (path == null)
                 throw new FileNotFoundException("serverconfig.xml not found.");
-
-            // Create backup
-            var backupPath = path + ".bak";
-            File.Copy(path, backupPath, true);
 
             var doc = XDocument.Load(path, LoadOptions.PreserveWhitespace);
 
@@ -132,6 +131,8 @@ namespace KitsuneCommand.Services
             }
 
             doc.Save(path);
+            // Update the sticky .bak so pre-start restore keeps our changes
+            File.Copy(path, path + ".bak", true);
         }
 
         /// <summary>
@@ -147,9 +148,9 @@ namespace KitsuneCommand.Services
             // Validate XML before saving
             XDocument.Parse(xmlContent); // Throws if invalid
 
-            var backupPath = path + ".bak";
-            File.Copy(path, backupPath, true);
             File.WriteAllText(path, xmlContent);
+            // Update the sticky .bak so pre-start restore keeps our changes
+            File.Copy(path, path + ".bak", true);
         }
 
         /// <summary>

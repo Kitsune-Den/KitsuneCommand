@@ -13,6 +13,11 @@ namespace KitsuneCommand.Commands
     /// </summary>
     public class TraderProtectionCommand : ConsoleCmdAbstract
     {
+        // Admin-only. 7D2D permission levels: 0 = highest (server owner), 1000 = anyone.
+        // Default to 0 so only top-level admins can toggle trader protection.
+        // Server owners can lower the requirement via serveradmin.xml's <permission cmd="ktrader" permission_level="N"/>.
+        public override int DefaultPermissionLevel => 0;
+
         public override string[] getCommands()
         {
             return new[] { "ktrader" };
@@ -20,7 +25,7 @@ namespace KitsuneCommand.Commands
 
         public override string getDescription()
         {
-            return "Toggle trader zone block protection. Usage: ktrader [on|off|log on|log off]";
+            return "Toggle trader zone block protection (admin only). Usage: ktrader [on|off|log on|log off]";
         }
 
         public override void Execute(List<string> _params, CommandSenderInfo _senderInfo)

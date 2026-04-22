@@ -55,6 +55,9 @@ frontend/coverage/
 
 # Decompiled reference files
 localization_decompiled.cs
+*.decompiled.cs
+oscore-*.cs
+ref-*.cs
 
 # Claude
 .claude/
