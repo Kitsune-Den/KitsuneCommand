@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+    <Name value="KitsuneTraderUnlock" />
+    <DisplayName value="Kitsune Trader Unlock - Client-side trader zone editing" />
+    <Version value="1.0.0" />
+    <Description value="Companion client-side mod for KitsuneCommand's trader protection toggle (BB-015). Patches the client's local trader area checks so admins can edit blocks inside trader compounds when the server allows it. Safe on any server: if the server has trader protection ON, the server still rejects the edit packets." />
+    <Author value="AdaInTheLab" />
+    <Website value="https://github.com/Kitsune-Den/KitsuneCommand" />
+</xml>
