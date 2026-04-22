@@ -209,10 +209,25 @@ namespace KitsuneCommand.Features
 
             var stdout = outputBuffer.ToString();
             var stderr = errorBuffer.ToString();
-            var combined = stdout + "\n" + stderr;
+            // steamcmd emits ANSI color codes (e.g. "\x1b[0m", "\x1b[1m") that can splice
+            // into the middle of our marker strings - e.g. "Waiting for user info...\x1b[0mOK"
+            // never matches a "Waiting for user info...OK" search. Strip them before matching.
+            var combined = Regex.Replace(stdout + "\n" + stderr, @"\x1b\[[0-9;]*[a-zA-Z]", "");
 
-            if (combined.IndexOf("Waiting for user info...OK", StringComparison.OrdinalIgnoreCase) >= 0
-                || combined.IndexOf("Logged in OK", StringComparison.OrdinalIgnoreCase) >= 0)
+            // Positive signals. Any of these indicates the login got far enough that
+            // steamcmd successfully established a user session.
+            bool loggedIn =
+                combined.IndexOf("Waiting for user info", StringComparison.OrdinalIgnoreCase) >= 0
+                && combined.IndexOf("OK", StringComparison.OrdinalIgnoreCase) >= 0
+                && combined.IndexOf("ERROR", StringComparison.OrdinalIgnoreCase) < 0;
+
+            // Additional success marker: mobile-confirmation flow completed.
+            bool confirmedViaApp = combined.IndexOf("Waiting for confirmation...OK", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            // Direct "Logged in OK" - older/different steamcmd versions.
+            bool explicitOk = combined.IndexOf("Logged in OK", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            if (loggedIn || confirmedViaApp || explicitOk)
             {
                 result.Success = true;
                 result.Message = "Logged in successfully. Credentials cached.";
