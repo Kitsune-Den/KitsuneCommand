@@ -20,11 +20,13 @@ namespace KitsuneCommand.Features
         private readonly ISettingsRepository _settingsRepo;
         private const string SettingsKey = "ServerUpdate";
 
-        // Conf file lives in the server install dir so the pre-start script can find it
-        // with a relative path. Overridden in tests via SetConfPath.
-        private static string _confPath = "kitsune-update.conf";
-        // Sticky config backup — mirrors the Windows launch.bat's serverconfig.xml.bak pattern.
-        private static string _serverConfigBakPath = "serverconfig.xml.bak";
+        // Paths resolved relative to the server install dir (two levels up from the mod's
+        // own install path). Follows the same pattern as BackupService, ServerConfigService,
+        // MapTileRenderer, etc. Using ModEntry.ModPath instead of Directory.GetCurrentDirectory()
+        // avoids the CWD-shift issue where Unity changes the process working directory after
+        // startup - relative reads from Web API threads would otherwise silently miss the files.
+        private string _confPath;
+        private string _serverConfigBakPath;
 
         public ServerUpdateFeature(
             ModEventBus eventBus,
@@ -37,9 +39,13 @@ namespace KitsuneCommand.Features
 
         protected override void OnEnable()
         {
+            var serverDir = Path.GetFullPath(Path.Combine(ModEntry.ModPath, "..", ".."));
+            _confPath = Path.Combine(serverDir, "kitsune-update.conf");
+            _serverConfigBakPath = Path.Combine(serverDir, "serverconfig.xml.bak");
+
             LoadPersistedSettings();
             WriteConfFile();
-            Log.Out($"[KitsuneCommand] ServerUpdate feature enabled. AutoUpdate={Settings.AutoUpdate}, Branch={Settings.Branch}, LogRetention={Settings.LogRetention}.");
+            Log.Out($"[KitsuneCommand] ServerUpdate feature enabled. AutoUpdate={Settings.AutoUpdate}, Branch={Settings.Branch}, LogRetention={Settings.LogRetention}, configBak exists={File.Exists(_serverConfigBakPath)}.");
         }
 
         protected override void OnDisable()
@@ -73,8 +79,18 @@ namespace KitsuneCommand.Features
         {
             try
             {
-                if (!File.Exists(_serverConfigBakPath)) return null;
-                return File.ReadAllText(_serverConfigBakPath, Encoding.UTF8);
+                if (string.IsNullOrEmpty(_serverConfigBakPath))
+                {
+                    Log.Warning("[KitsuneCommand] ServerUpdate path not initialized yet - was OnEnable called?");
+                    return null;
+                }
+                if (!File.Exists(_serverConfigBakPath))
+                {
+                    Log.Out($"[KitsuneCommand] serverconfig.xml.bak not found at '{_serverConfigBakPath}'.");
+                    return null;
+                }
+                // File.ReadAllText without explicit encoding uses UTF-8 with BOM detection.
+                return File.ReadAllText(_serverConfigBakPath);
             }
             catch (System.Exception ex)
             {
