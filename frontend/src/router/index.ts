@@ -42,6 +42,11 @@ const router = createRouter({
           component: () => import('@/views/ServerControlView.vue'),
         },
         {
+          path: 'server-update',
+          name: 'ServerUpdate',
+          component: () => import('@/views/ServerUpdateView.vue'),
+        },
+        {
           path: 'config',
           name: 'ConfigEditor',
           component: () => import('@/views/ConfigEditorView.vue'),

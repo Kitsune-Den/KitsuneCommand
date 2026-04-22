@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { getServerInfo, getServerStats, saveWorld, shutdownServer, type ServerInfo, type ServerStats } from '@/api/serverControl'
+import { getServerInfo, getServerStats, saveWorld, shutdownServer, restartServer, type ServerInfo, type ServerStats } from '@/api/serverControl'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import InputNumber from 'primevue/inputnumber'
@@ -15,8 +15,10 @@ const loading = ref(true)
 const info = ref<ServerInfo | null>(null)
 const stats = ref<ServerStats | null>(null)
 const saving = ref(false)
+const restarting = ref(false)
 const shutdownDelay = ref(10)
 const shutdownDialogVisible = ref(false)
+const restartDialogVisible = ref(false)
 let refreshInterval: ReturnType<typeof setInterval> | null = null
 
 function formatUptime(seconds: number): string {
@@ -72,6 +74,23 @@ async function handleShutdown() {
   }
 }
 
+function showRestartDialog() {
+  restartDialogVisible.value = true
+}
+
+async function handleRestart() {
+  restartDialogVisible.value = false
+  restarting.value = true
+  try {
+    const msg = await restartServer()
+    toast.add({ severity: 'warn', summary: t('serverControl.restartInitiated'), detail: msg, life: 10000 })
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('serverControl.restartFailed'), life: 4000 })
+  } finally {
+    restarting.value = false
+  }
+}
+
 onMounted(() => {
   loadData()
   refreshInterval = setInterval(loadData, 10000) // Refresh every 10s
@@ -106,6 +125,13 @@ onUnmounted(() => {
           severity="info"
           :loading="saving"
           @click="handleSaveWorld"
+        />
+        <Button
+          :label="t('serverControl.restart')"
+          icon="pi pi-refresh"
+          severity="warn"
+          :loading="restarting"
+          @click="showRestartDialog"
         />
         <Button
           :label="t('serverControl.shutdown')"
@@ -256,6 +282,19 @@ onUnmounted(() => {
         </template>
       </Card>
     </template>
+
+    <!-- Restart confirmation dialog -->
+    <Dialog v-model:visible="restartDialogVisible" :header="t('serverControl.restartConfirm')" modal :style="{ width: '460px' }">
+      <div class="shutdown-dialog">
+        <i class="pi pi-refresh" style="font-size: 2.5rem; color: #f59e0b" />
+        <p class="shutdown-warning" style="color: #f59e0b">{{ t('serverControl.restartWarning') }}</p>
+        <p style="font-size: 0.85rem; color: var(--kc-text-secondary); text-align: center;">{{ t('serverControl.restartHint') }}</p>
+      </div>
+      <template #footer>
+        <Button :label="t('common.cancel')" severity="secondary" text @click="restartDialogVisible = false" />
+        <Button :label="t('serverControl.restart')" severity="warn" icon="pi pi-refresh" @click="handleRestart" />
+      </template>
+    </Dialog>
 
     <!-- Shutdown confirmation dialog -->
     <Dialog v-model:visible="shutdownDialogVisible" :header="t('serverControl.shutdownConfirm')" modal :style="{ width: '460px' }">
