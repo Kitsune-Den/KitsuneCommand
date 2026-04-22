@@ -35,6 +35,8 @@ const en = {
     validation: 'Validation',
     error: 'Error',
     success: 'Success',
+    reload: 'Reload',
+    warning: 'Warning',
   },
 
   nav: {

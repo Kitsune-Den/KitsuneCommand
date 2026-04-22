@@ -39,6 +39,8 @@ const ko: Messages = {
     validation: '유효성 검사',
     error: '오류',
     success: '성공',
+    reload: '다시 불러오기',
+    warning: '경고',
   },
 
   nav: {

@@ -39,6 +39,8 @@ const ja: Messages = {
     validation: 'バリデーション',
     error: 'エラー',
     success: '成功',
+    reload: '再読み込み',
+    warning: '警告',
   },
 
   nav: {

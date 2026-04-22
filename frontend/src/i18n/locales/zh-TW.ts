@@ -39,6 +39,8 @@ const zhTW: Messages = {
     validation: '驗證',
     error: '錯誤',
     success: '成功',
+    reload: '重新載入',
+    warning: '警告',
   },
 
   nav: {

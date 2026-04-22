@@ -39,6 +39,8 @@ const zhCN: Messages = {
     validation: '验证',
     error: '错误',
     success: '成功',
+    reload: '重新加载',
+    warning: '警告',
   },
 
   nav: {
