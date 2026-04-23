@@ -38,8 +38,12 @@ export function useWebSocket() {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.hostname
-    const port = 8889 // WebSocket port
-    const url = `${protocol}//${host}:${port}/ws?token=${auth.accessToken}`
+    // Dev: page at http://host:8890 → WebSocket server is on sibling port 8889, explicit.
+    // Prod: page behind reverse proxy (standard 80/443 or custom), same origin — the proxy
+    // is responsible for routing /ws to the 8889 backend.
+    const isDevDirectPort = window.location.port === '8890'
+    const portSuffix = isDevDirectPort ? ':8889' : ''
+    const url = `${protocol}//${host}${portSuffix}/ws?token=${auth.accessToken}`
 
     ws.value = new WebSocket(url)
 

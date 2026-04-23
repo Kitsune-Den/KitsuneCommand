@@ -11,9 +11,12 @@ export interface TokenResponse {
 }
 
 export async function login(username: string, password: string): Promise<TokenResponse> {
-  // Login uses a standalone listener on port 8890 due to OWIN/Mono compatibility issues
-  const baseUrl = window.location.hostname
-  const loginUrl = `http://${baseUrl}:8890/api/auth/login/`
+  // Login hits the standalone listener on port 8890 (OWIN/Mono compat). When the page
+  // is served from that listener directly (dev: http://host:8890/), a relative path
+  // naturally targets the same host+port. When the page is served from a reverse proxy
+  // (prod: https://panel.example.com → CF Tunnel → http://localhost:8890), same-origin
+  // keeps the request on HTTPS and avoids mixed-content blocks.
+  const loginUrl = '/api/auth/login/'
   const response = await fetch(loginUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
