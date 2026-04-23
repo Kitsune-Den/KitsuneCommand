@@ -327,6 +327,10 @@ onMounted(() => {
                 <span class="info-label">{{ t('dashboard.gameVersion') }}</span>
                 <span class="info-value">{{ serverInfo.version }}</span>
               </div>
+              <div class="info-item">
+                <span class="info-label">{{ t('dashboard.kitsuneCommand') }}</span>
+                <span class="info-value">v{{ serverInfo.kitsuneCommandVersion }}</span>
+              </div>
               <div class="info-item" v-if="bloodMoonDisplay">
                 <span class="info-label">{{ t('dashboard.bloodMoonFrequency') }}</span>
                 <span class="info-value">{{ t('dashboard.everyDays', { n: bloodMoonDisplay.frequency, day: bloodMoonDisplay.nextDay }) }}</span>
