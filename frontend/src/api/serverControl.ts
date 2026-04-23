@@ -35,7 +35,6 @@ export interface ServerStats {
   system: {
     os: string
     processorCount: number
-    machineName: string
     is64Bit: boolean
   }
 }

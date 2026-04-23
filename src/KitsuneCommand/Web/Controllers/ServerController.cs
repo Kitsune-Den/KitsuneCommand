@@ -89,14 +89,35 @@ namespace KitsuneCommand.Web.Controllers
                 threadCount = process.Threads.Count,
                 system = new
                 {
-                    os = Environment.OSVersion.ToString(),
+                    os = GetOsLabel(),
                     processorCount = Environment.ProcessorCount,
-                    machineName = Environment.MachineName,
                     is64Bit = Environment.Is64BitOperatingSystem,
                 }
             };
 
             return Ok(ApiResponse.Ok(stats));
+        }
+
+        /// <summary>
+        /// Return a coarse OS label (Windows / Linux / macOS / Other) rather than the
+        /// full kernel string, so the stats endpoint doesn't leak patch-level CVE recon.
+        /// </summary>
+        private static string GetOsLabel()
+        {
+            switch (Environment.OSVersion.Platform)
+            {
+                case PlatformID.Win32NT:
+                case PlatformID.Win32S:
+                case PlatformID.Win32Windows:
+                case PlatformID.WinCE:
+                    return "Windows";
+                case PlatformID.Unix:
+                    return "Linux";
+                case PlatformID.MacOSX:
+                    return "macOS";
+                default:
+                    return "Other";
+            }
         }
 
         /// <summary>

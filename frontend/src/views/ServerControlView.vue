@@ -263,10 +263,6 @@ onUnmounted(() => {
               <span class="info-value">{{ stats.system.processorCount }} {{ t('serverControl.cores') }} ({{ stats.system.is64Bit ? '64-bit' : '32-bit' }})</span>
             </div>
             <div class="info-item">
-              <span class="info-label">{{ t('serverControl.machine') }}</span>
-              <span class="info-value">{{ stats.system.machineName }}</span>
-            </div>
-            <div class="info-item">
               <span class="info-label">{{ t('serverControl.gcMemory') }}</span>
               <span class="info-value">{{ formatMemory(stats.gcMemory) }}</span>
             </div>
