@@ -45,10 +45,14 @@ describe('Mods API', () => {
   })
 
   describe('uploadMod', () => {
-    it('should POST multipart form data with 2min timeout', async () => {
+    it('should POST multipart form data with 2min timeout and return the upload result', async () => {
       const file = new File(['content'], 'test.zip', { type: 'application/zip' })
-      const mod = { folderName: 'TestMod', displayName: 'Test Mod' }
-      mockPost.mockResolvedValue({ data: { data: mod } })
+      const uploadResult = {
+        sourceFileName: 'test.zip',
+        installedMods: [{ folderName: 'TestMod', displayName: 'Test Mod' }],
+        warnings: [],
+      }
+      mockPost.mockResolvedValue({ data: { data: uploadResult } })
 
       const result = await uploadMod(file)
 
@@ -56,7 +60,7 @@ describe('Mods API', () => {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 120000,
       })
-      expect(result).toEqual(mod)
+      expect(result).toEqual(uploadResult)
     })
   })
 

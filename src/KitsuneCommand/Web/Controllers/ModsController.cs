@@ -44,7 +44,10 @@ namespace KitsuneCommand.Web.Controllers
         }
 
         /// <summary>
-        /// Upload a mod as a ZIP file.
+        /// Upload a mod as a ZIP file. Returns a ModUploadResult describing every
+        /// mod installed from the zip (supports mod packs) plus any warnings
+        /// surfaced during extraction (replaced-existing, skipped-protected,
+        /// no-ModInfo fallback, etc.).
         /// </summary>
         [HttpPost]
         [Route("upload")]
@@ -70,8 +73,8 @@ namespace KitsuneCommand.Web.Controllers
 
                     using (var stream = await content.ReadAsStreamAsync())
                     {
-                        var mod = _modService.UploadMod(stream, fileName);
-                        return Ok(ApiResponse.Ok(mod));
+                        var result = _modService.UploadMod(stream, fileName);
+                        return Ok(ApiResponse.Ok(result));
                     }
                 }
 

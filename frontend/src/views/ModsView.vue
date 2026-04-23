@@ -64,8 +64,47 @@ async function handleUpload(event: { files: File[] }) {
 
   uploading.value = true
   try {
-    await uploadMod(file)
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('mods.uploadSuccess'), life: 4000 })
+    const result = await uploadMod(file)
+    const installedCount = result.installedMods.length
+    const names = result.installedMods.map((m) => m.displayName || m.folderName).join(', ')
+
+    // Success toast — shape depends on how many mods landed
+    if (installedCount === 0) {
+      toast.add({
+        severity: 'warn',
+        summary: 'Nothing installed',
+        detail: result.warnings.length
+          ? result.warnings[0]
+          : 'The zip extracted but no mods were detected.',
+        life: 6000,
+      })
+    } else if (installedCount === 1) {
+      toast.add({
+        severity: 'success',
+        summary: 'Mod installed',
+        detail: names,
+        life: 4000,
+      })
+    } else {
+      toast.add({
+        severity: 'success',
+        summary: `${installedCount} mods installed`,
+        detail: names,
+        life: 5000,
+      })
+    }
+
+    // Surface any warnings (replaced-existing, missing-ModInfo, etc.) separately
+    // so the user sees them without them hiding behind the success toast.
+    for (const warning of result.warnings) {
+      toast.add({
+        severity: 'warn',
+        summary: 'Upload note',
+        detail: warning,
+        life: 7000,
+      })
+    }
+
     await loadMods()
   } catch {
     toast.add({ severity: 'error', summary: t('common.error'), detail: t('mods.failedToUpload'), life: 4000 })

@@ -17,7 +17,13 @@ export async function getMods(): Promise<ModInfo[]> {
   return res.data.data
 }
 
-export async function uploadMod(file: File): Promise<ModInfo> {
+export interface ModUploadResult {
+  sourceFileName: string
+  installedMods: ModInfo[]
+  warnings: string[]
+}
+
+export async function uploadMod(file: File): Promise<ModUploadResult> {
   const formData = new FormData()
   formData.append('file', file)
   const res = await apiClient.post('/api/mods/upload', formData, {
