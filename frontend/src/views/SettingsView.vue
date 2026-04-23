@@ -12,6 +12,7 @@ import {
 import { getVoteSettings, updateVoteSettings } from '@/api/bloodmoonvote'
 import { getTicketSettings, updateTicketSettings } from '@/api/tickets'
 import { getDiscordSettings, updateDiscordSettings, getDiscordStatus, testDiscordConnection } from '@/api/discord'
+import { restartServer } from '@/api/serverControl'
 import type { UserResponse, CreateUserRequest } from '@/api/users'
 import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings, TicketSettings, DiscordSettings, DiscordStatus } from '@/types'
 import { usePermissions } from '@/composables/usePermissions'
@@ -25,6 +26,7 @@ import TabPanel from 'primevue/tabpanel'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import Message from 'primevue/message'
 import InputNumber from 'primevue/inputnumber'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Select from 'primevue/select'
@@ -475,6 +477,12 @@ const discordStatus = ref<DiscordStatus>({ isConnected: false, botUsername: '', 
 const loadingDiscordSettings = ref(false)
 const savingDiscordSettings = ref(false)
 const testingDiscord = ref(false)
+// Flips true after a successful save so the UI can surface "restart to apply".
+// Bot connects at server boot, not on config update — so config changes don't
+// reach the running process until a restart. Banner auto-clears when the status
+// endpoint confirms the bot is connected with fresh latency.
+const discordRestartPending = ref(false)
+const restartingForDiscord = ref(false)
 
 async function fetchDiscordSettings() {
   loadingDiscordSettings.value = true
@@ -492,14 +500,43 @@ async function handleSaveDiscordSettings() {
   savingDiscordSettings.value = true
   try {
     await updateDiscordSettings(discordSettings.value)
-    toast.add({ severity: 'success', summary: t('common.success'), detail: 'Discord settings updated.', life: 3000 })
-    // Refresh status after saving (bot may have restarted)
-    setTimeout(async () => { discordStatus.value = await getDiscordStatus() }, 3000)
+    toast.add({
+      severity: 'success',
+      summary: 'Saved',
+      detail: 'Discord settings stored. Restart the server for the bot to pick them up.',
+      life: 5000,
+    })
+    discordRestartPending.value = true
+    // Refresh status after saving — not to clear the pending flag (that needs a
+    // real restart), just to keep the Connected/Disconnected badge fresh.
+    setTimeout(refreshDiscordStatus, 3000)
   } catch (err: any) {
     const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
     toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
   } finally {
     savingDiscordSettings.value = false
+  }
+}
+
+async function handleRestartForDiscord() {
+  restartingForDiscord.value = true
+  try {
+    await restartServer()
+    toast.add({
+      severity: 'info',
+      summary: 'Restarting',
+      detail: 'Server is restarting. Bot should be back in under a minute.',
+      life: 5000,
+    })
+    // Clear the pending flag optimistically — the poll below will rehydrate
+    // whether the bot actually came back.
+    discordRestartPending.value = false
+    setTimeout(refreshDiscordStatus, 45000)
+  } catch (err: any) {
+    const detail = err.response?.data?.message || 'Restart request failed.'
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 4000 })
+  } finally {
+    restartingForDiscord.value = false
   }
 }
 
@@ -1066,6 +1103,30 @@ onMounted(() => {
         <!-- Discord Bot Tab -->
         <TabPanel v-if="isAdmin" value="8">
           <div class="settings-section" v-if="!loadingDiscordSettings">
+            <Message
+              v-if="discordRestartPending"
+              severity="warn"
+              :closable="true"
+              @close="discordRestartPending = false"
+              class="restart-banner"
+            >
+              <div class="restart-banner-content">
+                <div class="restart-banner-text">
+                  <strong>Restart required.</strong>
+                  The bot reads these settings at server boot — your changes
+                  are saved but won't take effect until the 7D2D service
+                  restarts.
+                </div>
+                <Button
+                  label="Restart now"
+                  icon="pi pi-refresh"
+                  severity="warn"
+                  size="small"
+                  :loading="restartingForDiscord"
+                  @click="handleRestartForDiscord"
+                />
+              </div>
+            </Message>
             <div class="discord-grid">
               <!-- Left column: Connection + Display -->
               <div class="discord-col">
@@ -1389,6 +1450,27 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.restart-banner {
+  margin-bottom: 1rem;
+}
+
+.restart-banner-content {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.restart-banner-text {
+  line-height: 1.45;
+  flex: 1;
+}
+
+.restart-banner-text strong {
+  color: inherit;
+  margin-right: 0.25rem;
 }
 
 .discord-card {
