@@ -35,6 +35,7 @@ BIN_DIR="src/$MOD_NAME/bin/$CONFIGURATION"
 cp "$BIN_DIR"/*.dll "$MOD_DIR/"
 cp "$BIN_DIR/$MOD_NAME.dll.config" "$MOD_DIR/"
 cp "$BIN_DIR/System.Data.SQLite.dll.config" "$MOD_DIR/"
+cp "$BIN_DIR/SkiaSharp.dll.config" "$MOD_DIR/"
 cp "src/$MOD_NAME/ModInfo.xml" "$MOD_DIR/"
 
 # Linux native libraries

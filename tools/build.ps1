@@ -36,6 +36,7 @@ $binDir = "src/$modName/bin/$Configuration"
 Copy-Item "$binDir/*.dll" $modDir
 Copy-Item "$binDir/$modName.dll.config" $modDir
 Copy-Item "$binDir/System.Data.SQLite.dll.config" $modDir
+Copy-Item "$binDir/SkiaSharp.dll.config" $modDir
 Copy-Item "src/$modName/ModInfo.xml" $modDir
 
 # --- Windows native libraries ---
