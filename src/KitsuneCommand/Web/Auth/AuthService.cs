@@ -84,6 +84,13 @@ namespace KitsuneCommand.Web.Auth
 
         /// <summary>
         /// Changes a user's password.
+        ///
+        /// NOTE: Uses UpdatePassword (targeted hash update) rather than Update(account).
+        /// `Update` only persists display_name / role / is_active — it does NOT write
+        /// password_hash — so a prior implementation that mutated account.PasswordHash
+        /// and called Update silently dropped the new password and left the old one in
+        /// the DB. The user appeared to "save" a new password, but subsequent logins
+        /// only worked with the OLD one. Fixed by routing through UpdatePassword.
         /// </summary>
         public bool ChangePassword(string username, string currentPassword, string newPassword)
         {
@@ -91,8 +98,8 @@ namespace KitsuneCommand.Web.Auth
             if (account == null)
                 return false;
 
-            account.PasswordHash = PasswordHasher.Hash(newPassword);
-            _userRepo.Update(account);
+            var newHash = PasswordHasher.Hash(newPassword);
+            _userRepo.UpdatePassword(account.Id, newHash);
             return true;
         }
 
