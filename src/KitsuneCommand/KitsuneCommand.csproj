@@ -137,6 +137,7 @@
     <None Include="ModInfo.xml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="KitsuneCommand.dll.config" CopyToOutputDirectory="PreserveNewest" />
     <None Include="System.Data.SQLite.dll.config" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="SkiaSharp.dll.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
