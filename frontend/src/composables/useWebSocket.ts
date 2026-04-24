@@ -40,10 +40,14 @@ export function useWebSocket() {
     const host = window.location.hostname
     // Dev: page at http://host:8890 → WebSocket server is on sibling port 8889, explicit.
     // Prod: page behind reverse proxy (standard 80/443 or custom), same origin — the proxy
-    // is responsible for routing /ws to the 8889 backend.
+    // is responsible for routing /socket to the 8889 backend.
+    //
+    // Path is /socket (not /ws) because Cloudflare's managed WAF rejects any
+    // WebSocket Upgrade on paths starting with "ws" with HTTP 400 at the edge.
+    // Discovered the hard way when panel.kitsuneden.net's Live badge never flipped.
     const isDevDirectPort = window.location.port === '8890'
     const portSuffix = isDevDirectPort ? ':8889' : ''
-    const url = `${protocol}//${host}${portSuffix}/ws?token=${auth.accessToken}`
+    const url = `${protocol}//${host}${portSuffix}/socket?token=${auth.accessToken}`
 
     ws.value = new WebSocket(url)
 

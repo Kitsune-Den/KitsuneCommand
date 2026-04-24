@@ -53,7 +53,7 @@ namespace KitsuneCommand.WebSocket
                 };
 
                 var json = JsonConvert.SerializeObject(message, CamelCase);
-                _server.WebSocketServices["/ws"]?.Sessions?.Broadcast(json);
+                _server.WebSocketServices["/socket"]?.Sessions?.Broadcast(json);
             }
             catch (Exception ex)
             {
