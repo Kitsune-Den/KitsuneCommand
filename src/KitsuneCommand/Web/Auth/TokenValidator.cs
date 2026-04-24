@@ -73,11 +73,22 @@ namespace KitsuneCommand.Web.Auth
             {
                 var ticket = _tokenFormat.Unprotect(token);
                 if (ticket == null)
+                {
+                    // Log at INFO so it's visible without DEBUG tracing. This is the
+                    // path that hits when a client presents a token issued by a
+                    // *different* running instance (e.g. key mismatch after a config
+                    // change) — silent failure here cost us an afternoon of debugging
+                    // why WebSocket connections were "completing with 0 bytes".
+                    Log.Out("[KitsuneCommand] Token validation failed: unprotect returned null (malformed or from a different key).");
                     return false;
+                }
 
                 // Check expiration
                 if (ticket.Properties?.ExpiresUtc != null && ticket.Properties.ExpiresUtc < DateTimeOffset.UtcNow)
+                {
+                    Log.Out($"[KitsuneCommand] Token validation failed: expired at {ticket.Properties.ExpiresUtc:o} (user={ticket.Identity?.FindFirst(ClaimTypes.Name)?.Value}).");
                     return false;
+                }
 
                 username = ticket.Identity?.FindFirst(ClaimTypes.Name)?.Value;
                 role = ticket.Identity?.FindFirst(ClaimTypes.Role)?.Value;
