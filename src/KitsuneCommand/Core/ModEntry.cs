@@ -74,7 +74,12 @@ namespace KitsuneCommand.Core
             // On Windows, we ship the official sqlite3.dll from sqlite.org.
             if (PlatformHelper.IsLinux)
             {
-                var nativePath = Path.Combine(_modInstance.Path, "linux-x64");
+                // Native libs live in Mods/KitsuneCommand/x64/ on BOTH Windows and
+                // Linux — same folder, different file extensions. SkiaSharp's own
+                // LibraryLoader looks at {assemblyDir}/x64/libSkiaSharp.so (when
+                // PlatformConfiguration.LinuxFlavor is null, which it is on glibc),
+                // so shipping there is the path of least resistance.
+                var nativePath = Path.Combine(_modInstance.Path, "x64");
                 if (Directory.Exists(nativePath))
                 {
                     // SkiaSharp needs explicit DLL map + preload since Mono won't

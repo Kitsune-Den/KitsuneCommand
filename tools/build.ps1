@@ -99,10 +99,13 @@ if ($Platform -eq "linux" -or $Platform -eq "both") {
     )
     $skiaLinux = $skiaLinuxPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
     if ($skiaLinux) {
-        $nativeDir = "$modDir/linux-x64"
+        # Ship libSkiaSharp.so in the same `x64/` folder as the Windows natives.
+        # Different extensions, same folder. Matches SkiaSharp's default path lookup
+        # on BOTH platforms so we don't have to fight its LibraryLoader.
+        $nativeDir = "$modDir/x64"
         New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
         Copy-Item $skiaLinux $nativeDir
-        Write-Host "    Copied libSkiaSharp.so to linux-x64/" -ForegroundColor Gray
+        Write-Host "    Copied libSkiaSharp.so to x64/" -ForegroundColor Gray
     } else {
         Write-Warning "libSkiaSharp.so (Linux) not found. Run 'dotnet restore' to download NuGet packages."
     }

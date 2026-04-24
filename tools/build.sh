@@ -54,9 +54,12 @@ for path in \
 done
 
 if [ -n "$SKIA_LINUX" ]; then
-    mkdir -p "$MOD_DIR/linux-x64"
-    cp "$SKIA_LINUX" "$MOD_DIR/linux-x64/"
-    echo "    Copied libSkiaSharp.so to linux-x64/"
+    # Ship libSkiaSharp.so in the same x64/ folder as the Windows natives.
+    # Different extensions, same folder. Matches SkiaSharp's default path lookup
+    # on BOTH platforms so we don't have to fight its LibraryLoader.
+    mkdir -p "$MOD_DIR/x64"
+    cp "$SKIA_LINUX" "$MOD_DIR/x64/"
+    echo "    Copied libSkiaSharp.so to x64/"
 else
     echo "    WARNING: libSkiaSharp.so not found. Run 'dotnet restore' first."
 fi
