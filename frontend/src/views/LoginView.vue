@@ -51,18 +51,12 @@ async function handleLogin() {
 <template>
   <div class="login-container">
     <div class="login-card">
-      <div class="lang-picker">
-        <Select
-          :modelValue="selectedLocale"
-          @update:modelValue="onLocaleChange"
-          :options="localeOptions"
-          optionLabel="label"
-          optionValue="value"
-          class="lang-select"
-        />
-      </div>
-
       <div class="login-header">
+        <img
+          src="/kitsune-command-logo-transparent.png"
+          alt="KitsuneCommand"
+          class="login-logo"
+        />
         <h1 class="login-title">{{ t('login.title') }}</h1>
         <p class="login-subtitle">{{ t('login.subtitle') }}</p>
       </div>
@@ -105,7 +99,16 @@ async function handleLogin() {
       </form>
 
       <div class="login-footer">
-        <span>{{ t('login.footer') }}</span>
+        <span class="footer-label">{{ t('login.footer') }}</span>
+        <Select
+          :modelValue="selectedLocale"
+          @update:modelValue="onLocaleChange"
+          :options="localeOptions"
+          optionLabel="label"
+          optionValue="value"
+          class="lang-select"
+          size="small"
+        />
       </div>
     </div>
   </div>
@@ -131,20 +134,20 @@ async function handleLogin() {
   position: relative;
 }
 
-.lang-picker {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-}
-
-.lang-select {
-  width: 130px;
-  font-size: 0.8rem;
-}
-
 .login-header {
   text-align: center;
   margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.login-logo {
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
+  margin-bottom: 0.5rem;
 }
 
 .login-title {
@@ -154,6 +157,12 @@ async function handleLogin() {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  margin: 0;
+}
+
+.lang-select {
+  width: 130px;
+  font-size: 0.8rem;
 }
 
 .login-subtitle {
@@ -196,12 +205,30 @@ async function handleLogin() {
 }
 
 .login-footer {
-  text-align: center;
   margin-top: 1.5rem;
   color: var(--kc-text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.footer-label {
   font-size: 0.8rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+/* PrimeVue Password wraps its input — make the outer wrapper AND the inner
+   input both span the full width so it matches the username field pixel-for-pixel
+   and the eye-toggle sits inside the input instead of floating next to it. */
+:deep(.p-password) {
+  width: 100%;
+}
+
+:deep(.p-password-input),
+:deep(.p-password .p-inputtext) {
+  width: 100%;
 }
 
 @media (max-width: 640px) {

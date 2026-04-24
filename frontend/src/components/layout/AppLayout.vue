@@ -103,6 +103,11 @@ onUnmounted(() => {
     <aside class="sidebar" :class="{ collapsed: sidebarCollapsed, 'mobile-open': mobileMenuOpen }">
       <div class="sidebar-header">
         <div class="brand" v-if="!sidebarCollapsed">
+          <img
+            src="/kitsune-command-logo-transparent.png"
+            alt="KitsuneCommand"
+            class="brand-logo"
+          />
           <h2 class="brand-name">{{ t('layout.brandName') }}</h2>
           <span class="brand-version" v-if="server.kcVersion">v{{ server.kcVersion }}</span>
         </div>
@@ -218,13 +223,31 @@ onUnmounted(() => {
   padding: 1rem; border-bottom: 1px solid var(--kc-border); min-height: 64px;
 }
 
+/* Brand block — logo + title + version, stacked and centered under the logo */
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.brand-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin-bottom: 0.25rem;
+  /* The PNG has baked-in glow; no need for additional filter.
+     Image is responsive to dark theme via transparency. */
+}
+
 .brand-name {
-  font-size: 1.1rem; font-weight: 700;
+  font-size: 1.1rem; font-weight: 700; text-align: center;
   background: linear-gradient(135deg, var(--kc-cyan), var(--kc-orange));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
 
-.brand-version { font-size: 0.7rem; color: var(--kc-text-secondary); }
+.brand-version { font-size: 0.7rem; color: var(--kc-text-secondary); text-align: center; }
 .sidebar-nav { flex: 1; padding: 0.5rem; overflow-y: auto; }
 
 .nav-item {
