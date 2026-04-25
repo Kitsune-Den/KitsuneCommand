@@ -23,6 +23,8 @@
 
 KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that provides a RESTful API and a modern web management panel. Runs on both **Windows** and **Linux** servers. Built as a clean-room V2 rewrite of [ServerKit](https://github.com/IceCoffee1024/7DaysToDie-ServerKit) with a modern Vue 3 frontend and improved security.
 
+> **Stuck on something?** See [`docs/troubleshooting.md`](docs/troubleshooting.md) — a growing index of prod-only failures we've actually hit, in symptom → cause → fix shape.
+
 ## Features
 
 ### Dashboard & Monitoring
@@ -232,6 +234,14 @@ Settings are stored in `<SaveGameDir>/KitsuneCommand/appsettings.json`:
 | `AccessTokenExpireMinutes` | `1440` | Auth token lifetime (24h) |
 | `EnableCors` | `false` | Enable for frontend dev with Vite |
 
+## Troubleshooting
+
+A growing index of prod-only failures, in symptom → cause → fix shape. Lives at [`docs/troubleshooting.md`](docs/troubleshooting.md).
+
+Current entries cover: panel lockout recovery (`kcresetpw`), the Cloudflared + WebSocketSharp host-header gotcha, SkiaSharp Linux native loading, IPv6 vs IPv4 tunnel routing, and frontend deploy hygiene.
+
+If you fix a gnarly prod bug, the last commit of the fix PR should add an entry.
+
 ## Console Commands
 
 All commands use the `kc-` prefix:
@@ -242,6 +252,7 @@ All commands use the `kc-` prefix:
 | `kc-gm` | Send global message |
 | `kc-pm` | Send private message |
 | `kc-rs` | Restart server |
+| `kcresetpw` | Reset a panel user's password (admin recovery — see [Troubleshooting](docs/troubleshooting.md)) |
 
 ## Creating Plugins
 
