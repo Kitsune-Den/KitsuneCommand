@@ -59,6 +59,58 @@ KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that pr
 ### Localization
 - **5 Languages** — English, Japanese, Korean, Chinese Simplified, Chinese Traditional
 
+## Screenshots
+
+A tour of the panels you'll spend the most time in.
+
+### Server Control
+
+The first thing you open. Live server stats (FPS, memory, uptime, game day, entity count, online players), one-click Save World / Restart / Shutdown, and a Server Information block with version, world, port, difficulty, and host system info.
+
+![Server Control](docs/screenshots/server-control.png)
+
+### Server Update
+
+Auto-update via SteamCMD on every server start, with a "sticky" `serverconfig.xml` that survives the validate step (Steam normally clobbers your edits — KC restores them from a `.bak` on every boot). Pin to a specific Steam branch, cache Steam credentials so updates don't prompt, and tune log retention.
+
+![Server Update](docs/screenshots/server-update.png)
+
+### Config Editor
+
+`serverconfig.xml` as a real form instead of a wall of XML. Settings are grouped (Core, World, Player, Gameplay, Block Damage), every field has plain-English help text with vanilla-reference numbers ("100% is vanilla, 125% is a gentle boost"), and there's a visual day/night cycle widget with a warm/cool split bar.
+
+![Config Editor](docs/screenshots/config-editor.png)
+
+### Mods Manager
+
+Browse and install mods directly from a Nexus-backed catalog (sorted by trending, downloads, endorsements, or date), or upload your own ZIP. Handles the messy real-world cases — nested folder structures, Windows backslash paths, mod packs with multiple `ModInfo.xml`, and zips that ship without one — instead of giving up.
+
+![Mods Manager](docs/screenshots/mods-manager.png)
+
+### Backups
+
+Schedule world saves on an interval (every N minutes), keep the last K, store them anywhere on disk you want. One-click `Create Backup` for ad-hoc snapshots before risky changes; restore in a click.
+
+![Backups](docs/screenshots/backups.png)
+
+### Item Database
+
+Search across every item the game knows about (26,000+ entries on a typical install), with icons, internal names, max stack, quality flag, and group tags. Useful for `give` commands, store inventory, and CD-key reward design.
+
+![Item Database](docs/screenshots/item-database.png)
+
+### Settings → Discord
+
+Discord bot integration in one tab: paste token, toggle bidirectional chat bridge, push event notifications (player join/leave, server start/stop, blood moon) to a channel of your choice, and register `/status`, `/players`, `/time` slash commands.
+
+![Settings — Discord](docs/screenshots/settings-discord.png)
+
+### Settings → Account
+
+Self-service password change for the logged-in user. If you ever lock yourself out entirely, the [`kcresetpw`](docs/troubleshooting.md) console command is your escape hatch.
+
+![Settings — Account](docs/screenshots/settings-account.png)
+
 ## Tech Stack
 
 | Layer | Technology |
