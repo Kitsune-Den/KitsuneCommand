@@ -825,7 +825,7 @@ const zhCN: Messages = {
     voteRewardsVipGiftTemplateHint: 'The Name of an existing VIP gift whose player_id is the sentinel "_template_". Create it via the VIP Gifts admin tab — its items + commands will be cloned for each voter, who claims them with /vip on next login.',
     voteRewardsCdKeyTemplate: 'CD key template ID',
     voteRewardsBroadcastTemplate: 'In-game broadcast template',
-    voteRewardsBroadcastHint: 'Sent to the whole server when an online player\'s vote is granted. Tokens: {player}, {reward}. Empty = silent.',
+    voteRewardsBroadcastHint: 'Sent to the whole server when an online player\'s vote is granted. Tokens: {playerToken}, {rewardToken}. Empty = silent.',
     voteRewardsAuditTitle: 'Recent grants',
     voteRewardsAuditSubtitle: 'Most recent reward grants from any provider. Doubles as the idempotency log.',
     voteRewardsAuditEmpty: 'No grants recorded yet.',

@@ -445,6 +445,12 @@ const voteRewardTypeOptions = computed(() => [
   { label: t('settings.voteRewardsRewardCdKey'), value: VOTE_REWARD_TYPE.CD_KEY },
 ])
 
+// The literal placeholder text we want shown in the broadcast template input.
+// Hardcoded as a const because Vue/PrimeVue doesn't have a clean attribute-level
+// v-pre, and embedding `{player}` directly in the template's :placeholder string
+// is fine but cleaner pulled out to a single source of truth.
+const broadcastPlaceholder = "{player} voted! Thanks — here's {reward}."
+
 /** Pretty label for the "Provider" header — falls back to the raw key. */
 function voteProviderDisplayName(key: string): string {
   switch (key) {
@@ -1336,58 +1342,62 @@ onMounted(() => {
             <Card class="settings-card" v-if="voteRewardsSettings.providers && voteRewardsSettings.providers.length > 0">
               <template #title>{{ t('settings.voteRewardsProviderHeader') }}</template>
               <template #content>
-                <div v-for="(provider, idx) in voteRewardsSettings.providers" :key="provider.key" class="provider-block">
+                <div v-for="(provider, idx) in voteRewardsSettings.providers" :key="provider.key" class="provider-block vote-provider">
                   <h3 class="provider-title">{{ voteProviderDisplayName(provider.key) }}</h3>
 
-                  <div class="toggle-row">
-                    <label>{{ t('settings.voteRewardsProviderEnable') }}</label>
-                    <ToggleSwitch v-model="voteRewardsSettings.providers[idx].enabled" />
-                  </div>
+                  <div class="vote-provider-grid">
+                    <div class="toggle-row vote-provider-full">
+                      <label>{{ t('settings.voteRewardsProviderEnable') }}</label>
+                      <ToggleSwitch v-model="voteRewardsSettings.providers[idx].enabled" />
+                    </div>
 
-                  <div class="form-group">
-                    <label class="form-label">{{ t('settings.voteRewardsApiKey') }}</label>
-                    <InputText v-model="voteRewardsSettings.providers[idx].apiKey" type="password" class="form-input" />
-                    <small class="settings-hint">{{ t('settings.voteRewardsApiKeyHint') }}</small>
-                  </div>
+                    <div class="form-group vote-provider-full">
+                      <label class="form-label">{{ t('settings.voteRewardsApiKey') }}</label>
+                      <InputText v-model="voteRewardsSettings.providers[idx].apiKey" type="password" class="form-input" />
+                      <small class="settings-hint">{{ t('settings.voteRewardsApiKeyHint') }}</small>
+                    </div>
 
-                  <div class="form-group">
-                    <label class="form-label">{{ t('settings.voteRewardsServerId') }}</label>
-                    <InputText v-model="voteRewardsSettings.providers[idx].serverId" class="form-input" />
-                    <small class="settings-hint">{{ t('settings.voteRewardsServerIdHint') }}</small>
-                  </div>
+                    <div class="form-group">
+                      <label class="form-label">{{ t('settings.voteRewardsServerId') }}</label>
+                      <InputText v-model="voteRewardsSettings.providers[idx].serverId" class="form-input" />
+                      <small class="settings-hint">{{ t('settings.voteRewardsServerIdHint') }}</small>
+                    </div>
 
-                  <div class="form-group">
-                    <label class="form-label">{{ t('settings.voteRewardsPollInterval') }}</label>
-                    <InputNumber v-model="voteRewardsSettings.providers[idx].pollIntervalMinutes" :min="1" :max="1440" class="form-input" />
-                    <small class="settings-hint">{{ t('settings.voteRewardsPollIntervalHint') }}</small>
-                  </div>
+                    <div class="form-group">
+                      <label class="form-label">{{ t('settings.voteRewardsPollInterval') }}</label>
+                      <InputNumber v-model="voteRewardsSettings.providers[idx].pollIntervalMinutes" :min="1" :max="1440" class="form-input" />
+                      <small class="settings-hint">{{ t('settings.voteRewardsPollIntervalHint') }}</small>
+                    </div>
 
-                  <div class="form-group">
-                    <label class="form-label">{{ t('settings.voteRewardsRewardType') }}</label>
-                    <Select v-model="voteRewardsSettings.providers[idx].rewardType" :options="voteRewardTypeOptions" optionLabel="label" optionValue="value" class="form-input" />
-                  </div>
+                    <div class="form-group">
+                      <label class="form-label">{{ t('settings.voteRewardsRewardType') }}</label>
+                      <Select v-model="voteRewardsSettings.providers[idx].rewardType" :options="voteRewardTypeOptions" optionLabel="label" optionValue="value" class="form-input" />
+                    </div>
 
-                  <div class="form-group" v-if="provider.rewardType === 'points'">
-                    <label class="form-label">{{ t('settings.voteRewardsPointsAmount') }}</label>
-                    <InputNumber v-model="voteRewardsSettings.providers[idx].pointsAmount" :min="0" :max="1000000" class="form-input" />
-                  </div>
+                    <div class="form-group" v-if="provider.rewardType === 'points'">
+                      <label class="form-label">{{ t('settings.voteRewardsPointsAmount') }}</label>
+                      <InputNumber v-model="voteRewardsSettings.providers[idx].pointsAmount" :min="0" :max="1000000" class="form-input" />
+                    </div>
 
-                  <div class="form-group" v-if="provider.rewardType === 'vip_gift'">
-                    <label class="form-label">{{ t('settings.voteRewardsVipGiftTemplate') }}</label>
-                    <InputText v-model="voteRewardsSettings.providers[idx].vipGiftTemplateName" class="form-input" />
-                    <small class="settings-hint">{{ t('settings.voteRewardsVipGiftTemplateHint') }}</small>
-                  </div>
+                    <div class="form-group" v-if="provider.rewardType === 'vip_gift'">
+                      <label class="form-label">{{ t('settings.voteRewardsVipGiftTemplate') }}</label>
+                      <InputText v-model="voteRewardsSettings.providers[idx].vipGiftTemplateName" class="form-input" />
+                      <small class="settings-hint">{{ t('settings.voteRewardsVipGiftTemplateHint') }}</small>
+                    </div>
 
-                  <div class="form-group" v-if="provider.rewardType === 'cd_key'">
-                    <label class="form-label">{{ t('settings.voteRewardsCdKeyTemplate') }}</label>
-                    <InputNumber v-model="voteRewardsSettings.providers[idx].cdKeyTemplateId" :min="0" class="form-input" disabled />
-                    <small class="settings-hint">{{ t('settings.voteRewardsRewardCdKey') }}</small>
-                  </div>
+                    <div class="form-group" v-if="provider.rewardType === 'cd_key'">
+                      <label class="form-label">{{ t('settings.voteRewardsCdKeyTemplate') }}</label>
+                      <InputNumber v-model="voteRewardsSettings.providers[idx].cdKeyTemplateId" :min="0" class="form-input" disabled />
+                      <small class="settings-hint">{{ t('settings.voteRewardsRewardCdKey') }}</small>
+                    </div>
 
-                  <div class="form-group">
-                    <label class="form-label">{{ t('settings.voteRewardsBroadcastTemplate') }}</label>
-                    <InputText v-model="voteRewardsSettings.providers[idx].broadcastTemplate" class="form-input" placeholder="{player} voted! Thanks — here's {reward}." />
-                    <small class="settings-hint">{{ t('settings.voteRewardsBroadcastHint') }}</small>
+                    <div class="form-group vote-provider-full">
+                      <label class="form-label">{{ t('settings.voteRewardsBroadcastTemplate') }}</label>
+                      <!-- v-pre on the placeholder string isn't usable on attributes; pass via :placeholder bound to a literal -->
+                      <InputText v-model="voteRewardsSettings.providers[idx].broadcastTemplate" class="form-input" :placeholder="broadcastPlaceholder" />
+                      <!-- Token names are passed as i18n params so vue-i18n doesn't try to interpolate {player}/{reward} as named slots and substitute them with empty strings. -->
+                      <small class="settings-hint">{{ t('settings.voteRewardsBroadcastHint', { playerToken: '{player}', rewardToken: '{reward}' }) }}</small>
+                    </div>
                   </div>
                 </div>
               </template>
@@ -1684,11 +1694,38 @@ onMounted(() => {
   font-size: 0.85rem;
 }
 
+/* Vote Rewards: dense 2-col layout for provider config blocks. The toggle,
+   API key, and broadcast template span the full row; everything else fits
+   in pairs (Server ID + Poll Interval, Reward Type + reward-value field). */
+.vote-provider {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--kc-border, rgba(255, 255, 255, 0.08));
+}
+
+.vote-provider:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.vote-provider-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1.25rem;
+  align-items: start;
+}
+
+.vote-provider-grid > .vote-provider-full {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 768px) {
   .settings-card { max-width: none; }
   .chat-cmd-settings { max-width: none; }
   .form-row { flex-direction: column; gap: 0; }
   .discord-grid { grid-template-columns: 1fr; }
   .discord-events-grid { grid-template-columns: 1fr; }
+  .vote-provider-grid { grid-template-columns: 1fr; }
 }
 </style>

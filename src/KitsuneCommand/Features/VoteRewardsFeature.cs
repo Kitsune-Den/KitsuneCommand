@@ -522,11 +522,7 @@ namespace KitsuneCommand.Features
                     var loaded = JsonConvert.DeserializeObject<VoteRewardsSettings>(json);
                     if (loaded != null)
                     {
-                        // If a saved blob predates a provider being added, ensure the
-                        // default entry is still present so the UI has something to render.
-                        EnsureDefaultProviders(loaded);
                         Settings = loaded;
-                        return;
                     }
                 }
             }
@@ -534,6 +530,12 @@ namespace KitsuneCommand.Features
             {
                 Log.Warning($"[KitsuneCommand] Failed to load vote-rewards settings, using defaults: {ex.Message}");
             }
+
+            // Always run AFTER deserialization, regardless of whether persisted state
+            // existed. This is what backfills the default 7daystodie-servers entry
+            // for first-time users (whose Settings.Providers starts empty per the
+            // VoteRewardsSettings ctor) and is idempotent for users with saved state.
+            EnsureDefaultProviders(Settings);
         }
 
         private static void EnsureDefaultProviders(VoteRewardsSettings settings)

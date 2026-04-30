@@ -76,10 +76,16 @@ namespace KitsuneCommand.Features
         /// <summary>
         /// One entry per known provider. The feature constructs adapters by Key,
         /// so unknown keys are skipped at runtime with a warning.
+        ///
+        /// IMPORTANT: this list defaults to empty, NOT to a list with the default
+        /// provider entry. Newtonsoft.Json's default deserialization behavior for
+        /// a property whose initializer returns a non-empty collection is to
+        /// APPEND the JSON-loaded entries instead of replacing — so initializing
+        /// here with [{ "7daystodie-servers", disabled }] meant every server boot
+        /// loaded the saved entry on top of the constructor-default, doubling
+        /// the list. Defaults are now backfilled by VoteRewardsFeature.EnsureDefaultProviders
+        /// after deserialization, which is idempotent.
         /// </summary>
-        public List<VoteProviderSettings> Providers { get; set; } = new List<VoteProviderSettings>
-        {
-            new VoteProviderSettings { Key = "7daystodie-servers", Enabled = false }
-        };
+        public List<VoteProviderSettings> Providers { get; set; } = new List<VoteProviderSettings>();
     }
 }
