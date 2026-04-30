@@ -1135,7 +1135,7 @@ onMounted(() => {
               <template #subtitle>{{ t('settings.ticketGeneralSubtitle') }}</template>
               <template #content>
                 <div class="form-row">
-                  <label class="form-label">{{ t('settings.enabled') }}</label>
+                  <label class="form-label">{{ t('common.enabled') }}</label>
                   <ToggleSwitch v-model="ticketSettings.enabled" />
                 </div>
                 <div class="form-group">
@@ -1603,6 +1603,20 @@ onMounted(() => {
 .form-row {
   display: flex;
   gap: 1rem;
+  /* Vertically center label text against the toggle/input it sits next to.
+     Without this, .form-label's `display: block; margin-bottom: 0.35rem`
+     pushes consecutive form-rows visually together — the labels' inherent
+     bottom margin becomes the only thing separating them, which left toggles
+     looking stacked-on-top-of-each-other in cards like Discord Integration. */
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+/* Form labels carry a built-in bottom margin to separate them from the input
+   they label. Inside a form-row that's a horizontal layout — the label's
+   bottom margin would just push the row's whole baseline downward. Strip it. */
+.form-row .form-label {
+  margin-bottom: 0;
 }
 
 .form-row .form-group {
@@ -1615,6 +1629,10 @@ onMounted(() => {
 
 .save-btn {
   align-self: flex-start;
+  /* Breathing room above — without this the button visually merges with the
+     last settings card it follows. The cards have their own bottom margin
+     but the button sits flush, so this nudges it down a bit. */
+  margin-top: 1rem;
 }
 
 .settings-hint {
