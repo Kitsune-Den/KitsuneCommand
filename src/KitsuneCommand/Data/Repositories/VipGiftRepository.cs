@@ -22,8 +22,24 @@ namespace KitsuneCommand.Data.Repositories
         void SetGiftItems(int giftId, IEnumerable<int> itemDefinitionIds);
         void SetGiftCommands(int giftId, IEnumerable<int> commandDefinitionIds);
 
+        // Templates: a "template" gift is a vip_gift row with the sentinel
+        // player_id "_template_". Admins create one via the regular VIP Gifts
+        // admin UI by typing "_template_" as the player_id; the VoteRewards
+        // feature looks them up by name and clones them for voters.
+        VipGift GetTemplateByName(string name);
+
         // Claiming
         void MarkAsClaimed(int giftId);
+    }
+
+    /// <summary>
+    /// The sentinel player_id used to mark a vip_gift row as a template that
+    /// other features (e.g. VoteRewards) can clone from. Underscore-prefixed
+    /// to avoid colliding with any real Steam_/Epic_ cross-platform id.
+    /// </summary>
+    public static class VipGiftSentinels
+    {
+        public const string TemplatePlayerId = "_template_";
     }
 
     public class VipGiftRepository : IVipGiftRepository
@@ -168,6 +184,25 @@ namespace KitsuneCommand.Data.Repositories
                     "INSERT INTO vip_gift_commands (vip_gift_id, command_id) VALUES (@GiftId, @CommandId)",
                     new { GiftId = giftId, CommandId = commandId });
             }
+        }
+
+        // ─── Templates ────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns the first template gift matching the given name. If multiple
+        /// rows share the same name + sentinel player_id (admin error / accident),
+        /// the lowest id wins so behavior is deterministic across requests.
+        /// Returns null if no template with that name exists.
+        /// </summary>
+        public VipGift GetTemplateByName(string name)
+        {
+            using var conn = _db.CreateConnection();
+            return conn.QueryFirstOrDefault<VipGift>(@"
+                SELECT * FROM vip_gifts
+                WHERE player_id = @TemplateId AND name = @Name
+                ORDER BY id ASC
+                LIMIT 1",
+                new { TemplateId = VipGiftSentinels.TemplatePlayerId, Name = name });
         }
 
         // ─── Claiming ────────────────────────────────────────────

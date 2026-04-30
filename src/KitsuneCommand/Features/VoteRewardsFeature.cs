@@ -9,8 +9,6 @@ using KitsuneCommand.Data.Entities;
 using KitsuneCommand.Data.Repositories;
 using KitsuneCommand.Features.VoteRewards;
 using KitsuneCommand.Features.VoteRewards.Providers;
-// VipGift template-clone is deferred to v1.5; the dispatch case currently throws
-// NotImplementedException, so we don't carry the entity import yet.
 using Newtonsoft.Json;
 
 namespace KitsuneCommand.Features
@@ -35,6 +33,7 @@ namespace KitsuneCommand.Features
         private readonly ISettingsRepository _settingsRepo;
         private readonly IVoteGrantRepository _grantRepo;
         private readonly IPointsRepository _pointsRepo;
+        private readonly IVipGiftRepository _vipGiftRepo;
         private readonly LivePlayerManager _playerManager;
         private const string SettingsKey = "VoteRewards";
 
@@ -55,12 +54,14 @@ namespace KitsuneCommand.Features
             ISettingsRepository settingsRepo,
             IVoteGrantRepository grantRepo,
             IPointsRepository pointsRepo,
+            IVipGiftRepository vipGiftRepo,
             LivePlayerManager playerManager)
             : base(eventBus, config)
         {
             _settingsRepo = settingsRepo;
             _grantRepo = grantRepo;
             _pointsRepo = pointsRepo;
+            _vipGiftRepo = vipGiftRepo;
             _playerManager = playerManager;
         }
 
@@ -366,13 +367,56 @@ namespace KitsuneCommand.Features
                     }
 
                 case VoteRewardType.VipGift:
-                    // Reserved for v1.5 — needs a template-clone path: look up the
-                    // template VIP gift by name, insert a copy for this voter, and
-                    // mirror its item + command junctions into the new row. The
-                    // shape and storage are ready; the clone wiring is pending.
-                    // Admins selecting this today get an explicit error rather
-                    // than a silent no-op.
-                    throw new NotImplementedException("VIP-gift vote rewards are not yet wired up. Use Points for now.");
+                    {
+                        // Clone a pre-built template gift for this voter. The admin
+                        // creates the template via the regular VIP Gifts admin UI
+                        // by typing the sentinel player_id "_template_" — that keeps
+                        // it out of any real player's pending-gift list, but lets
+                        // VoteRewards find it by name and copy it.
+                        if (string.IsNullOrWhiteSpace(cfg.VipGiftTemplateName))
+                        {
+                            throw new InvalidOperationException(
+                                "VipGiftTemplateName is empty — set the template name in the Vote Rewards settings.");
+                        }
+
+                        var template = _vipGiftRepo.GetTemplateByName(cfg.VipGiftTemplateName);
+                        if (template == null)
+                        {
+                            throw new InvalidOperationException(
+                                $"No VIP gift template named '{cfg.VipGiftTemplateName}' (player_id = '{VipGiftSentinels.TemplatePlayerId}'). " +
+                                $"Create it via the VIP Gifts admin UI first.");
+                        }
+
+                        // Read the template's items + commands BEFORE insert, so a
+                        // partial failure doesn't leave a half-built gift in the
+                        // voter's pending list (the items would be missing).
+                        var templateItems = _vipGiftRepo.GetItemsForGift(template.Id).Select(i => i.Id).ToList();
+                        var templateCommands = _vipGiftRepo.GetCommandsForGift(template.Id).Select(c => c.Id).ToList();
+
+                        var voterGift = new VipGift
+                        {
+                            PlayerId = playerId,
+                            PlayerName = resolvedName,
+                            Name = template.Name,
+                            Description = string.IsNullOrWhiteSpace(template.Description)
+                                ? $"Vote reward from {cfg.Key}"
+                                : template.Description,
+                            // One-time gift — claim_period stays null. If a server
+                            // wants repeatable vote rewards, that's a per-vote
+                            // grant, not a per-claim period.
+                            ClaimPeriod = null,
+                        };
+                        var newId = _vipGiftRepo.Insert(voterGift);
+                        _vipGiftRepo.SetGiftItems(newId, templateItems);
+                        _vipGiftRepo.SetGiftCommands(newId, templateCommands);
+
+                        var itemCount = templateItems.Count;
+                        var commandCount = templateCommands.Count;
+                        var summary = itemCount == 0 && commandCount == 0
+                            ? "(empty template — fix the template before next vote)"
+                            : $"{itemCount} item(s) + {commandCount} command(s)";
+                        return $"VIP gift '{template.Name}' [{summary}] (claim with /vip)";
+                    }
 
                 case VoteRewardType.CdKey:
                     // Reserved — needs CdKey template lookup wiring. Leaving the
