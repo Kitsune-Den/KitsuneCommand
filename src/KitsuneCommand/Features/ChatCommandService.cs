@@ -28,6 +28,7 @@ namespace KitsuneCommand.Features
         private readonly LivePlayerManager _playerManager;
         private readonly ModEventBus _eventBus;
         private readonly BloodMoonVoteFeature _bloodMoonVoteFeature;
+        private readonly VoteRewardsFeature _voteRewardsFeature;
         private readonly DiscordWebhookService _discordService;
 
         // Cooldown tracking: playerId -> { commandGroup -> lastUsedUtc }
@@ -47,6 +48,7 @@ namespace KitsuneCommand.Features
             LivePlayerManager playerManager,
             ModEventBus eventBus,
             BloodMoonVoteFeature bloodMoonVoteFeature,
+            VoteRewardsFeature voteRewardsFeature,
             DiscordWebhookService discordService)
         {
             _homeRepo = homeRepo;
@@ -61,6 +63,7 @@ namespace KitsuneCommand.Features
             _playerManager = playerManager;
             _eventBus = eventBus;
             _bloodMoonVoteFeature = bloodMoonVoteFeature;
+            _voteRewardsFeature = voteRewardsFeature;
             _discordService = discordService;
         }
 
@@ -161,6 +164,12 @@ namespace KitsuneCommand.Features
                     case "skipbm":
                     case "voteskip":
                         HandleBloodMoonVote(playerId, entityId, playerName);
+                        return true;
+
+                    // ── Vote-Reward Commands ─────────────────────────────
+                    case "vote":
+                        if (!settings.VoteEnabled) { Reply(entityId, "Vote-reward command is disabled."); return true; }
+                        HandleVoteReward(playerId, entityId, playerName, settings);
                         return true;
 
                     // ── Help / discovery ─────────────────────────────────
@@ -725,6 +734,97 @@ namespace KitsuneCommand.Features
             }
         }
 
+        // ─── Vote-Reward Commands ─────────────────────────────────────
+
+        /// <summary>
+        /// Player-initiated vote reward claim. Player typed "/vote" — we look
+        /// up their Steam ID, run the claim against every enabled provider in
+        /// the background, and post the result lines back to chat as each
+        /// provider answers.
+        ///
+        /// We do NOT block the game thread on the network round-trip. The chat
+        /// handler returns immediately; the background task marshals each reply
+        /// back to the game thread via SdtdConsole.
+        /// </summary>
+        private void HandleVoteReward(string playerId, int entityId, string playerName, ChatCommandSettings settings)
+        {
+            if (!CheckCooldown(playerId, entityId, "vote", settings.VoteCooldownSeconds))
+                return;
+
+            // The listing-site APIs are keyed by raw SteamID64 (e.g. "76561198..."),
+            // not the game's CrossplatformId form ("Steam_76561198..."). Pull the
+            // raw value from the live player record's PlatformId, which carries
+            // the Steam_-prefixed combined string.
+            var online = _playerManager.GetByEntityId(entityId);
+            var rawSteam = ExtractSteamId64(online?.PlatformId) ?? ExtractSteamId64(playerId);
+            if (string.IsNullOrEmpty(rawSteam))
+            {
+                Reply(entityId, "Couldn't determine your Steam ID — vote rewards require a Steam-platform connection.");
+                return;
+            }
+
+            Reply(entityId, "Checking for unclaimed votes...");
+
+            // Fire-and-forget: do the network work off the game thread, then
+            // marshal back to send replies. ConfigureAwait(false) is fine here —
+            // we explicitly Post back to the main thread before any game API call.
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var results = await _voteRewardsFeature
+                        .TryClaimForPlayerAsync(rawSteam, playerName)
+                        .ConfigureAwait(false);
+
+                    ModEntry.MainThreadContext.Post(_ =>
+                    {
+                        if (results == null || results.Count == 0)
+                        {
+                            Reply(entityId, "No vote-reward providers are configured.");
+                            return;
+                        }
+
+                        var grantedAny = false;
+                        foreach (var r in results)
+                        {
+                            if (r.Outcome == VoteRewardsFeature.ClaimOutcome.Granted) grantedAny = true;
+                            Reply(entityId, r.Message);
+                        }
+
+                        if (!grantedAny)
+                        {
+                            Reply(entityId, "No new rewards to grant. Try again after voting at the listed site(s).");
+                        }
+                    }, null);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[KitsuneCommand] /vote handler error: {ex.Message}");
+                    ModEntry.MainThreadContext.Post(_ => Reply(entityId, "Vote check failed — try again in a minute."), null);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Extracts the raw 76-digit SteamID64 from a CrossplatformId-formatted
+        /// string like "Steam_76561198XXXXXXXX". Returns null for non-Steam
+        /// identities (Epic-only voters aren't supported by the v1 providers).
+        /// </summary>
+        private static string ExtractSteamId64(string crossplatformId)
+        {
+            if (string.IsNullOrEmpty(crossplatformId)) return null;
+            const string prefix = "Steam_";
+            if (crossplatformId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                && crossplatformId.Length > prefix.Length)
+            {
+                return crossplatformId.Substring(prefix.Length);
+            }
+            // Some game versions hand us the bare 17-digit ID. Accept it as-is.
+            if (crossplatformId.Length == 17 && long.TryParse(crossplatformId, out _))
+                return crossplatformId;
+            return null;
+        }
+
         // ─── Help ──────────────────────────────────────────────────────
 
         /// <summary>
@@ -779,6 +879,12 @@ namespace KitsuneCommand.Features
             // surface it unconditionally; the feature itself replies with a
             // "disabled" message if a player tries to vote while it's off.
             Reply(entityId, $"  BLOOD MOON: {p}skipbm (alias: {p}voteskip)");
+
+            if (settings.VoteEnabled)
+            {
+                Reply(entityId, $"  VOTE REWARDS: {p}vote");
+                anyEnabled = true;
+            }
 
             if (!anyEnabled)
             {

@@ -56,5 +56,13 @@ namespace KitsuneCommand.Features
 
         /// <summary>Cooldown in seconds for creating tickets.</summary>
         public int TicketCooldownSeconds { get; set; } = 60;
+
+        // ── Vote Reward Commands ──────────────────────────────────
+
+        /// <summary>Enable /vote command for on-demand vote-reward claims.</summary>
+        public bool VoteEnabled { get; set; } = true;
+
+        /// <summary>Cooldown in seconds for /vote (default 30 — listing-site APIs are rate-limited).</summary>
+        public int VoteCooldownSeconds { get; set; } = 30;
     }
 }
