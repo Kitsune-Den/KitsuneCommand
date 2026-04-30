@@ -1374,8 +1374,8 @@ onMounted(() => {
 
                   <div class="form-group" v-if="provider.rewardType === 'vip_gift'">
                     <label class="form-label">{{ t('settings.voteRewardsVipGiftTemplate') }}</label>
-                    <InputText v-model="voteRewardsSettings.providers[idx].vipGiftTemplateName" class="form-input" disabled />
-                    <small class="settings-hint">{{ t('settings.voteRewardsRewardVipGift') }}</small>
+                    <InputText v-model="voteRewardsSettings.providers[idx].vipGiftTemplateName" class="form-input" />
+                    <small class="settings-hint">{{ t('settings.voteRewardsVipGiftTemplateHint') }}</small>
                   </div>
 
                   <div class="form-group" v-if="provider.rewardType === 'cd_key'">
