@@ -541,6 +541,30 @@ namespace KitsuneCommand.Features
         private static void EnsureDefaultProviders(VoteRewardsSettings settings)
         {
             if (settings.Providers == null) settings.Providers = new List<VoteProviderSettings>();
+
+            // Deduplicate by Key. PR #50 prevented NEW duplicates forming (the
+            // Newtonsoft-append bug), but admins whose state was poisoned while
+            // that bug was active still carry the doubled list in their saved
+            // JSON. Strip duplicates here on every load — the entry with the
+            // most "configured" signal wins (enabled + has-api-key > enabled-only
+            // > has-api-key > anything else) so a real config is never displaced
+            // by an empty stub.
+            var beforeCount = settings.Providers.Count;
+            settings.Providers = settings.Providers
+                .Where(p => p != null && !string.IsNullOrWhiteSpace(p.Key))
+                .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group
+                    .OrderByDescending(p => p.Enabled && !string.IsNullOrEmpty(p.ApiKey))
+                    .ThenByDescending(p => p.Enabled)
+                    .ThenByDescending(p => !string.IsNullOrEmpty(p.ApiKey))
+                    .First())
+                .ToList();
+            var afterCount = settings.Providers.Count;
+            if (afterCount < beforeCount)
+            {
+                Log.Out($"[KitsuneCommand] VoteRewards: deduped {beforeCount - afterCount} duplicate provider entry/entries on load.");
+            }
+
             if (!settings.Providers.Any(p => string.Equals(p.Key, "7daystodie-servers", StringComparison.OrdinalIgnoreCase)))
             {
                 settings.Providers.Add(new VoteProviderSettings { Key = "7daystodie-servers", Enabled = false });
