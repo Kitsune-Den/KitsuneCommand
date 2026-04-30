@@ -261,6 +261,49 @@ export interface ChatCommandSettings {
   vipEnabled: boolean
   ticketEnabled: boolean
   ticketCooldownSeconds: number
+  voteEnabled: boolean
+  voteCooldownSeconds: number
+}
+
+// ─── Vote Rewards Types ──────────────────────────────
+
+/** Reward delivery shape — mirrors the C# VoteRewardType static class. */
+export const VOTE_REWARD_TYPE = {
+  POINTS: 'points',
+  VIP_GIFT: 'vip_gift',
+  CD_KEY: 'cd_key',
+} as const
+
+export type VoteRewardType = typeof VOTE_REWARD_TYPE[keyof typeof VOTE_REWARD_TYPE]
+
+export interface VoteProviderSettings {
+  key: string
+  enabled: boolean
+  apiKey: string
+  serverId: string
+  pollIntervalMinutes: number
+  rewardType: VoteRewardType
+  pointsAmount: number
+  vipGiftTemplateName: string
+  cdKeyTemplateId: number
+  broadcastTemplate: string
+}
+
+export interface VoteRewardsSettings {
+  enabled: boolean
+  providers: VoteProviderSettings[]
+}
+
+export interface VoteGrant {
+  id: number
+  provider: string
+  steamId: string
+  playerName: string | null
+  voteDate: string
+  rewardType: string
+  rewardValue: string
+  grantedAt: string
+  notes: string | null
 }
 
 // ─── CD Key Types ────────────────────────────────────

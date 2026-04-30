@@ -10,11 +10,13 @@ import {
   getStoreSettings, updateStoreSettings,
 } from '@/api/settings'
 import { getVoteSettings, updateVoteSettings } from '@/api/bloodmoonvote'
+import { getVoteRewardsSettings, updateVoteRewardsSettings, getVoteGrants } from '@/api/voterewards'
 import { getTicketSettings, updateTicketSettings } from '@/api/tickets'
 import { getDiscordSettings, updateDiscordSettings, getDiscordStatus, testDiscordConnection } from '@/api/discord'
 import { restartServer } from '@/api/serverControl'
 import type { UserResponse, CreateUserRequest } from '@/api/users'
-import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings, TicketSettings, DiscordSettings, DiscordStatus } from '@/types'
+import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings, TicketSettings, DiscordSettings, DiscordStatus, VoteRewardsSettings, VoteGrant } from '@/types'
+import { VOTE_REWARD_TYPE } from '@/types'
 import { usePermissions } from '@/composables/usePermissions'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -242,6 +244,8 @@ const chatCmdSettings = ref<ChatCommandSettings>({
   vipEnabled: true,
   ticketEnabled: true,
   ticketCooldownSeconds: 60,
+  voteEnabled: true,
+  voteCooldownSeconds: 30,
 })
 const loadingChatCmd = ref(false)
 const savingChatCmd = ref(false)
@@ -419,6 +423,75 @@ async function handleSaveBmVote() {
   }
 }
 
+// ---- Vote Rewards Tab ----
+//
+// Backed by VoteRewardsController (REST) + VoteRewardsFeature (sweep + dispatch).
+// The shape is "master toggle + N providers + audit log". The provider list is
+// seeded by the server with one entry per registered adapter; this UI lets the
+// admin enable/configure each, but doesn't add or remove rows — that's a
+// compile-time concern on the backend.
+const voteRewardsSettings = ref<VoteRewardsSettings>({
+  enabled: false,
+  providers: [],
+})
+const voteGrants = ref<VoteGrant[]>([])
+const loadingVoteRewards = ref(false)
+const savingVoteRewards = ref(false)
+const loadingVoteGrants = ref(false)
+
+const voteRewardTypeOptions = computed(() => [
+  { label: t('settings.voteRewardsRewardPoints'), value: VOTE_REWARD_TYPE.POINTS },
+  { label: t('settings.voteRewardsRewardVipGift'), value: VOTE_REWARD_TYPE.VIP_GIFT },
+  { label: t('settings.voteRewardsRewardCdKey'), value: VOTE_REWARD_TYPE.CD_KEY },
+])
+
+/** Pretty label for the "Provider" header — falls back to the raw key. */
+function voteProviderDisplayName(key: string): string {
+  switch (key) {
+    case '7daystodie-servers': return '7daystodie-servers.com'
+    default: return key
+  }
+}
+
+async function fetchVoteRewardsSettings() {
+  loadingVoteRewards.value = true
+  try {
+    voteRewardsSettings.value = await getVoteRewardsSettings()
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadVoteRewards'), life: 3000 })
+  } finally {
+    loadingVoteRewards.value = false
+  }
+}
+
+async function fetchVoteGrants() {
+  loadingVoteGrants.value = true
+  try {
+    voteGrants.value = await getVoteGrants(50)
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadVoteGrants'), life: 3000 })
+  } finally {
+    loadingVoteGrants.value = false
+  }
+}
+
+async function handleSaveVoteRewards() {
+  savingVoteRewards.value = true
+  try {
+    await updateVoteRewardsSettings(voteRewardsSettings.value)
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.voteRewardsSaved'), life: 3000 })
+    // Reload — the server may have backfilled default provider rows for any
+    // adapter that wasn't already in the persisted blob (e.g. after a mod
+    // update that adds a new provider).
+    await fetchVoteRewardsSettings()
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
+  } finally {
+    savingVoteRewards.value = false
+  }
+}
+
 // ---- Tickets Tab ----
 const ticketSettings = ref<TicketSettings>({
   enabled: true,
@@ -569,6 +642,8 @@ onMounted(() => {
     fetchBmVoteSettings()
     fetchTicketSettings()
     fetchDiscordSettings()
+    fetchVoteRewardsSettings()
+    fetchVoteGrants()
   }
 })
 </script>
@@ -588,6 +663,7 @@ onMounted(() => {
         <Tab v-if="isAdmin" value="6">{{ t('settings.bloodMoonVote') }}</Tab>
         <Tab v-if="isAdmin" value="7">{{ t('settings.tickets') }}</Tab>
         <Tab v-if="isAdmin" value="8">Discord</Tab>
+        <Tab v-if="isAdmin" value="9">{{ t('settings.voteRewards') }}</Tab>
       </TabList>
       <TabPanels>
         <!-- Account Tab -->
@@ -1238,6 +1314,111 @@ onMounted(() => {
               severity="info"
               class="save-btn"
             />
+          </div>
+        </TabPanel>
+
+        <!-- Vote Rewards Tab -->
+        <TabPanel v-if="isAdmin" value="9">
+          <div v-if="loadingVoteRewards" class="loading-state">{{ t('settings.loadingSettings') }}</div>
+          <div v-else class="settings-section">
+            <Card class="settings-card">
+              <template #title>{{ t('settings.voteRewardsTitle') }}</template>
+              <template #subtitle>{{ t('settings.voteRewardsSubtitle') }}</template>
+              <template #content>
+                <div class="toggle-row">
+                  <label>{{ t('settings.voteRewardsMasterToggle') }}</label>
+                  <ToggleSwitch v-model="voteRewardsSettings.enabled" />
+                </div>
+                <small class="settings-hint">{{ t('settings.voteRewardsMasterToggleHint') }}</small>
+              </template>
+            </Card>
+
+            <Card class="settings-card" v-if="voteRewardsSettings.providers && voteRewardsSettings.providers.length > 0">
+              <template #title>{{ t('settings.voteRewardsProviderHeader') }}</template>
+              <template #content>
+                <div v-for="(provider, idx) in voteRewardsSettings.providers" :key="provider.key" class="provider-block">
+                  <h3 class="provider-title">{{ voteProviderDisplayName(provider.key) }}</h3>
+
+                  <div class="toggle-row">
+                    <label>{{ t('settings.voteRewardsProviderEnable') }}</label>
+                    <ToggleSwitch v-model="voteRewardsSettings.providers[idx].enabled" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.voteRewardsApiKey') }}</label>
+                    <InputText v-model="voteRewardsSettings.providers[idx].apiKey" type="password" class="form-input" />
+                    <small class="settings-hint">{{ t('settings.voteRewardsApiKeyHint') }}</small>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.voteRewardsServerId') }}</label>
+                    <InputText v-model="voteRewardsSettings.providers[idx].serverId" class="form-input" />
+                    <small class="settings-hint">{{ t('settings.voteRewardsServerIdHint') }}</small>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.voteRewardsPollInterval') }}</label>
+                    <InputNumber v-model="voteRewardsSettings.providers[idx].pollIntervalMinutes" :min="1" :max="1440" class="form-input" />
+                    <small class="settings-hint">{{ t('settings.voteRewardsPollIntervalHint') }}</small>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.voteRewardsRewardType') }}</label>
+                    <Select v-model="voteRewardsSettings.providers[idx].rewardType" :options="voteRewardTypeOptions" optionLabel="label" optionValue="value" class="form-input" />
+                  </div>
+
+                  <div class="form-group" v-if="provider.rewardType === 'points'">
+                    <label class="form-label">{{ t('settings.voteRewardsPointsAmount') }}</label>
+                    <InputNumber v-model="voteRewardsSettings.providers[idx].pointsAmount" :min="0" :max="1000000" class="form-input" />
+                  </div>
+
+                  <div class="form-group" v-if="provider.rewardType === 'vip_gift'">
+                    <label class="form-label">{{ t('settings.voteRewardsVipGiftTemplate') }}</label>
+                    <InputText v-model="voteRewardsSettings.providers[idx].vipGiftTemplateName" class="form-input" disabled />
+                    <small class="settings-hint">{{ t('settings.voteRewardsRewardVipGift') }}</small>
+                  </div>
+
+                  <div class="form-group" v-if="provider.rewardType === 'cd_key'">
+                    <label class="form-label">{{ t('settings.voteRewardsCdKeyTemplate') }}</label>
+                    <InputNumber v-model="voteRewardsSettings.providers[idx].cdKeyTemplateId" :min="0" class="form-input" disabled />
+                    <small class="settings-hint">{{ t('settings.voteRewardsRewardCdKey') }}</small>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.voteRewardsBroadcastTemplate') }}</label>
+                    <InputText v-model="voteRewardsSettings.providers[idx].broadcastTemplate" class="form-input" placeholder="{player} voted! Thanks — here's {reward}." />
+                    <small class="settings-hint">{{ t('settings.voteRewardsBroadcastHint') }}</small>
+                  </div>
+                </div>
+              </template>
+            </Card>
+
+            <Button
+              :label="t('settings.saveSettings')"
+              icon="pi pi-save"
+              @click="handleSaveVoteRewards"
+              :loading="savingVoteRewards"
+              severity="info"
+              class="save-btn"
+            />
+
+            <Card class="settings-card">
+              <template #title>{{ t('settings.voteRewardsAuditTitle') }}</template>
+              <template #subtitle>{{ t('settings.voteRewardsAuditSubtitle') }}</template>
+              <template #content>
+                <DataTable :value="voteGrants" :loading="loadingVoteGrants" stripedRows :emptyMessage="t('settings.voteRewardsAuditEmpty')">
+                  <Column field="grantedAt" :header="t('settings.voteRewardsColTime')" style="width: 180px" />
+                  <Column field="provider" :header="t('settings.voteRewardsColProvider')" style="width: 180px" />
+                  <Column field="playerName" :header="t('settings.voteRewardsColPlayer')" />
+                  <Column field="steamId" :header="t('settings.voteRewardsColSteamId')" style="width: 200px" />
+                  <Column :header="t('settings.voteRewardsColReward')">
+                    <template #body="slotProps">
+                      {{ slotProps.data.rewardType }}: {{ slotProps.data.rewardValue }}
+                    </template>
+                  </Column>
+                </DataTable>
+              </template>
+            </Card>
           </div>
         </TabPanel>
       </TabPanels>
