@@ -1326,7 +1326,9 @@ onMounted(() => {
         <!-- Vote Rewards Tab -->
         <TabPanel v-if="isAdmin" value="9">
           <div v-if="loadingVoteRewards" class="loading-state">{{ t('settings.loadingSettings') }}</div>
-          <div v-else class="settings-section">
+          <div v-else class="settings-section vote-rewards-grid">
+            <!-- LEFT: configuration -->
+            <div class="vote-rewards-col">
             <Card class="settings-card">
               <template #title>{{ t('settings.voteRewardsTitle') }}</template>
               <template #subtitle>{{ t('settings.voteRewardsSubtitle') }}</template>
@@ -1414,7 +1416,10 @@ onMounted(() => {
               severity="info"
               class="save-btn"
             />
+            </div>
 
+            <!-- RIGHT: audit feed -->
+            <div class="vote-rewards-col">
             <Card class="settings-card">
               <template #title>{{ t('settings.voteRewardsAuditTitle') }}</template>
               <template #subtitle>{{ t('settings.voteRewardsAuditSubtitle') }}</template>
@@ -1432,6 +1437,7 @@ onMounted(() => {
                 </DataTable>
               </template>
             </Card>
+            </div>
           </div>
         </TabPanel>
       </TabPanels>
@@ -1715,6 +1721,23 @@ onMounted(() => {
   font-size: 0.85rem;
 }
 
+/* Vote Rewards tab: 2-col page layout. Configuration cards on the left,
+   audit feed on the right. Mirrors the Discord tab pattern so the empty
+   right-side real estate gets used. Collapses to single col on tablet+. */
+.vote-rewards-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.vote-rewards-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
 /* Vote Rewards: dense 2-col layout for provider config blocks. The toggle,
    API key, and broadcast template span the full row; everything else fits
    in pairs (Server ID + Poll Interval, Reward Type + reward-value field). */
@@ -1748,5 +1771,13 @@ onMounted(() => {
   .discord-grid { grid-template-columns: 1fr; }
   .discord-events-grid { grid-template-columns: 1fr; }
   .vote-provider-grid { grid-template-columns: 1fr; }
+  .vote-rewards-grid { grid-template-columns: 1fr; }
+}
+
+/* The vote-rewards-grid uses bigger cards, so collapse to single col earlier
+   than the 768px tablet breakpoint — narrow desktop / smaller laptop screens
+   would otherwise get a cramped 3:2 split. */
+@media (max-width: 1100px) {
+  .vote-rewards-grid { grid-template-columns: 1fr; }
 }
 </style>
