@@ -369,7 +369,7 @@ namespace KitsuneCommand.Features
         /// </summary>
         private string DispatchReward(string steamId, string playerName, VoteProviderSettings cfg)
         {
-            var playerId = ToPlayerId(steamId);
+            var playerId = ResolvePlayerId(steamId);
             var resolvedName = string.IsNullOrWhiteSpace(playerName) ? "(voter)" : playerName;
 
             switch (cfg.RewardType)
@@ -448,12 +448,44 @@ namespace KitsuneCommand.Features
         }
 
         /// <summary>
-        /// 7D2D's internal player id is "Steam_76561198..." form (CrossplatformId),
-        /// while listing-site APIs deal in raw 76-digit SteamID64s. Bridge them
-        /// by prepending the platform prefix. Epic-only voters aren't supported
-        /// for v1; the listing site sends Steam IDs.
+        /// Resolves a raw SteamID64 from a listing-site API into the player_id form
+        /// that KC's other tables (points_info, vip_gifts, etc.) actually use.
+        ///
+        /// In 7D2D V 2.x, a player's CrossplatformId is the EOS account ID
+        /// ("EOS_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"), even when they're connected
+        /// via Steam. PlatformId stays in "Steam_<76-digit>" form. The points_info
+        /// table is keyed by CrossplatformId, so naively returning "Steam_<steamId>"
+        /// here creates an orphan row that doesn't match the player's real account.
+        ///
+        /// Resolution strategy:
+        ///   1. If the player is currently online, find them by PlatformId in the
+        ///      LivePlayerManager and return their actual PlayerId (the EOS-form
+        ///      CrossplatformId). This is the common case — votes typically arrive
+        ///      while the player is actively on the server.
+        ///   2. If the player is offline, fall back to "Steam_<steamId>" with a
+        ///      warning. This may create an orphan row that won't merge with the
+        ///      player's real EOS-keyed row, but it's the best we can do without
+        ///      a Steam-ID → CrossplatformId mapping persisted to disk. Future
+        ///      iteration: write that mapping into player_metadata on every
+        ///      connect, then this branch can do the lookup against it.
         /// </summary>
-        private static string ToPlayerId(string steamId) => $"Steam_{steamId}";
+        private string ResolvePlayerId(string steamId)
+        {
+            var platformId = $"Steam_{steamId}";
+            var online = _playerManager.GetAllOnline()
+                .FirstOrDefault(p => string.Equals(p.PlatformId, platformId, StringComparison.OrdinalIgnoreCase));
+            if (online != null && !string.IsNullOrEmpty(online.PlayerId))
+            {
+                return online.PlayerId;
+            }
+
+            Log.Warning(
+                $"[KitsuneCommand] VoteRewards: player {steamId} is offline at grant time; " +
+                $"using fallback playerId '{platformId}'. If this player has an existing EOS-keyed " +
+                $"points/account record, the grant will land on a separate Steam-keyed row. " +
+                $"Have them log in before the next vote, or merge the two rows manually.");
+            return platformId;
+        }
 
         /// <summary>
         /// Serializes the reward config's payload to a string for the audit log.
