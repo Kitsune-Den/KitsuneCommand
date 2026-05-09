@@ -11,11 +11,12 @@ import {
 } from '@/api/settings'
 import { getVoteSettings, updateVoteSettings } from '@/api/bloodmoonvote'
 import { getVoteRewardsSettings, updateVoteRewardsSettings, getVoteGrants } from '@/api/voterewards'
+import { getRestartSettings, updateRestartSettings, triggerRestartNow } from '@/api/restart'
 import { getTicketSettings, updateTicketSettings } from '@/api/tickets'
 import { getDiscordSettings, updateDiscordSettings, getDiscordStatus, testDiscordConnection } from '@/api/discord'
 import { restartServer } from '@/api/serverControl'
 import type { UserResponse, CreateUserRequest } from '@/api/users'
-import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings, TicketSettings, DiscordSettings, DiscordStatus, VoteRewardsSettings, VoteGrant } from '@/types'
+import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings, TicketSettings, DiscordSettings, DiscordStatus, VoteRewardsSettings, VoteGrant, GracefulRestartSettings } from '@/types'
 import { VOTE_REWARD_TYPE } from '@/types'
 import { usePermissions } from '@/composables/usePermissions'
 import { useToast } from 'primevue/usetoast'
@@ -498,6 +499,84 @@ async function handleSaveVoteRewards() {
   }
 }
 
+// ---- Server Restart Tab ----
+//
+// Backed by GracefulRestartFeature. Daily countdown + manual "Restart Now".
+// The warning ladder is editable inline — admins can add/remove steps.
+// The 0-minute step is the final "going down now" line.
+const restartSettings = ref<GracefulRestartSettings>({
+  enabled: false,
+  scheduledTime: '04:00',
+  scheduledTimezone: 'America/Los_Angeles',
+  warningLadder: [],
+})
+const loadingRestart = ref(false)
+const savingRestart = ref(false)
+const triggeringRestart = ref(false)
+const restartLeadMinutes = ref(10)
+
+async function fetchRestartSettings() {
+  loadingRestart.value = true
+  try {
+    restartSettings.value = await getRestartSettings()
+    // Sort the ladder descending so the UI presents it in the order it actually fires.
+    restartSettings.value.warningLadder = (restartSettings.value.warningLadder || [])
+      .slice()
+      .sort((a, b) => b.minutesBefore - a.minutesBefore)
+    // Reasonable default for "Restart Now" lead-time: longest configured step.
+    if (restartSettings.value.warningLadder.length > 0) {
+      restartLeadMinutes.value = restartSettings.value.warningLadder[0].minutesBefore
+    }
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadRestart'), life: 3000 })
+  } finally {
+    loadingRestart.value = false
+  }
+}
+
+function addRestartStep() {
+  restartSettings.value.warningLadder.push({
+    minutesBefore: 0,
+    message: 'New step — edit me. Use {minutes} for the count.',
+    colorHex: 'FFFFFF',
+  })
+}
+
+function removeRestartStep(idx: number) {
+  restartSettings.value.warningLadder.splice(idx, 1)
+}
+
+async function handleSaveRestart() {
+  savingRestart.value = true
+  try {
+    // Re-sort descending before persisting so the backend gets a tidy ladder.
+    restartSettings.value.warningLadder = restartSettings.value.warningLadder
+      .slice()
+      .sort((a, b) => b.minutesBefore - a.minutesBefore)
+    await updateRestartSettings(restartSettings.value)
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.serverRestartSaved'), life: 3000 })
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
+  } finally {
+    savingRestart.value = false
+  }
+}
+
+async function handleRestartNow() {
+  if (!confirm(t('settings.serverRestartConfirmGo'))) return
+  triggeringRestart.value = true
+  try {
+    const message = await triggerRestartNow(restartLeadMinutes.value)
+    toast.add({ severity: 'success', summary: t('common.success'), detail: message || t('settings.serverRestartTriggered'), life: 5000 })
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToTriggerRestart')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 5000 })
+  } finally {
+    triggeringRestart.value = false
+  }
+}
+
 // ---- Tickets Tab ----
 const ticketSettings = ref<TicketSettings>({
   enabled: true,
@@ -650,6 +729,7 @@ onMounted(() => {
     fetchDiscordSettings()
     fetchVoteRewardsSettings()
     fetchVoteGrants()
+    fetchRestartSettings()
   }
 })
 </script>
@@ -670,6 +750,7 @@ onMounted(() => {
         <Tab v-if="isAdmin" value="7">{{ t('settings.tickets') }}</Tab>
         <Tab v-if="isAdmin" value="8">Discord</Tab>
         <Tab v-if="isAdmin" value="9">{{ t('settings.voteRewards') }}</Tab>
+        <Tab v-if="isAdmin" value="10">{{ t('settings.serverRestart') }}</Tab>
       </TabList>
       <TabPanels>
         <!-- Account Tab -->
@@ -1440,6 +1521,100 @@ onMounted(() => {
             </div>
           </div>
         </TabPanel>
+
+        <!-- Server Restart Tab -->
+        <TabPanel v-if="isAdmin" value="10">
+          <div v-if="loadingRestart" class="loading-state">{{ t('settings.loadingSettings') }}</div>
+          <div v-else class="settings-section restart-grid">
+            <!-- LEFT: schedule + ladder editor -->
+            <div class="restart-col">
+              <Card class="settings-card">
+                <template #title>{{ t('settings.serverRestartTitle') }}</template>
+                <template #subtitle>{{ t('settings.serverRestartSubtitle') }}</template>
+                <template #content>
+                  <div class="toggle-row">
+                    <label>{{ t('settings.serverRestartEnable') }}</label>
+                    <ToggleSwitch v-model="restartSettings.enabled" />
+                  </div>
+                  <small class="settings-hint">{{ t('settings.serverRestartEnableHint') }}</small>
+
+                  <div class="restart-time-grid">
+                    <div class="form-group">
+                      <label class="form-label">{{ t('settings.serverRestartTime') }}</label>
+                      <InputText v-model="restartSettings.scheduledTime" class="form-input" placeholder="04:00" />
+                      <small class="settings-hint">{{ t('settings.serverRestartTimeHint') }}</small>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label">{{ t('settings.serverRestartTimezone') }}</label>
+                      <InputText v-model="restartSettings.scheduledTimezone" class="form-input" placeholder="America/Los_Angeles" />
+                      <small class="settings-hint">{{ t('settings.serverRestartTimezoneHint') }}</small>
+                    </div>
+                  </div>
+                </template>
+              </Card>
+
+              <Card class="settings-card">
+                <template #title>{{ t('settings.serverRestartLadder') }}</template>
+                <template #subtitle>{{ t('settings.serverRestartLadderSubtitle') }}</template>
+                <template #content>
+                  <table class="ladder-table">
+                    <thead>
+                      <tr>
+                        <th class="ladder-col-min">{{ t('settings.serverRestartColMinutes') }}</th>
+                        <th>{{ t('settings.serverRestartColMessage') }}</th>
+                        <th class="ladder-col-color">{{ t('settings.serverRestartColColor') }}</th>
+                        <th class="ladder-col-actions"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(_step, idx) in restartSettings.warningLadder" :key="`step-${idx}`">
+                        <td><InputNumber v-model="restartSettings.warningLadder[idx].minutesBefore" :min="0" :max="1440" class="ladder-input-num" /></td>
+                        <td><InputText v-model="restartSettings.warningLadder[idx].message" class="ladder-input-msg" /></td>
+                        <td><InputText v-model="restartSettings.warningLadder[idx].colorHex" class="ladder-input-color" maxlength="6" /></td>
+                        <td>
+                          <Button icon="pi pi-trash" severity="danger" text rounded :aria-label="t('settings.serverRestartRemoveStep')" @click="removeRestartStep(idx)" />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <Button :label="t('settings.serverRestartAddStep')" icon="pi pi-plus" text size="small" @click="addRestartStep" class="ladder-add-btn" />
+                </template>
+              </Card>
+
+              <Button
+                :label="t('settings.saveSettings')"
+                icon="pi pi-save"
+                @click="handleSaveRestart"
+                :loading="savingRestart"
+                severity="info"
+                class="save-btn"
+              />
+            </div>
+
+            <!-- RIGHT: manual Restart Now -->
+            <div class="restart-col">
+              <Card class="settings-card">
+                <template #title>{{ t('settings.serverRestartNow') }}</template>
+                <template #subtitle>{{ t('settings.serverRestartNowSubtitle') }}</template>
+                <template #content>
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.serverRestartLeadMinutes') }}</label>
+                    <InputNumber v-model="restartLeadMinutes" :min="0" :max="1440" class="form-input" />
+                    <small class="settings-hint">{{ t('settings.serverRestartLeadHint') }}</small>
+                  </div>
+                  <Button
+                    :label="t('settings.serverRestartGo')"
+                    icon="pi pi-power-off"
+                    severity="danger"
+                    @click="handleRestartNow"
+                    :loading="triggeringRestart"
+                  />
+                </template>
+              </Card>
+            </div>
+          </div>
+        </TabPanel>
       </TabPanels>
     </Tabs>
 
@@ -1738,6 +1913,66 @@ onMounted(() => {
   min-width: 0;
 }
 
+/* Server Restart tab: same 2-col shape — schedule + ladder editor on the
+   left, the standalone "Restart Now" trigger on the right where it stays
+   visible while you scroll the ladder. */
+.restart-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.restart-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.restart-time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+}
+
+/* Inline ladder-editor table. Compact, mostly text + number inputs. */
+.ladder-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ladder-table th,
+.ladder-table td {
+  padding: 0.4rem 0.4rem 0.4rem 0;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.ladder-table th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--kc-text-secondary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--kc-border, rgba(255, 255, 255, 0.08));
+}
+
+.ladder-col-min { width: 90px; }
+.ladder-col-color { width: 110px; }
+.ladder-col-actions { width: 40px; }
+
+.ladder-input-num,
+.ladder-input-msg,
+.ladder-input-color {
+  width: 100%;
+}
+
+.ladder-add-btn {
+  margin-top: 0.5rem;
+}
+
 /* Vote Rewards: dense 2-col layout for provider config blocks. The toggle,
    API key, and broadcast template span the full row; everything else fits
    in pairs (Server ID + Poll Interval, Reward Type + reward-value field). */
@@ -1772,6 +2007,8 @@ onMounted(() => {
   .discord-events-grid { grid-template-columns: 1fr; }
   .vote-provider-grid { grid-template-columns: 1fr; }
   .vote-rewards-grid { grid-template-columns: 1fr; }
+  .restart-grid { grid-template-columns: 1fr; }
+  .restart-time-grid { grid-template-columns: 1fr; }
 }
 
 /* The vote-rewards-grid uses bigger cards, so collapse to single col earlier
