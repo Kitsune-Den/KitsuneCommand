@@ -1,6 +1,7 @@
 import { createI18n } from 'vue-i18n'
 import en from './locales/en'
 import de from './locales/de'
+import fr from './locales/fr'
 import zhCN from './locales/zh-CN'
 import zhTW from './locales/zh-TW'
 import ja from './locales/ja'
@@ -9,6 +10,7 @@ import ko from './locales/ko'
 export const SUPPORTED_LOCALES = [
   { code: 'en', name: 'English' },
   { code: 'de', name: 'Deutsch' },
+  { code: 'fr', name: 'Français' },
   { code: 'zh-CN', name: '简体中文' },
   { code: 'zh-TW', name: '繁體中文' },
   { code: 'ja', name: '日本語' },
@@ -30,6 +32,7 @@ function getSavedLocale(): LocaleCode {
   if (browserLang.startsWith('ja')) return 'ja'
   if (browserLang.startsWith('ko')) return 'ko'
   if (browserLang.startsWith('de')) return 'de'
+  if (browserLang.startsWith('fr')) return 'fr'
   return 'en'
 }
 
@@ -40,6 +43,7 @@ const i18n = createI18n({
   messages: {
     en,
     de,
+    fr,
     'zh-CN': zhCN,
     'zh-TW': zhTW,
     ja,
