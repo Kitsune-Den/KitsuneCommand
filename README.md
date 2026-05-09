@@ -41,6 +41,7 @@ KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that pr
 - **Points & Store** — In-game economy with sign-in rewards and a configurable shop
 - **CD Keys** — Promo code system with items, commands, expiry, and redemption limits
 - **VIP Gifts** — One-time or repeating (daily/weekly/monthly) reward packages per player
+- **Vote-for-Rewards** — Pluggable integration with server-listing sites (7daystodie-servers.com first; gtop100, top-7daystodieservers, etc. slot in as one class each). Idempotent grants via `/vote` chat command or background sweep, with audit log
 - **Purchase History** — Full audit trail of store transactions
 
 ### Game Systems
@@ -51,13 +52,15 @@ KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that pr
 
 ### Server Management (Self-Hoster Tools)
 - **Server Control** — Save world, shutdown server, live resource monitoring
+- **Graceful Restart** — Schedule daily restarts with player-friendly in-game countdown warnings. Configurable warning ladder, IANA-timezone schedule (DST-aware), and a `krestart` console command for one-off restarts
 - **Config Editor** — Edit `serverconfig.xml` with a rich form UI (10 grouped categories) or raw XML
 - **Mods Manager** — Browse, upload (ZIP), delete, and enable/disable server mods
 - **Auto Backup** — Create, restore, delete, and schedule world save backups
+- **Trader Zone Toggle** — Temporarily disable trader area block protection from the panel or via the `ktrader` console command, for cleanup runs without losing the protection long-term
 - **Plugin System** — Extend functionality with custom plugin DLLs
 
 ### Localization
-- **5 Languages** — English, Japanese, Korean, Chinese Simplified, Chinese Traditional
+- **8 Languages** — English, German, French, Spanish, Japanese, Korean, Chinese Simplified, Chinese Traditional. Browser-language auto-detect picks the right one on first visit; switch any time from the sidebar
 
 ## Screenshots
 
