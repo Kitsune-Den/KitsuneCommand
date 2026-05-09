@@ -70,6 +70,7 @@ const ja: Messages = {
     live: 'オンライン',
     offline: 'オフライン',
     logout: 'ログアウト',
+    broadcastsHint: 'Note: in-game broadcast messages (vote thanks, restart warnings, etc.) are stored as-is and don\'t auto-translate when the panel language changes.',
   },
 
   login: {
