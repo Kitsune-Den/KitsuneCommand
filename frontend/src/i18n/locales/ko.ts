@@ -70,6 +70,7 @@ const ko: Messages = {
     live: '온라인',
     offline: '오프라인',
     logout: '로그아웃',
+    broadcastsHint: 'Note: in-game broadcast messages (vote thanks, restart warnings, etc.) are stored as-is and don\'t auto-translate when the panel language changes.',
   },
 
   login: {

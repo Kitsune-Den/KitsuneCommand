@@ -149,7 +149,10 @@ onUnmounted(() => {
       </nav>
 
       <div class="sidebar-footer">
-        <!-- Language switcher -->
+        <!-- Language switcher. The :title on both variants surfaces a hint
+             that in-game broadcast messages (vote-thanks, restart warnings,
+             etc.) stay in whatever language they were saved in — switching
+             panel language only translates the panel UI itself. -->
         <div class="lang-switcher" v-if="!sidebarCollapsed">
           <Select
             v-model="selectedLocale"
@@ -157,6 +160,7 @@ onUnmounted(() => {
             optionLabel="label"
             optionValue="value"
             class="lang-select"
+            :title="t('layout.broadcastsHint')"
           />
         </div>
         <Button
@@ -167,7 +171,7 @@ onUnmounted(() => {
           severity="secondary"
           @click="cycleLocale"
           class="lang-cycle-btn"
-          :title="SUPPORTED_LOCALES[localeIndex]?.name"
+          :title="`${SUPPORTED_LOCALES[localeIndex]?.name} — ${t('layout.broadcastsHint')}`"
         />
 
         <!-- Connection indicator -->

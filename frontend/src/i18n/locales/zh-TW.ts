@@ -70,6 +70,7 @@ const zhTW: Messages = {
     live: '線上',
     offline: '離線',
     logout: '登出',
+    broadcastsHint: 'Note: in-game broadcast messages (vote thanks, restart warnings, etc.) are stored as-is and don\'t auto-translate when the panel language changes.',
   },
 
   login: {
