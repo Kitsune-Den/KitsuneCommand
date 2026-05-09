@@ -306,6 +306,21 @@ export interface VoteGrant {
   notes: string | null
 }
 
+// ─── Graceful Restart Types ──────────────────────────────
+
+export interface RestartWarning {
+  minutesBefore: number
+  message: string
+  colorHex: string
+}
+
+export interface GracefulRestartSettings {
+  enabled: boolean
+  scheduledTime: string         // "HH:mm"
+  scheduledTimezone: string     // IANA tz name e.g. "America/Los_Angeles"
+  warningLadder: RestartWarning[]
+}
+
 // ─── CD Key Types ────────────────────────────────────
 
 export interface CdKey {
