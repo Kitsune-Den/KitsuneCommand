@@ -13,6 +13,15 @@ namespace KitsuneCommand.Services
     /// <summary>
     /// Manages world save backups: create, restore, delete, and schedule auto-backups.
     /// Stores backup metadata in SQLite for the management UI.
+    ///
+    /// Connection lifetime note: <see cref="DbConnectionFactory.CreateConnection"/>
+    /// returns an *already-opened* connection. Do NOT call <c>conn.Open()</c> again
+    /// inside the using block. The custom-built System.Data.SQLite that ships with
+    /// this mod silently drops subsequent INSERT/UPDATE statements when Open is
+    /// invoked twice — no exception is thrown, the controller returns 200, but no
+    /// row ends up in the table. (Reads happen to keep working, which is why the
+    /// bug went unnoticed long enough to ship a UI for the feature.) Always trust
+    /// the factory to return a ready-to-use connection.
     /// </summary>
     public class BackupService
     {
@@ -105,7 +114,6 @@ namespace KitsuneCommand.Services
             // Save to database
             using (var conn = _db.CreateConnection())
             {
-                conn.Open();
                 Dapper.SqlMapper.Execute(conn,
                     @"INSERT INTO backups (filename, world_name, size_bytes, created_at, backup_type, notes)
                       VALUES (@Filename, @WorldName, @SizeBytes, @CreatedAt, @BackupType, @Notes)",
@@ -167,7 +175,6 @@ namespace KitsuneCommand.Services
             // Delete record
             using (var conn = _db.CreateConnection())
             {
-                conn.Open();
                 Dapper.SqlMapper.Execute(conn,
                     "DELETE FROM backups WHERE id = @Id",
                     new { Id = backupId });
@@ -181,7 +188,6 @@ namespace KitsuneCommand.Services
         {
             using (var conn = _db.CreateConnection())
             {
-                conn.Open();
                 return Dapper.SqlMapper.Query<BackupRecord>(conn,
                     "SELECT id as Id, filename as Filename, world_name as WorldName, size_bytes as SizeBytes, " +
                     "created_at as CreatedAt, backup_type as BackupType, notes as Notes " +
@@ -197,7 +203,6 @@ namespace KitsuneCommand.Services
         {
             using (var conn = _db.CreateConnection())
             {
-                conn.Open();
                 return Dapper.SqlMapper.QueryFirstOrDefault<BackupRecord>(conn,
                     "SELECT id as Id, filename as Filename, world_name as WorldName, size_bytes as SizeBytes, " +
                     "created_at as CreatedAt, backup_type as BackupType, notes as Notes " +
@@ -228,8 +233,7 @@ namespace KitsuneCommand.Services
             {
                 using (var conn = _db.CreateConnection())
                 {
-                    conn.Open();
-                    var json = Dapper.SqlMapper.QueryFirstOrDefault<string>(conn,
+                        var json = Dapper.SqlMapper.QueryFirstOrDefault<string>(conn,
                         "SELECT value FROM settings WHERE name = 'backup_settings'");
 
                     if (!string.IsNullOrEmpty(json))
@@ -246,7 +250,6 @@ namespace KitsuneCommand.Services
         {
             using (var conn = _db.CreateConnection())
             {
-                conn.Open();
                 var json = Newtonsoft.Json.JsonConvert.SerializeObject(_settings);
                 Dapper.SqlMapper.Execute(conn,
                     @"INSERT OR REPLACE INTO settings (name, value) VALUES ('backup_settings', @Value)",
