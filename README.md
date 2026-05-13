@@ -55,6 +55,7 @@ KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that pr
 - **Graceful Restart** — Schedule daily restarts with player-friendly in-game countdown warnings. Configurable warning ladder, IANA-timezone schedule (DST-aware), and a `krestart` console command for one-off restarts
 - **Config Editor** — Edit `serverconfig.xml` with a rich form UI (10 grouped categories) or raw XML
 - **Mods Manager** — Browse, upload (ZIP), delete, and enable/disable server mods
+- **Modpack** — Bundle installed mods into a single zip players can download from the login page (no panel account required). Draft / Publish / Archive lifecycle with a top-right download CTA on login
 - **Auto Backup** — Create, restore, delete, and schedule world save backups
 - **Trader Zone Toggle** — Temporarily disable trader area block protection from the panel or via the `ktrader` console command, for cleanup runs without losing the protection long-term
 - **Plugin System** — Extend functionality with custom plugin DLLs
