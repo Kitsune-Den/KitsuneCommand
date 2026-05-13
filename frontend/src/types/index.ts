@@ -265,6 +265,47 @@ export interface ChatCommandSettings {
   voteCooldownSeconds: number
 }
 
+// ─── Modpack Types ───────────────────────────────────
+
+export type ModpackStatus = 'draft' | 'published' | 'archived'
+
+export interface Modpack {
+  id: number
+  name: string
+  version: string
+  status: ModpackStatus
+  filename: string | null
+  sizeBytes: number
+  modCount: number
+  modList: string             // JSON string of mod folder names
+  description: string | null
+  createdAt: string
+  updatedAt: string
+  downloadCount: number
+}
+
+export interface ModpackInstalledMod {
+  name: string                // folder name
+  displayName: string
+  version: string
+}
+
+/** Admin-facing state envelope returned by GET /api/modpack. */
+export interface ModpackState {
+  modpack: Modpack | null
+  modList: string[]           // parsed-out folder names included in the pack
+  installedMods: ModpackInstalledMod[]
+}
+
+/** Public-facing trimmed envelope returned by GET /api/modpack/public. */
+export interface PublicModpack {
+  name: string
+  version: string
+  sizeBytes: number
+  modCount: number
+  description: string | null
+}
+
 // ─── Vote Rewards Types ──────────────────────────────
 
 /** Reward delivery shape — mirrors the C# VoteRewardType static class. */
