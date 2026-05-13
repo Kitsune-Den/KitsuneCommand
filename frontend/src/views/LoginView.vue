@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from 'vue-i18n'
 import { SUPPORTED_LOCALES, setLocale, type LocaleCode } from '@/i18n'
+import { getPublishedModpack, publicModpackDownloadUrl } from '@/api/modpack'
+import type { PublicModpack } from '@/types'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
@@ -19,6 +21,12 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 
+// Player-facing modpack download CTA. Fetched anonymously; resolves to null
+// (silently) if no pack is published. We export the URL constant rather than
+// fetching the file via axios — the browser handles the streaming download.
+const publishedModpack = ref<PublicModpack | null>(null)
+const modpackDownloadUrl = publicModpackDownloadUrl
+
 const localeOptions = SUPPORTED_LOCALES.map((l) => ({ label: l.name, value: l.code }))
 const selectedLocale = ref(locale.value as string)
 
@@ -26,6 +34,17 @@ function onLocaleChange(val: string) {
   selectedLocale.value = val
   setLocale(val as LocaleCode)
 }
+
+function formatModpackSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
+onMounted(async () => {
+  publishedModpack.value = await getPublishedModpack()
+})
 
 async function handleLogin() {
   if (!username.value || !password.value) {
@@ -50,6 +69,27 @@ async function handleLogin() {
 
 <template>
   <div class="login-container">
+    <!--
+      Modpack download CTA — top-right corner, only renders when admin has
+      published a pack. No auth needed; clicking goes straight to the
+      streamed-zip endpoint. Title attribute shows size + mod count on hover.
+    -->
+    <a
+      v-if="publishedModpack"
+      :href="modpackDownloadUrl"
+      class="modpack-cta"
+      :title="t('modpack.ctaTooltip', {
+        size: formatModpackSize(publishedModpack.sizeBytes),
+        n: publishedModpack.modCount,
+      })"
+    >
+      <i class="pi pi-download modpack-cta-icon" />
+      <span class="modpack-cta-text">
+        <span class="modpack-cta-name">{{ publishedModpack.name }}</span>
+        <span class="modpack-cta-version">v{{ publishedModpack.version }}</span>
+      </span>
+    </a>
+
     <div class="login-card">
       <div class="login-header">
         <img
@@ -231,8 +271,54 @@ async function handleLogin() {
   width: 100%;
 }
 
+/* Top-right modpack download CTA. Pinned to the page corner rather than
+   inside the login card so it's visible even when the card is animating
+   in / out and doesn't compete with the form fields. */
+.modpack-cta {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.95rem;
+  background: var(--kc-bg-card);
+  border: 1px solid var(--kc-border);
+  border-radius: 999px;
+  color: var(--kc-text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.modpack-cta:hover {
+  background: var(--kc-bg-elevated, rgba(255, 255, 255, 0.04));
+  border-color: var(--kc-cyan);
+  color: var(--kc-text-primary, #fff);
+}
+
+.modpack-cta-icon {
+  font-size: 1rem;
+  color: var(--kc-cyan);
+}
+
+.modpack-cta-text { display: inline-flex; align-items: baseline; gap: 0.4rem; }
+.modpack-cta-name { font-weight: 600; }
+.modpack-cta-version {
+  font-variant-numeric: tabular-nums;
+  color: var(--kc-text-secondary);
+  font-size: 0.78rem;
+}
+
 @media (max-width: 640px) {
   .login-card { padding: 1.5rem; margin: 1rem; }
   .login-title { font-size: 1.5rem; }
+  .modpack-cta {
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.78rem;
+  }
 }
 </style>
