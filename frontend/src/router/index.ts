@@ -57,6 +57,14 @@ const router = createRouter({
           component: () => import('@/views/ModsView.vue'),
         },
         {
+          // PackRelay publish surface. Sits next to /mods because
+          // it builds on the same Modpack record (KC's existing
+          // modpack feature feeds the bundle's mod-folder list).
+          path: 'packrelay',
+          name: 'PackRelay',
+          component: () => import('@/views/PackRelayView.vue'),
+        },
+        {
           path: 'backups',
           name: 'Backups',
           component: () => import('@/views/BackupsView.vue'),
