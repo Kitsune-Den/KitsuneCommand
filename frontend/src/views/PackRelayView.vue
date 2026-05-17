@@ -513,10 +513,20 @@ function formatBytes(n: number): string {
 /* Match the rest of the panel's spacing + typography. KC's global
  * stylesheet provides `.page-title`, `.settings-card`, `.form-group`,
  * `.form-label`, `.form-input`, and the `--kc-*` color tokens; this
- * scoped block adds the PackRelay-specific bits on top. */
+ * scoped block adds the PackRelay-specific bits on top + bumps a few
+ * defaults that were too dim on the KC dark theme. */
 .packrelay-view {
   padding: 1.5rem;
   max-width: 760px;
+}
+
+/* The global .page-title rule in other views doesn't set a color, so
+ * it inherits whatever cascade hits — which on this view ended up
+ * reading as muted because PrimeVue's defaults bleed in. Pin to the
+ * primary text token + give the H1 some weight. */
+.packrelay-view :deep(.page-title) {
+  color: var(--kc-text-primary);
+  font-weight: 700;
 }
 
 .page-header {
@@ -528,6 +538,29 @@ function formatBytes(n: number): string {
   color: var(--kc-text-secondary);
   font-size: 0.875rem;
   line-height: 1.5;
+}
+
+/* PrimeVue Card title — the slot-rendered `<template #title>` lands
+ * as a .p-card-title element. Default styling inherits PrimeVue's
+ * own color, which on KC's dark theme washes out at ~3:1 contrast.
+ * Force it to --kc-text-primary + a heavier weight so "Publisher
+ * credentials" / "Publish to PackRelay" read as actual section
+ * headers, not whispered annotations. */
+.packrelay-view :deep(.p-card-title) {
+  color: var(--kc-text-primary);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+/* Field labels in this view used to inherit KC's convention of
+ * `--kc-text-secondary` (#9aa0a6). At ~3:1 against #1a2332 that's
+ * legible-but-strained. Bump to --kc-text-primary so labels read as
+ * confidently as values. Hints (.field-hint) stay secondary so the
+ * label/hint hierarchy stays visible. */
+.packrelay-view :deep(.form-label) {
+  color: var(--kc-text-primary);
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 /* Force visible separation between the two cards. Default Card has
@@ -560,7 +593,11 @@ function formatBytes(n: number): string {
 }
 
 .meta-label {
-  color: var(--kc-text-secondary);
+  /* Inline-prefix labels like "Key ID:" + "Fingerprint:". Bumping
+   * to primary so the label reads as part of the data row, not as
+   * a half-faded subtitle. */
+  color: var(--kc-text-primary);
+  font-weight: 500;
 }
 
 .meta-value {
