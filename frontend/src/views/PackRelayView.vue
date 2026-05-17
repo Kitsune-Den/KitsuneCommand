@@ -540,6 +540,24 @@ function formatBytes(n: number): string {
   line-height: 1.5;
 }
 
+/* PrimeVue Card background. KC's global.css sets `--p-card-color`
+ * (text) but not `--p-card-background`, so PrimeVue's default
+ * card surface (light/pale) bleeds through. SettingsView dodges
+ * this by setting `.settings-card { background: var(--kc-bg-card) }`
+ * in its SCOPED block — which doesn't cross-pollinate even when
+ * other views reuse the .settings-card class name. Set it here
+ * explicitly so the card chrome matches the rest of KC's dark
+ * theme + the bright text below actually reads.
+ *
+ * `--p-card-background` is the PrimeVue v4 CSS-variable knob;
+ * setting it on the class is enough — no need to touch the
+ * `background` property directly. Border matches the convention. */
+.packrelay-view :deep(.p-card) {
+  --p-card-background: var(--kc-bg-card);
+  background: var(--kc-bg-card);
+  border: 1px solid var(--kc-border);
+}
+
 /* PrimeVue Card title — the slot-rendered `<template #title>` lands
  * as a .p-card-title element. Default styling inherits PrimeVue's
  * own color, which on KC's dark theme washes out at ~3:1 contrast.
