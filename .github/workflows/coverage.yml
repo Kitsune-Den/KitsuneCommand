@@ -1,3 +1,19 @@
+# Coverage uploads to Codecov on every push to main and every PR.
+#
+# Frontend coverage is the only one wired today — vitest produces an
+# lcov report from the existing `npm run test:coverage` (which is just
+# `vitest run --coverage`). Backend coverage would need coverlet on
+# top of dotnet test; not done here because the green-up commit that
+# fixed the test suite is fresh and we want a stable baseline before
+# turning on coverage gates.
+#
+# Tests are also run separately by tests.yml on the same triggers.
+# Both workflows exercise the same vitest run; the duplication is
+# intentional — tests.yml fails fast on a broken build (PR feedback
+# loop), coverage.yml has codecov-action's longer warmup. If/when
+# tests.yml gets retired, this is the workflow to fold its checks
+# into.
+
 name: Coverage
 
 on:
@@ -6,8 +22,17 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-flight runs on the same branch / PR when a new commit lands.
+# Cuts the per-push CI minute count roughly in half on a rapid-iteration
+# branch + makes the "latest run" link in the codecov badge actually
+# reflect the head commit.
+concurrency:
+  group: coverage-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  coverage:
+  frontend:
+    name: Frontend (vitest)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -20,15 +45,37 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          # Cache npm so `npm ci` reuses the previous run's
+          # node_modules tarballs. Saves ~30s on a cold install.
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run tests with coverage
-        run: npm run test:coverage
+        # `npx vitest run --coverage` is the canonical invocation;
+        # `npm run test:coverage` in package.json is a thin wrapper
+        # around the same thing. Inlining keeps one less indirection
+        # the next maintainer has to chase.
+        run: npx vitest run --coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
+          # codecov-action interprets `files:` relative to the repo
+          # root (GITHUB_WORKSPACE), not the job's working-directory.
+          # vitest writes the report to <cwd>/coverage/lcov.info which
+          # is frontend/coverage/lcov.info from the repo root.
           files: ./frontend/coverage/lcov.info
+          flags: frontend
+          # Token-aware: present for private repos / forks that need
+          # an explicit secret; ignored for public-repo tokenless
+          # tier. Adding the line costs nothing and unblocks the
+          # day someone toggles repo visibility.
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # Fail the workflow when coverage upload errors out so a
+          # broken codecov badge doesn't sit green-on-paper while
+          # actually surfacing stale data.
+          fail_ci_if_error: true
           verbose: true
