@@ -13,7 +13,7 @@
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/actions/workflows/tests.yml"><img src="https://github.com/Kitsune-Den/KitsuneCommand/actions/workflows/tests.yml/badge.svg" alt="Tests" /></a>
   <a href="https://codecov.io/gh/Kitsune-Den/KitsuneCommand"><img src="https://img.shields.io/codecov/c/github/Kitsune-Den/KitsuneCommand?label=coverage" alt="Coverage" /></a>
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/releases/latest"><img src="https://img.shields.io/github/v/release/Kitsune-Den/KitsuneCommand?include_prereleases&label=release" alt="Release" /></a>
-  <a href="https://github.com/Kitsune-Den/KitsuneCommand/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Kitsune-Den/KitsuneCommand" alt="License" /></a>
+  <a href="https://github.com/Kitsune-Den/KitsuneCommand/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-PolyForm--NC--1.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/pulls"><img src="https://img.shields.io/github/issues-pr/Kitsune-Den/KitsuneCommand" alt="PRs" /></a>
   <img src="https://img.shields.io/badge/7D2D-V2.0-orange" alt="7 Days to Die V2" />
   <img src="https://img.shields.io/badge/.NET_4.8-C%23_11-purple" alt=".NET 4.8" />
@@ -22,7 +22,7 @@
 
 ---
 
-KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that provides a RESTful API and a modern web management panel. Runs on both **Windows** and **Linux** servers. Built as a clean-room V2 rewrite of [ServerKit](https://github.com/IceCoffee1024/7DaysToDie-ServerKit) with a modern Vue 3 frontend and improved security.
+KitsuneCommand is a source-available mod for 7 Days to Die dedicated servers that provides a RESTful API and a modern web management panel. Licensed under [PolyForm Noncommercial 1.0.0](LICENSE) — read it, fork it, run it on your own server; commercial use needs a separate license. Runs on both **Windows** and **Linux** servers. Built as a clean-room V2 rewrite of [ServerKit](https://github.com/IceCoffee1024/7DaysToDie-ServerKit) with a modern Vue 3 frontend and improved security.
 
 > **Stuck on something?** See [`docs/troubleshooting.md`](docs/troubleshooting.md) — a growing index of prod-only failures we've actually hit, in symptom → cause → fix shape.
 >
