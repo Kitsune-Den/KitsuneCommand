@@ -80,7 +80,23 @@ namespace KitsuneCommand.Services.PackRelay
         }
     }
 
-    public class PackRelayClient : IDisposable
+    /// <summary>
+    /// The publish flow's view of the cloud. Extracted so the
+    /// orchestrator (PackRelayPublishService) can be unit-tested
+    /// against a Moq without standing up an HttpMessageHandler per
+    /// test. PackRelayClient is the production implementation;
+    /// other consumers (admin tooling, future automation) can mock
+    /// freely.
+    /// </summary>
+    public interface IPackRelayClient
+    {
+        Task<bool> BlobExistsAsync(string sha256, CancellationToken ct = default);
+        Task PutBlobAsync(string sha256, Stream content, long size, CancellationToken ct = default);
+        Task UploadBlobAsync(string sha256, Stream content, long size, int chunkBytes = PackRelayClient.DefaultMultipartChunkBytes, CancellationToken ct = default);
+        Task<JObject> PublishVersionAsync(string slug, string signedManifestJson, CancellationToken ct = default);
+    }
+
+    public class PackRelayClient : IPackRelayClient, IDisposable
     {
         /// <summary>
         /// Single-shot upload cap. Vercel platform limit (NOT a
