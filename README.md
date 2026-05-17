@@ -27,6 +27,8 @@ KitsuneCommand is a source-available mod for 7 Days to Die dedicated servers tha
 > **Stuck on something?** See [`docs/troubleshooting.md`](docs/troubleshooting.md) — a growing index of prod-only failures we've actually hit, in symptom → cause → fix shape.
 >
 > **Looking for what changed?** [`CHANGELOG.md`](CHANGELOG.md) — every release distilled to skim-in-a-minute form, with links back to the full release prose on GitHub. Versioning convention + release process: [`docs/RELEASES.md`](docs/RELEASES.md).
+>
+> **Deploying a fresh build to your server?** [`docs/DEPLOYING.md`](docs/DEPLOYING.md) — `tools/deploy.{sh,ps1}` wraps the rsync / scp + chown + systemctl restart dance, preserves `Config/appsettings.json` + `Plugins/` across deploys, surfaces any service-failed-to-start condition.
 
 ## Features
 
