@@ -6,43 +6,108 @@ adheres to a semver-ish versioning convention documented in
 [`docs/RELEASES.md`](docs/RELEASES.md).
 
 For richer release prose (screenshots, migration notes, troubleshooting), see
-the matching [GitHub release](https://github.com/AdaInTheLab/KitsuneCommand/releases).
+the matching [GitHub release](https://github.com/Kitsune-Den/KitsuneCommand/releases).
 This file is the single source of truth that the (future) release workflow
 pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-05-17
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.7.0)
+> · Marquee feature: **Publish to PackRelay.cloud** from the panel,
+> in one click. Plus a sweeping test-suite green-up + license switch
+> to PolyForm Noncommercial 1.0.0.
+
 ### Added
 
-- KC → PackRelay publish path. New **PackRelay** sidebar entry lets server
-  owners publish a curated modpack to packrelay.cloud — signed manifest,
-  content-addressed file uploads, idempotent re-runs. Five stages: C# crypto
-  primitives (canonical-JSON + Ed25519 + SHA-256), HTTP client, publish
-  orchestrator, encrypted credentials at rest (AES-256-CBC + HMAC-SHA256),
-  controller + Vue tab with live progress. (#129, #130, #131, #132, #133)
-- `KitsuneCommand.csproj` now copies `x64/sqlite3.dll` to the build output,
-  unblocking 32 previously-failing DB-backed integration tests on the test
-  runner.
-- `TestAssemblySetUp.cs` preloads `x64/sqlite3.dll` via `LoadLibrary` so
-  `[DllImport("sqlite3")]` resolves under net48 testhost — mirrors what
-  `ModEntry.cs` does at production runtime.
+- **Publish to PackRelay** — new **PackRelay** sidebar entry lets
+  server owners publish a curated modpack to packrelay.cloud:
+  signed manifest, content-addressed file uploads, idempotent
+  re-runs, live progress UI. Five backend stages — C# crypto
+  primitives (canonical-JSON + Ed25519 + SHA-256), HTTP client,
+  publish orchestrator with parallel uploads, encrypted credentials
+  at rest (AES-256-CBC + HMAC-SHA256), controller + Vue tab. 75
+  new NUnit cases between them. (PR #66, kanban #129–#133)
+- **`CHANGELOG.md`** at repo root, keep-a-changelog 1.1.0 format —
+  every release distilled to skim-in-a-minute form with links back
+  to the full GitHub release prose. Backfilled v2.0.0 through
+  v2.6.4. (PR #66, kanban #137)
+- **`docs/RELEASES.md`** documenting the MAJOR.MINOR.PATCH
+  convention (semver-ish with KC-shaped edges), today's manual
+  release process, and the future automated flow path. (PR #66)
+- README pill row — **coverage** badge from Codecov alongside the
+  existing CI / release / license / PRs pills. All badge URLs
+  canonicalized to `Kitsune-Den/KitsuneCommand`. (PRs #70, #71)
+
+### Changed
+
+- **License switched from MIT to PolyForm Noncommercial 1.0.0.**
+  Like MIT (read, fork, modify, redistribute, build on it) with
+  one carve-out: no commercial use. Personal use, research, hobby
+  projects, nonprofits, education, and government use all
+  explicitly permitted. Commercial license available on request.
+  Not OSI-approved by design. README + LICENSE updated; matching
+  changes landed on companion repos (PackRelay Cloud, Kitsunebi
+  Cloud) in parallel. (PR #71)
+- **Coverage workflow refresh** — concurrency cancel-in-progress
+  on the branch/PR ref (cuts duplicate-run CI minutes ~50%), npm
+  cache, codecov-action v4 → v5, token-aware for future
+  visibility-toggle, `fail_ci_if_error: true` so a broken upload
+  doesn't silently leave the badge stale, `flags: frontend` for
+  when backend coverage lands later. (PR #69)
+- **PackRelay panel styling** — switched the new PackRelay view
+  from stock Tailwind utility classes to KC's existing
+  `--kc-text-secondary` / `--kc-bg-card` / `--kc-border` CSS
+  variables. Labels and field hints had been washing out at
+  ~3:1 contrast on the dark theme; now ~5.4:1 (WCAG AA). Cards
+  get a visible 1.5rem gap + internal dividers. (PR #68)
+- **PackRelay sidebar entry** finally lands between Mods and
+  Backups — the route + view shipped in #66 but the `navItems`
+  array wiring was missed; this paints it. (PR #67)
 
 ### Fixed
 
-- `AuthService.ChangePassword` test now asserts against the correct
-  `UpdatePassword(id, hash)` shape. The test had drifted from the production
-  fix that landed earlier (the old `Update(account)` path silently dropped
-  password changes).
+- **`AuthService.ChangePassword` test** asserts against the
+  correct `UpdatePassword(id, hash)` shape. The test had drifted
+  from a production fix that landed earlier — the old
+  `Update(account)` path silently dropped `password_hash`
+  changes; the test was still asserting the buggy version. (PR #66)
+- **`Mods/KitsuneCommand/x64/sqlite3.dll` now copies to bin output**
+  via a `<None CopyToOutputDirectory>` rule in
+  `KitsuneCommand.csproj`. Plus a new
+  `TestAssemblySetUp.cs` that preloads `x64/sqlite3.dll` via
+  `LoadLibrary` so `[DllImport("sqlite3")]` resolves under net48
+  testhost — mirrors what `ModEntry.cs` does at production
+  runtime. Unblocked 32 previously-failing DB-backed integration
+  tests. (PR #66)
 
 ### Internal
 
-- Test suite went from 32 failed / 30 passed to 177 passed / 0 failed / 3
-  skipped (intentional `[Ignore]` for game-runtime-dependent paths). The
-  3 skips cover paths that need a live 7DTD process to exercise.
+- **Test suite: 32 failed / 30 passed → 0 failed / 177 passed /
+  3 skipped.** Net-new tests breakdown:
+  - 46 PackRelay crypto primitives (RFC 8032 Ed25519 vector,
+    canonical-JSON byte-identical match with the cloud's TS
+    reference, SHA-256 known-vectors, chunk-boundary correctness)
+  - 17 PackRelay HTTP client (mock HttpMessageHandler over every
+    endpoint, multipart chunking, error code passthrough)
+  - 12 PackRelay publish orchestrator (file walking, sidecar
+    exclusion, hash dedup, parallel upload-missing, manifest
+    signature round-trip verify, 409 idempotent soft success)
+  - 29 PackRelay settings storage (AES+HMAC roundtrip, tamper
+    detection at every wire-format segment, no-plaintext-on-disk
+    via raw SQLite read)
+  - 11 publish job tracker (allocation race, defensive snapshots)
+  - Plus the 32 previously-failing DB-backed tests now green via
+    the sqlite preload fix.
+  - 3 skips are intentional `[Ignore]` cases for paths that need
+    a live 7DTD process to exercise.
+- 28 build warnings remain, all in `RuntimeInfoShim` and
+  `build-sqlite` (pre-existing, unrelated to this work).
 
 ## [2.6.4] - 2026-05-13
 
-> [Full notes](https://github.com/AdaInTheLab/KitsuneCommand/releases/tag/v2.6.4)
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.6.4)
 > · Folds v2.6.3 (bumped on main but never tagged) into this release.
 
 ### Added
@@ -81,7 +146,7 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [2.6.2] - 2026-04-30
 
-> [Full notes](https://github.com/AdaInTheLab/KitsuneCommand/releases/tag/v2.6.2)
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.6.2)
 
 ### Added
 
@@ -103,7 +168,7 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [2.6.1] - 2026-04-26
 
-> [Full notes](https://github.com/AdaInTheLab/KitsuneCommand/releases/tag/v2.6.1)
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.6.1)
 > · Patch rollup; especially relevant if running behind Cloudflare Tunnel,
 > on Linux, or with the Discord bot enabled.
 
@@ -140,7 +205,7 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [2.6.0] - 2026-04-23
 
-> [Full notes](https://github.com/AdaInTheLab/KitsuneCommand/releases/tag/v2.6.0)
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.6.0)
 
 ### Added
 
@@ -171,7 +236,7 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [2.5.0] - 2026-04-22
 
-> [Full notes](https://github.com/AdaInTheLab/KitsuneCommand/releases/tag/v2.5.0)
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.5.0)
 
 ### Added
 
@@ -203,7 +268,7 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [2.2.1] - 2026-04-02
 
-> [Full notes](https://github.com/AdaInTheLab/KitsuneCommand/releases/tag/v2.2.1)
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.2.1)
 > · **Critical fix — nobody could log in on v2.2.0.**
 
 ### Fixed
@@ -228,7 +293,7 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [2.2.0] - 2026-03-09
 
-> [Full notes](https://github.com/AdaInTheLab/KitsuneCommand/releases/tag/v2.2.0)
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.2.0)
 >
 > ⚠️ **Login was broken on this release.** See v2.2.1.
 
@@ -252,7 +317,7 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [2.1.0] - 2026-03-06
 
-> [Full notes](https://github.com/AdaInTheLab/KitsuneCommand/releases/tag/v2.1.0)
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.1.0)
 
 ### Added
 
@@ -282,7 +347,7 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [2.0.0] - 2026-03-04
 
-> [Full notes](https://github.com/AdaInTheLab/KitsuneCommand/releases/tag/v2.0.0)
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.0.0)
 
 Clean-room V2 rewrite of [ServerKit](https://github.com/IceCoffee1024/7DaysToDie-ServerKit).
 The 2.0 cut, not a continuation of v1.x.
@@ -322,13 +387,14 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/AdaInTheLab/KitsuneCommand/compare/v2.6.4...HEAD
-[2.6.4]: https://github.com/AdaInTheLab/KitsuneCommand/compare/v2.6.2...v2.6.4
-[2.6.2]: https://github.com/AdaInTheLab/KitsuneCommand/compare/v2.6.1...v2.6.2
-[2.6.1]: https://github.com/AdaInTheLab/KitsuneCommand/compare/v2.6.0...v2.6.1
-[2.6.0]: https://github.com/AdaInTheLab/KitsuneCommand/compare/v2.5.0...v2.6.0
-[2.5.0]: https://github.com/AdaInTheLab/KitsuneCommand/compare/v2.2.1...v2.5.0
-[2.2.1]: https://github.com/AdaInTheLab/KitsuneCommand/compare/v2.2.0...v2.2.1
-[2.2.0]: https://github.com/AdaInTheLab/KitsuneCommand/compare/v2.1.0...v2.2.0
-[2.1.0]: https://github.com/AdaInTheLab/KitsuneCommand/compare/v2.0.0...v2.1.0
-[2.0.0]: https://github.com/AdaInTheLab/KitsuneCommand/releases/tag/v2.0.0
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.6.4...v2.7.0
+[2.6.4]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.6.2...v2.6.4
+[2.6.2]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.6.1...v2.6.2
+[2.6.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.6.0...v2.6.1
+[2.6.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.5.0...v2.6.0
+[2.5.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.2.1...v2.5.0
+[2.2.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.2.0...v2.2.1
+[2.2.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.1.0...v2.2.0
+[2.1.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.0.0...v2.1.0
+[2.0.0]: https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.0.0
