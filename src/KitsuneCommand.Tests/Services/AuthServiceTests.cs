@@ -92,8 +92,18 @@ namespace KitsuneCommand.Tests.Services
             var result = _authService.ChangePassword("admin", "old-password", "new-password");
 
             Assert.That(result, Is.True);
-            _mockRepo.Verify(r => r.Update(It.Is<UserAccount>(a =>
-                PasswordHasher.Verify("new-password", a.PasswordHash))), Times.Once);
+            // AuthService routes through UpdatePassword(id, hash) rather
+            // than Update(account) — see the long-form comment on
+            // AuthService.ChangePassword for the why. Update() only
+            // persists display_name / role / is_active and silently
+            // drops password_hash changes; this test caught the bug
+            // *after* the fix landed (which is why it was failing
+            // against the new — correct — implementation).
+            _mockRepo.Verify(
+                r => r.UpdatePassword(
+                    account.Id,
+                    It.Is<string>(h => PasswordHasher.Verify("new-password", h))),
+                Times.Once);
         }
 
         [Test]

@@ -24,6 +24,8 @@
 KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that provides a RESTful API and a modern web management panel. Runs on both **Windows** and **Linux** servers. Built as a clean-room V2 rewrite of [ServerKit](https://github.com/IceCoffee1024/7DaysToDie-ServerKit) with a modern Vue 3 frontend and improved security.
 
 > **Stuck on something?** See [`docs/troubleshooting.md`](docs/troubleshooting.md) — a growing index of prod-only failures we've actually hit, in symptom → cause → fix shape.
+>
+> **Looking for what changed?** [`CHANGELOG.md`](CHANGELOG.md) — every release distilled to skim-in-a-minute form, with links back to the full release prose on GitHub. Versioning convention + release process: [`docs/RELEASES.md`](docs/RELEASES.md).
 
 ## Features
 

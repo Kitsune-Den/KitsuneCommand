@@ -4,6 +4,7 @@ using KitsuneCommand.Configuration;
 using KitsuneCommand.Data;
 using KitsuneCommand.Features;
 using KitsuneCommand.Services;
+using KitsuneCommand.Services.PackRelay;
 using KitsuneCommand.Web.Auth;
 
 namespace KitsuneCommand.Core
@@ -39,6 +40,14 @@ namespace KitsuneCommand.Core
             builder.RegisterType<DiscordWebhookService>().AsSelf().SingleInstance();
             builder.RegisterType<DiscordBotService>().AsSelf().SingleInstance();
             builder.RegisterType<NexusModDiscoveryService>().AsSelf().SingleInstance();
+
+            // PackRelay publish pipeline. Settings + tracker are both
+            // singletons (settings caches the master key in-process;
+            // tracker holds the active-job mutex). The orchestrator +
+            // client are instantiated per-publish inside the controller
+            // because they're stateless modulo their constructor inputs.
+            builder.RegisterType<PackRelaySettingsService>().AsSelf().SingleInstance();
+            builder.RegisterType<PackRelayPublishJobTracker>().AsSelf().SingleInstance();
 
             // Database connection factory
             builder.Register(c => new DbConnectionFactory(settings.DatabasePath))

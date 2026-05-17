@@ -52,6 +52,20 @@
   <!-- Security -->
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <!--
+      Chaos.NaCl: public-domain port of libsodium's NaCl primitives.
+      Used by the PackRelay publish path (Services/PackRelay/Ed25519Signer.cs)
+      to sign canonical manifests with the publisher's Ed25519 key.
+      Private=true so the DLL lands in bin/ for prod.
+      .NET 4.8 lacks System.Security.Cryptography.Ed25519 (added .NET 8);
+      NSec wants .NET Standard 2.1; BouncyCastle is 3MB of overkill.
+      Same DLL the PackRelayServerTools 7DTD mod ships, kept in sync
+      so any future security fix lands once for both repos.
+    -->
+    <Reference Include="Chaos.NaCl">
+      <HintPath>lib\Chaos.NaCl.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Graphics (map tile rendering) -->
@@ -138,6 +152,17 @@
     <None Include="KitsuneCommand.dll.config" CopyToOutputDirectory="PreserveNewest" />
     <None Include="System.Data.SQLite.dll.config" CopyToOutputDirectory="PreserveNewest" />
     <None Include="SkiaSharp.dll.config" CopyToOutputDirectory="PreserveNewest" />
+    <!--
+      Native sqlite3.dll for Windows tests + dev runs. The mod's prod
+      install path is <7DTD-mods>/KitsuneCommand/x64/sqlite3.dll
+      (laid down by tools/build.{sh,ps1}); for tests we need it in
+      bin/<config>/x64/ so the SetUpFixture in KitsuneCommand.Tests
+      can preload it the same way ModEntry does at mod startup.
+      System.Data.SQLite (source-built with SQLITE_STANDARD) calls
+      [DllImport("sqlite3")]; without this copy, every DB-touching
+      test fails OneTimeSetUp with DllNotFoundException.
+    -->
+    <None Include="x64\sqlite3.dll" Link="x64\sqlite3.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

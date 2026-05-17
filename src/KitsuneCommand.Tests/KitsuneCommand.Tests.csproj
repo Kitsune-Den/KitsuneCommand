@@ -21,6 +21,18 @@
     <ProjectReference Include="..\KitsuneCommand.Abstractions\KitsuneCommand.Abstractions.csproj" />
   </ItemGroup>
 
+  <!--
+    netstandard shim. Required because Chaos.NaCl (referenced from
+    Services/PackRelay/Ed25519Signer.cs) targets netstandard; the
+    net48 testhost won't load it without an explicit netstandard.dll
+    reference forcing the shim into bin/. The main KC project gets
+    this transitively via its other netstandard deps, but the test
+    process has its own resolution and needs it stated directly.
+  -->
+  <ItemGroup>
+    <Reference Include="netstandard" />
+  </ItemGroup>
+
   <!-- Game binaries needed at runtime for types referenced by KitsuneCommand -->
   <ItemGroup>
     <Reference Include="LogLibrary">
