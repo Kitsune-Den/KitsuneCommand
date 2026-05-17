@@ -12,7 +12,26 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
-## [2.7.0] - 2026-05-17
+## [2.7.1] - 2026-05-17
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.7.1)
+> · Patch release — PackRelay panel readability fixes that landed
+> right after v2.7.0 shipped. No backend changes; pure CSS.
+
+### Fixed
+
+- **PackRelay panel — card titles + form labels were washing out** at
+  ~3:1 contrast on the dark theme. Bumped `.page-title`, `.p-card-title`,
+  `.form-label`, and `.meta-label` to `--kc-text-primary` (#e8eaed) so
+  they read at WCAG-AA contrast against the dark card surface. (PR #74)
+- **PackRelay cards rendered on a pale default surface** because
+  KC's `global.css` set `--p-card-color` (text) but never
+  `--p-card-background`, so PrimeVue's stock pale card bled through
+  and made the just-brightened labels invisible. Scoped `:deep(.p-card)`
+  override in `PackRelayView.vue` forces the card background to
+  `--kc-bg-card` with a `--kc-border` outline. (PR #75)
+
+
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.7.0)
 > · Marquee feature: **Publish to PackRelay.cloud** from the panel,
