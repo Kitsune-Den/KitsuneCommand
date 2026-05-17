@@ -36,6 +36,7 @@ const navItems = computed(() => [
   { label: t('nav.console'), icon: 'pi pi-code', route: '/console' },
   { label: t('nav.configEditor'), icon: 'pi pi-file-edit', route: '/config' },
   { label: t('nav.mods'), icon: 'pi pi-box', route: '/mods' },
+  { label: t('nav.packRelay'), icon: 'pi pi-cloud-upload', route: '/packrelay' },
   { label: t('nav.backups'), icon: 'pi pi-cloud-download', route: '/backups' },
   { type: 'divider' },
   { label: t('nav.settings'), icon: 'pi pi-cog', route: '/settings' },
