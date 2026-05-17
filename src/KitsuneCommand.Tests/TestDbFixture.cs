@@ -54,6 +54,14 @@ namespace KitsuneCommand.Tests
 
             // 006_backups.sql
             connection.Execute(Schema006);
+
+            // 011_packrelay.sql — singleton encrypted settings row for
+            // the PackRelay publish flow. Migrations 007-010 are
+            // covered by other tests / aren't needed here, so we
+            // skip directly to 011 (the test DB doesn't need a
+            // continuous-migration property; it just needs the
+            // tables the test under exercise references).
+            connection.Execute(Schema011);
         }
 
         /// <summary>
@@ -328,6 +336,20 @@ CREATE TABLE IF NOT EXISTS backups (
     created_at TEXT NOT NULL,
     backup_type TEXT NOT NULL DEFAULT 'manual',
     notes TEXT
+);
+";
+
+        // Mirrors Config/Migrations/011_packrelay.sql verbatim. Update
+        // both when the schema changes.
+        private const string Schema011 = @"
+CREATE TABLE IF NOT EXISTS pack_relay_settings (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    api_token_encrypted   BLOB,
+    signing_key_encrypted BLOB,
+    signing_key_public    TEXT,
+    public_key_id         TEXT,
+    publisher_slug        TEXT,
+    updated_at            TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ";
 
