@@ -10,10 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/AdaInTheLab/KitsuneCommand/actions/workflows/tests.yml"><img src="https://github.com/AdaInTheLab/KitsuneCommand/actions/workflows/tests.yml/badge.svg" alt="Tests" /></a>
-  <a href="https://github.com/AdaInTheLab/KitsuneCommand/releases/latest"><img src="https://img.shields.io/github/v/release/AdaInTheLab/KitsuneCommand?include_prereleases&label=release" alt="Release" /></a>
-  <a href="https://github.com/AdaInTheLab/KitsuneCommand/blob/main/LICENSE"><img src="https://img.shields.io/github/license/AdaInTheLab/KitsuneCommand" alt="License" /></a>
-  <a href="https://github.com/AdaInTheLab/KitsuneCommand/pulls"><img src="https://img.shields.io/github/issues-pr/AdaInTheLab/KitsuneCommand" alt="PRs" /></a>
+  <a href="https://github.com/Kitsune-Den/KitsuneCommand/actions/workflows/tests.yml"><img src="https://github.com/Kitsune-Den/KitsuneCommand/actions/workflows/tests.yml/badge.svg" alt="Tests" /></a>
+  <a href="https://codecov.io/gh/Kitsune-Den/KitsuneCommand"><img src="https://img.shields.io/codecov/c/github/Kitsune-Den/KitsuneCommand?label=coverage" alt="Coverage" /></a>
+  <a href="https://github.com/Kitsune-Den/KitsuneCommand/releases/latest"><img src="https://img.shields.io/github/v/release/Kitsune-Den/KitsuneCommand?include_prereleases&label=release" alt="Release" /></a>
+  <a href="https://github.com/Kitsune-Den/KitsuneCommand/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Kitsune-Den/KitsuneCommand" alt="License" /></a>
+  <a href="https://github.com/Kitsune-Den/KitsuneCommand/pulls"><img src="https://img.shields.io/github/issues-pr/Kitsune-Den/KitsuneCommand" alt="PRs" /></a>
   <img src="https://img.shields.io/badge/7D2D-V2.0-orange" alt="7 Days to Die V2" />
   <img src="https://img.shields.io/badge/.NET_4.8-C%23_11-purple" alt=".NET 4.8" />
   <img src="https://img.shields.io/badge/Vue_3-TypeScript-blue" alt="Vue 3" />
