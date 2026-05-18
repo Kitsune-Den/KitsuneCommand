@@ -137,26 +137,46 @@ $timestamp = (Get-Date -AsUTC).ToString("yyyy-MM-ddTHH:mm:ssZ")
 $trustComment = "KitsuneCommand release: $zipName signed $timestamp"
 
 try {
-    # Pass the password via MINISIGN_PASSWORD env var (supported since
-    # minisign 0.10, 2021). Cleaner than stdin-piping — no shell
-    # quirks around how PowerShell pipes strings to native commands,
-    # and minisign's stdout/stderr land directly in our GHA log so
-    # we see the real error if one happens.
-    if ($env:KC_MINISIGN_PRIVATE_KEY_PASSWORD) {
+    # Resolve password. Preferred path: the workflow YAML sets
+    # MINISIGN_PASSWORD directly from the secret. Fallback: the
+    # script promotes KC_MINISIGN_PRIVATE_KEY_PASSWORD if MINISIGN_PASSWORD
+    # isn't set (e.g. running locally). Either way minisign reads
+    # MINISIGN_PASSWORD via getenv() at sign time (supported since
+    # minisign 0.10, 2021).
+    if (-not $env:MINISIGN_PASSWORD -and $env:KC_MINISIGN_PRIVATE_KEY_PASSWORD) {
         $env:MINISIGN_PASSWORD = $env:KC_MINISIGN_PRIVATE_KEY_PASSWORD
     }
+    if (-not $env:MINISIGN_PASSWORD) {
+        Write-Error @"
+[sign-release] Password env var not set.
+Neither MINISIGN_PASSWORD nor KC_MINISIGN_PRIVATE_KEY_PASSWORD found
+in the calling environment. In CI, check that the
+KC_MINISIGN_PRIVATE_KEY_PASSWORD GitHub secret is configured at:
+  https://github.com/Kitsune-Den/KitsuneCommand/settings/secrets/actions
+Without a password env var, minisign falls back to an interactive
+prompt that fails on CI (no TTY) — observed as 'Password: get_password()'
+in the log.
+"@
+    }
+
+    # Diagnostic: confirm the env var IS set going into minisign
+    # without revealing the password itself. Just a "set" / "EMPTY"
+    # signal (NOT length, NOT prefix) so future failures point at
+    # the right thing.
+    $pwState = if ($env:MINISIGN_PASSWORD) { "set" } else { "EMPTY" }
+    Write-Host "[sign-release] MINISIGN_PASSWORD env: $pwState"
+
     & minisign -Sm $zipFull -s $keyPath -t $trustComment -x $sigPath
     if ($LASTEXITCODE -ne 0) {
         Write-Error "[sign-release] minisign exited $LASTEXITCODE. See docs/SIGNING.md § Common failure modes."
     }
 } finally {
-    # Always clean up. Both the temp key file (if we made one) and
-    # the password env var so it doesn't leak into subsequent steps.
+    # Always clean up. The temp key file goes away; the env var is
+    # only unset if WE set it (don't clobber a workflow-set value
+    # that downstream steps might rely on — though there shouldn't
+    # be any in practice).
     if ($keyIsTemp -and (Test-Path $keyPath)) {
         Remove-Item -Force $keyPath
-    }
-    if ($env:MINISIGN_PASSWORD) {
-        Remove-Item Env:\MINISIGN_PASSWORD -ErrorAction SilentlyContinue
     }
 }
 
