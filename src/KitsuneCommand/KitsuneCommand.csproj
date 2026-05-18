@@ -100,27 +100,27 @@
   <!-- Game Binary References (sourced from local 7D2D install) -->
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
-      <HintPath>7dtd-binaries\Assembly-CSharp.dll</HintPath>
+      <HintPath>refs\Assembly-CSharp.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>7dtd-binaries\Assembly-CSharp-firstpass.dll</HintPath>
+      <HintPath>refs\Assembly-CSharp-firstpass.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="LogLibrary">
-      <HintPath>7dtd-binaries\LogLibrary.dll</HintPath>
+      <HintPath>refs\LogLibrary.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>7dtd-binaries\UnityEngine.dll</HintPath>
+      <HintPath>refs\UnityEngine.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>7dtd-binaries\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>refs\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>7dtd-binaries\0Harmony.dll</HintPath>
+      <HintPath>refs\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

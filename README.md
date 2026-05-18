@@ -185,7 +185,8 @@ KitsuneCommand/
 │   │   ├── Web/                      # Controllers, auth, models
 │   │   ├── WebSocket/                # Real-time event broadcasting
 │   │   ├── Config/Migrations/        # SQL migration files (001-006)
-│   │   └── 7dtd-binaries/            # Game DLLs (gitignored, see below)
+│   │   ├── 7dtd-binaries/            # Real game DLLs (gitignored, dev-only)
+│   │   └── refs/                     # Stripped reference assemblies (tracked, used by build)
 │   ├── KitsuneCommand.Abstractions/  # Plugin API interfaces
 │   ├── KitsuneCommand.Tests/         # NUnit test project
 │   └── RuntimeInfoShim/              # .NET compatibility shim
@@ -213,13 +214,7 @@ KitsuneCommand/
 
 1. [.NET SDK 8.0+](https://dotnet.microsoft.com/download)
 2. [Node.js 18+](https://nodejs.org/)
-3. Game binary references — copy these from your 7D2D install's `7DaysToDie_Data/Managed/` folder into `src/KitsuneCommand/7dtd-binaries/`:
-   - `Assembly-CSharp.dll`
-   - `Assembly-CSharp-firstpass.dll`
-   - `LogLibrary.dll`
-   - `UnityEngine.dll`
-   - `UnityEngine.CoreModule.dll`
-   - `0Harmony.dll`
+3. **You do not need a 7DTD install to build.** Stripped reference assemblies for the six game DLLs we compile against (`Assembly-CSharp`, `Assembly-CSharp-firstpass`, `LogLibrary`, `UnityEngine`, `UnityEngine.CoreModule`, `0Harmony`) live committed at [`src/KitsuneCommand/refs/`](src/KitsuneCommand/refs/). See [`docs/REFERENCE-ASSEMBLIES.md`](docs/REFERENCE-ASSEMBLIES.md) for what these are + how they're regenerated when 7DTD updates.
 
 ### Frontend
 
