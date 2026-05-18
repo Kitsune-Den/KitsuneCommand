@@ -33,11 +33,18 @@ dotnet build "src/$modName/$modName.csproj" -c $Configuration
 # Copy mod files
 Write-Host "`n--- Packaging Mod ---" -ForegroundColor Yellow
 $binDir = "src/$modName/bin/$Configuration"
+$srcDir = "src/$modName"
 Copy-Item "$binDir/*.dll" $modDir
-Copy-Item "$binDir/$modName.dll.config" $modDir
-Copy-Item "$binDir/System.Data.SQLite.dll.config" $modDir
-Copy-Item "$binDir/SkiaSharp.dll.config" $modDir
-Copy-Item "src/$modName/ModInfo.xml" $modDir
+# `.dll.config` files are static (Mono dllmap + .NET binding-redirects
+# config); no build-time transformation. The csproj declares them as
+# `<None CopyToOutputDirectory>` but that rule fires inconsistently on
+# net48 SDK-style projects across .NET SDK versions. Copy from source
+# directly so a fresh CI checkout (no cached bin/ output) succeeds the
+# same way a local incremental build does.
+Copy-Item "$srcDir/$modName.dll.config" $modDir
+Copy-Item "$srcDir/System.Data.SQLite.dll.config" $modDir
+Copy-Item "$srcDir/SkiaSharp.dll.config" $modDir
+Copy-Item "$srcDir/ModInfo.xml" $modDir
 
 # --- Windows native libraries ---
 if ($Platform -eq "windows" -or $Platform -eq "both") {
