@@ -1,0 +1,178 @@
+# Builds + signs + publishes a KitsuneCommand release on tag push.
+#
+# Trigger:    git tag -a v2.7.2 -m "..." && git push origin v2.7.2
+# Outputs:    a DRAFT GitHub Release for the tag, with three assets:
+#               KitsuneCommand-vX.Y.Z.zip
+#               KitsuneCommand-vX.Y.Z.zip.sha256
+#               KitsuneCommand-vX.Y.Z.zip.minisig
+#             body pulled from the matching CHANGELOG.md section.
+#
+# The release is a DRAFT — review + publish manually via the UI. That's
+# the seam where you eyeball the notes, attach screenshots, etc. before
+# it goes live.
+#
+# Runner: windows-latest. tools/build.ps1 is PowerShell-native (uses
+# Get-Item, Compress-Archive, references C:\Windows\Microsoft.NET for
+# DataAnnotations.dll), and .NET Framework 4.8 ships preinstalled on
+# windows-latest. Linux ubuntu-latest runners could work via Mono but
+# the existing build script is the well-tested path.
+#
+# Secrets used (in repository Settings → Secrets and variables → Actions):
+#   KC_MINISIGN_PRIVATE_KEY            — contents of kc-minisign.key
+#   KC_MINISIGN_PRIVATE_KEY_PASSWORD   — password for the private key
+#
+# When the secrets aren't set (forks, first run before setup, etc.),
+# tools/sign-release.ps1 gracefully degrades: still produces the .sha256,
+# skips the .minisig with a warning, build succeeds. Same posture as
+# tools/deploy.sh when rsync is missing.
+#
+# See docs/SIGNING.md for the one-time keypair generation + secret setup.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Confirm .NET Framework 4.8 is available
+        shell: pwsh
+        run: |
+          # windows-latest ships Framework 4.8 preinstalled. This step
+          # is a doc-comment + early-fail in case GitHub ever changes
+          # the runner default.
+          dotnet --list-sdks
+          $release = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full').Release
+          if ($release -lt 528040) {
+              Write-Error ".NET Framework 4.8 not detected (release=$release). Runner image change?"
+          }
+          Write-Host "Framework release: $release (>= 528040 = 4.8)"
+
+      - name: Install minisign (Chocolatey)
+        shell: pwsh
+        run: |
+          # Chocolatey is preinstalled on windows-latest runners.
+          # `--limit-output` keeps the noise down; `-y` accepts prompts.
+          choco install minisign -y --limit-output
+          minisign -v
+
+      - name: Build the mod
+        shell: pwsh
+        run: |
+          # tools/build.ps1 produces dist/KitsuneCommand/ — a folder
+          # ready to drop into a 7DTD server's Mods/ directory.
+          .\tools\build.ps1
+
+      - name: Resolve version from tag
+        id: ver
+        shell: pwsh
+        run: |
+          # On tag push: $GITHUB_REF_NAME is the tag (v2.7.2).
+          # On workflow_dispatch: it's a branch name — use ModInfo.xml's
+          # version instead so manual re-runs still produce a sensibly
+          # named zip.
+          $ref = $env:GITHUB_REF_NAME
+          if ($ref -match '^v\d') {
+              $version = $ref.TrimStart('v')
+              $tag = $ref
+          } else {
+              [xml]$mod = Get-Content src/KitsuneCommand/ModInfo.xml
+              $version = $mod.xml.Version.value
+              $tag = "v$version"
+          }
+          Write-Host "Resolved version: $version  (tag: $tag)"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag"         >> $env:GITHUB_OUTPUT
+
+      - name: Package the zip
+        id: zip
+        shell: pwsh
+        run: |
+          $zipName = "KitsuneCommand-v${{ steps.ver.outputs.version }}.zip"
+          $zipPath = "dist/$zipName"
+          if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
+          Compress-Archive -Path "dist/KitsuneCommand" -DestinationPath $zipPath
+          $size = (Get-Item $zipPath).Length
+          Write-Host "Wrote $zipPath ($size bytes)"
+          "zipPath=$zipPath" >> $env:GITHUB_OUTPUT
+          "zipName=$zipName" >> $env:GITHUB_OUTPUT
+
+      - name: Sign + checksum
+        shell: pwsh
+        env:
+          KC_MINISIGN_PRIVATE_KEY:          ${{ secrets.KC_MINISIGN_PRIVATE_KEY }}
+          KC_MINISIGN_PRIVATE_KEY_PASSWORD: ${{ secrets.KC_MINISIGN_PRIVATE_KEY_PASSWORD }}
+        run: |
+          # When the secrets aren't set, this gracefully produces
+          # only the .sha256 (still attached to the release) and
+          # logs a warning that .minisig is skipped. See
+          # tools/sign-release.ps1 for the graceful-skip logic.
+          .\tools\sign-release.ps1 -ZipPath ${{ steps.zip.outputs.zipPath }}
+
+      - name: Extract CHANGELOG section for this version
+        id: notes
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $changelogPath = "CHANGELOG.md"
+          $notesFile = "dist/release-notes-$version.md"
+          if (-not (Test-Path $changelogPath)) {
+              Write-Warning "CHANGELOG.md missing — release body will be a stub."
+              "(no CHANGELOG.md found in repo at release time)" | Out-File $notesFile -Encoding utf8
+              "notesFile=$notesFile" >> $env:GITHUB_OUTPUT
+              return
+          }
+          # Match "## [X.Y.Z]" header, capture lines until the next "## [".
+          $lines    = Get-Content $changelogPath
+          $header   = "## [$version]"
+          $startIdx = -1
+          for ($i = 0; $i -lt $lines.Length; $i++) {
+              if ($lines[$i].StartsWith($header)) { $startIdx = $i + 1; break }
+          }
+          if ($startIdx -lt 0) {
+              Write-Warning "No CHANGELOG section matched '$header' — release body will be a stub."
+              "(no CHANGELOG section for v$version yet — fill in before publishing)" | Out-File $notesFile -Encoding utf8
+              "notesFile=$notesFile" >> $env:GITHUB_OUTPUT
+              return
+          }
+          $endIdx = $lines.Length
+          for ($i = $startIdx; $i -lt $lines.Length; $i++) {
+              if ($lines[$i].StartsWith("## [")) { $endIdx = $i; break }
+          }
+          $body = ($lines[$startIdx..($endIdx - 1)] -join "`n").Trim()
+          $body | Out-File $notesFile -Encoding utf8
+          Write-Host "Notes section: lines $startIdx..$endIdx ($($body.Length) chars)"
+          "notesFile=$notesFile" >> $env:GITHUB_OUTPUT
+
+      - name: Create draft GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: "${{ steps.ver.outputs.tag }} — KitsuneCommand"
+          body_path: ${{ steps.notes.outputs.notesFile }}
+          draft: true
+          prerelease: ${{ contains(steps.ver.outputs.tag, '-') }}
+          files: |
+            ${{ steps.zip.outputs.zipPath }}
+            ${{ steps.zip.outputs.zipPath }}.sha256
+            ${{ steps.zip.outputs.zipPath }}.minisig
+          fail_on_unmatched_files: false
