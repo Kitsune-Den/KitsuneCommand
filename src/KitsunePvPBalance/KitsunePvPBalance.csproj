@@ -20,27 +20,27 @@
   <!-- Game Binary References (shared with KitsuneCommand) -->
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\KitsuneCommand\7dtd-binaries\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\KitsuneCommand\refs\Assembly-CSharp.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>..\KitsuneCommand\7dtd-binaries\Assembly-CSharp-firstpass.dll</HintPath>
+      <HintPath>..\KitsuneCommand\refs\Assembly-CSharp-firstpass.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="LogLibrary">
-      <HintPath>..\KitsuneCommand\7dtd-binaries\LogLibrary.dll</HintPath>
+      <HintPath>..\KitsuneCommand\refs\LogLibrary.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\KitsuneCommand\7dtd-binaries\UnityEngine.dll</HintPath>
+      <HintPath>..\KitsuneCommand\refs\UnityEngine.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\KitsuneCommand\7dtd-binaries\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>..\KitsuneCommand\refs\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>..\KitsuneCommand\7dtd-binaries\0Harmony.dll</HintPath>
+      <HintPath>..\KitsuneCommand\refs\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
