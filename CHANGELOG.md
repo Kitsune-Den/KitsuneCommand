@@ -12,6 +12,57 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.7.2] - 2026-05-18
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.7.2)
+> · Patch release — deploy-script reliability + the first signed
+> release. From here on every release zip ships with a SHA-256 sum
+> and a minisign signature attached so downloaders can verify
+> provenance before extracting.
+
+### Added
+
+- **Signed releases** — every release zip now ships with two
+  sidecar files: `<zip>.sha256` (BSD-style sum, `sha256sum -c`-verifiable
+  from any platform) and `<zip>.minisig` (minisign Ed25519 signature).
+  Verify via `sha256sum -c` + `minisign -Vm <zip> -P <public-key>`.
+  Public key + verify instructions live in [`docs/RELEASES.md`](docs/RELEASES.md#verifying-a-release).
+  Rationale, key-rotation, and the one-time setup walkthrough in
+  [`docs/SIGNING.md`](docs/SIGNING.md). Minisign chosen for parity
+  with the PackRelay launcher's updater (also minisign-based) — one
+  signing primitive across the product family. (PR #78, kanban #138)
+- **Tag-push release workflow** — `.github/workflows/release.yml`
+  turns `git tag -a vX.Y.Z && git push --tags` into a draft GitHub
+  Release with all three signed assets attached and the body
+  auto-pulled from the matching `## [X.Y.Z]` CHANGELOG section.
+  Maintainer reviews the draft + clicks Publish. Pre-release tags
+  (`-rc.N`, `-beta.N`) get marked prerelease automatically. The
+  workflow gracefully degrades when minisign secrets aren't set —
+  still produces the zip + .sha256, skips the .minisig with a
+  warning. (PR #78, kanban #136)
+- README "signed releases" pill in the existing pill row, linking
+  to the verify section.
+
+### Fixed
+
+- **`tools/deploy.ps1` heredoc through ssh** — Windows OpenSSH
+  joins argv with spaces, not newlines, so multi-line scripts
+  passed as `ssh $remote $script` collapsed to one line on the
+  remote and bash choked (`bash: line 1: set: -: invalid option`).
+  Fix: pipe the heredoc to `ssh ... bash -s` via stdin. Newlines
+  survive verbatim. Two call sites changed (snapshot + restore
+  phases). Worked around by hand during the v2.7.0 + v2.7.1
+  deploys; future v2.7.x deploys can use `tools\deploy.ps1`
+  directly from Windows. (PR #77, kanban #145)
+- **`tools/deploy.sh` rsync graceful degradation** — native
+  Windows Git Bash doesn't ship rsync; previously the script
+  died at the sync step. Now detects rsync via `command -v`. If
+  present, fast path. If absent, falls back to scp + snapshot
+  pattern (parity with `deploy.ps1`). Refactored sync block into
+  `sync_via_rsync` + `sync_via_scp_snapshot` helpers. Behavior on
+  Linux/macOS unchanged. Real-world tested against prod with rsync
+  masked — works end-to-end. (PR #77, kanban #172)
+
 ## [2.7.1] - 2026-05-17
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.7.1)
@@ -406,7 +457,9 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.0...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.2...HEAD
+[2.7.2]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.1...v2.7.2
+[2.7.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.6.4...v2.7.0
 [2.6.4]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.6.2...v2.6.4
 [2.6.2]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.6.1...v2.6.2
