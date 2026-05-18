@@ -124,38 +124,29 @@ echo "[sign-release] Signing $ZIP_NAME with minisign ..."
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 TRUST_COMMENT="KitsuneCommand release: $ZIP_NAME signed $TIMESTAMP"
 
-# Resolve password. Preferred path: the calling environment (CI
-# YAML or local export) sets MINISIGN_PASSWORD directly. Fallback:
-# promote KC_MINISIGN_PRIVATE_KEY_PASSWORD if MINISIGN_PASSWORD
-# isn't set. Minisign reads MINISIGN_PASSWORD via getenv() at sign
-# time (supported since minisign 0.10, 2021).
-if [ -z "${MINISIGN_PASSWORD:-}" ] && [ -n "${KC_MINISIGN_PRIVATE_KEY_PASSWORD:-}" ]; then
-    export MINISIGN_PASSWORD="$KC_MINISIGN_PRIVATE_KEY_PASSWORD"
-fi
-
-if [ -z "${MINISIGN_PASSWORD:-}" ]; then
+# Resolve password from env. Preferred MINISIGN_PASSWORD, fallback
+# KC_MINISIGN_PRIVATE_KEY_PASSWORD for local-dev compatibility.
+PASSWORD="${MINISIGN_PASSWORD:-${KC_MINISIGN_PRIVATE_KEY_PASSWORD:-}}"
+if [ -z "$PASSWORD" ]; then
     cat >&2 <<'PWERR'
 [sign-release] Password env var not set.
 Neither MINISIGN_PASSWORD nor KC_MINISIGN_PRIVATE_KEY_PASSWORD found
 in the calling environment. In CI, check that the
 KC_MINISIGN_PRIVATE_KEY_PASSWORD GitHub secret is configured at:
   https://github.com/Kitsune-Den/KitsuneCommand/settings/secrets/actions
-Without a password env var, minisign falls back to an interactive
-prompt that fails on CI (no TTY) - observed as 'Password: get_password()'
-in the log.
 PWERR
     exit 1
 fi
+echo "[sign-release] Password resolved (length: ${#PASSWORD})."
 
-# Diagnostic: confirm env is set going into minisign without
-# revealing the password itself.
-if [ -n "${MINISIGN_PASSWORD:-}" ]; then
-    echo "[sign-release] MINISIGN_PASSWORD env: set"
-else
-    echo "[sign-release] MINISIGN_PASSWORD env: EMPTY"
-fi
-
-minisign -Sm "$ZIP_FULL" -s "$KEY_PATH" -t "$TRUST_COMMENT" -x "$SIG_PATH"
+# Pipe password to minisign's stdin. The MINISIGN_PASSWORD env var
+# SHOULD work since minisign 0.10 (2021), but the chocolatey-
+# installed Windows build on windows-latest ignores it and falls
+# through to its interactive get_password() prompt — which fails
+# on CI (no TTY). Stdin-pipe works on every minisign version. We
+# also export MINISIGN_PASSWORD as belt-and-suspenders.
+export MINISIGN_PASSWORD="$PASSWORD"
+printf '%s\n' "$PASSWORD" | minisign -Sm "$ZIP_FULL" -s "$KEY_PATH" -t "$TRUST_COMMENT" -x "$SIG_PATH"
 
 echo "[sign-release] Wrote $SIG_PATH"
 echo

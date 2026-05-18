@@ -137,38 +137,67 @@ $timestamp = (Get-Date -AsUTC).ToString("yyyy-MM-ddTHH:mm:ssZ")
 $trustComment = "KitsuneCommand release: $zipName signed $timestamp"
 
 try {
-    # Resolve password. Preferred path: the workflow YAML sets
-    # MINISIGN_PASSWORD directly from the secret. Fallback: the
-    # script promotes KC_MINISIGN_PRIVATE_KEY_PASSWORD if MINISIGN_PASSWORD
-    # isn't set (e.g. running locally). Either way minisign reads
-    # MINISIGN_PASSWORD via getenv() at sign time (supported since
-    # minisign 0.10, 2021).
-    if (-not $env:MINISIGN_PASSWORD -and $env:KC_MINISIGN_PRIVATE_KEY_PASSWORD) {
-        $env:MINISIGN_PASSWORD = $env:KC_MINISIGN_PRIVATE_KEY_PASSWORD
-    }
-    if (-not $env:MINISIGN_PASSWORD) {
+    # Resolve password from env. Preferred MINISIGN_PASSWORD, fallback
+    # KC_MINISIGN_PRIVATE_KEY_PASSWORD for local-dev compatibility.
+    $password = $env:MINISIGN_PASSWORD
+    if (-not $password) { $password = $env:KC_MINISIGN_PRIVATE_KEY_PASSWORD }
+    if (-not $password) {
         Write-Error @"
 [sign-release] Password env var not set.
 Neither MINISIGN_PASSWORD nor KC_MINISIGN_PRIVATE_KEY_PASSWORD found
 in the calling environment. In CI, check that the
 KC_MINISIGN_PRIVATE_KEY_PASSWORD GitHub secret is configured at:
   https://github.com/Kitsune-Den/KitsuneCommand/settings/secrets/actions
-Without a password env var, minisign falls back to an interactive
-prompt that fails on CI (no TTY) — observed as 'Password: get_password()'
-in the log.
 "@
     }
+    Write-Host "[sign-release] Password resolved (length: $($password.Length))."
 
-    # Diagnostic: confirm the env var IS set going into minisign
-    # without revealing the password itself. Just a "set" / "EMPTY"
-    # signal (NOT length, NOT prefix) so future failures point at
-    # the right thing.
-    $pwState = if ($env:MINISIGN_PASSWORD) { "set" } else { "EMPTY" }
-    Write-Host "[sign-release] MINISIGN_PASSWORD env: $pwState"
+    # Pipe password to minisign's stdin via Process.Start with
+    # explicit RedirectStandardInput. The MINISIGN_PASSWORD env var
+    # SHOULD work since minisign 0.10 (2021), but the chocolatey-
+    # installed Windows build on windows-latest ignores it and falls
+    # through to its interactive get_password() prompt, which fails
+    # on a runner with no TTY ('Password: get_password()' + exit 2).
+    # Stdin-pipe works on every minisign version, interactive or not.
+    # We also pass MINISIGN_PASSWORD in the child's env block as
+    # belt-and-suspenders for future runner images that pick up an
+    # env-var-honoring build.
+    $psi                              = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName                     = "minisign"
+    $psi.UseShellExecute              = $false
+    $psi.RedirectStandardInput        = $true
+    $psi.RedirectStandardOutput       = $true
+    $psi.RedirectStandardError        = $true
+    $psi.CreateNoWindow               = $true
+    $psi.Environment["MINISIGN_PASSWORD"] = $password
 
-    & minisign -Sm $zipFull -s $keyPath -t $trustComment -x $sigPath
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "[sign-release] minisign exited $LASTEXITCODE. See docs/SIGNING.md § Common failure modes."
+    # ArgumentList over .Arguments avoids quote-escaping issues for
+    # paths with spaces.
+    $psi.ArgumentList.Add("-Sm")
+    $psi.ArgumentList.Add($zipFull)
+    $psi.ArgumentList.Add("-s")
+    $psi.ArgumentList.Add($keyPath)
+    $psi.ArgumentList.Add("-t")
+    $psi.ArgumentList.Add($trustComment)
+    $psi.ArgumentList.Add("-x")
+    $psi.ArgumentList.Add($sigPath)
+
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    # One WriteLine + Close: minisign reads exactly one password
+    # line from stdin then EOFs.
+    $proc.StandardInput.WriteLine($password)
+    $proc.StandardInput.Close()
+
+    # Drain both streams so we see what minisign said (success path
+    # prints "Wrote signature to ..." which is good provenance).
+    $stdout = $proc.StandardOutput.ReadToEnd()
+    $stderr = $proc.StandardError.ReadToEnd()
+    $proc.WaitForExit()
+    if ($stdout) { Write-Host $stdout.TrimEnd() }
+    if ($stderr) { Write-Host $stderr.TrimEnd() }
+
+    if ($proc.ExitCode -ne 0) {
+        Write-Error "[sign-release] minisign exited $($proc.ExitCode). See docs/SIGNING.md § Common failure modes."
     }
 } finally {
     # Always clean up. The temp key file goes away; the env var is
