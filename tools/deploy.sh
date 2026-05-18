@@ -124,29 +124,99 @@ if [ "$SKIP_PROMPT" -eq 0 ]; then
     esac
 fi
 
-# Build the rsync exclude arguments.
+# Build the rsync exclude arguments. Only consumed by sync_via_rsync;
+# the scp+snapshot path uses PRESERVE_PATHS directly.
 RSYNC_EXCLUDES=()
 for p in "${PRESERVE_PATHS[@]}"; do
     RSYNC_EXCLUDES+=(--exclude="$p")
 done
 
+# Two transport flavors. rsync is the fast path — one round-trip,
+# delta transfer, preserves perms, --exclude keeps Config/Plugins
+# untouched in a single pass. When rsync isn't on PATH (typically
+# native Windows Git Bash, which doesn't ship it), fall back to the
+# same scp + snapshot pattern deploy.ps1 uses on Windows. Same
+# observable result, more round-trips.
+sync_via_rsync() {
+    # -a   archive (preserves perms, recurses)
+    # -z   compress in transit
+    # -v   verbose (shows what changed)
+    # --delete  remove files on remote that aren't in source (orphan cleanup)
+    # Trailing slash on source dir is required — rsync syntax for "copy the
+    # contents of, not the dir itself."
+    rsync -avz --delete \
+        "${RSYNC_EXCLUDES[@]}" \
+        "$DIST_DIR/" \
+        "$REMOTE:$REMOTE_MOD_DIR/"
+}
+
+sync_via_scp_snapshot() {
+    # 1. Snapshot the admin-modifiable bits to a remote /tmp dir and
+    #    wipe the mod folder. The script is piped to `ssh bash -s` via
+    #    stdin (not passed as a multi-line argv) so newlines survive —
+    #    same reason deploy.ps1 does it this way on Windows OpenSSH.
+    echo "  Snapshotting preserved paths + wiping remote..."
+    ssh "$REMOTE" "bash -s" <<EOF
+set -e
+TMP=\$(mktemp -d /tmp/kc-preserve-XXXXXX)
+mkdir -p "\$TMP/Config" "\$TMP/Plugins"
+if [ -f "$REMOTE_MOD_DIR/Config/appsettings.json" ]; then
+    cp -p "$REMOTE_MOD_DIR/Config/appsettings.json" "\$TMP/Config/"
+    echo "  preserved Config/appsettings.json"
+fi
+if [ -d "$REMOTE_MOD_DIR/Plugins" ]; then
+    cp -rp "$REMOTE_MOD_DIR/Plugins/." "\$TMP/Plugins/" 2>/dev/null || true
+    PLUGIN_COUNT=\$(find "\$TMP/Plugins" -mindepth 1 -maxdepth 1 -name '*.dll' 2>/dev/null | wc -l)
+    echo "  preserved Plugins/ (\$PLUGIN_COUNT plugin DLL(s))"
+fi
+echo "\$TMP" > /tmp/kc-deploy-last-snapshot
+rm -rf "$REMOTE_MOD_DIR"
+EOF
+
+    # 2. scp the fresh dist into the parent dir — scp recreates the
+    #    source folder name inside it.
+    echo "  Copying fresh dist..."
+    scp -r "$DIST_DIR" "$REMOTE:$KC_DEPLOY_MODS_PATH/"
+
+    # 3. Restore the snapshot. (Ownership + service restart happen
+    #    after this function returns, same as the rsync path.)
+    echo "  Restoring preserved paths..."
+    ssh "$REMOTE" "bash -s" <<EOF
+set -e
+TMP=\$(cat /tmp/kc-deploy-last-snapshot 2>/dev/null || true)
+if [ -n "\$TMP" ] && [ -d "\$TMP" ]; then
+    if [ -f "\$TMP/Config/appsettings.json" ]; then
+        cp -p "\$TMP/Config/appsettings.json" "$REMOTE_MOD_DIR/Config/"
+        echo "  restored Config/appsettings.json"
+    fi
+    if [ -d "\$TMP/Plugins" ]; then
+        mkdir -p "$REMOTE_MOD_DIR/Plugins"
+        cp -rp "\$TMP/Plugins/." "$REMOTE_MOD_DIR/Plugins/" 2>/dev/null || true
+        PLUGIN_COUNT=\$(find "$REMOTE_MOD_DIR/Plugins" -mindepth 1 -maxdepth 1 -name '*.dll' 2>/dev/null | wc -l)
+        echo "  restored Plugins/ (\$PLUGIN_COUNT plugin DLL(s))"
+    fi
+    rm -rf "\$TMP"
+    rm -f /tmp/kc-deploy-last-snapshot
+fi
+EOF
+}
+
 echo "=== Syncing files ==="
-# -a   archive (preserves perms, recurses)
-# -z   compress in transit
-# -v   verbose (shows what changed)
-# --delete  remove files on remote that aren't in source (orphan cleanup)
-# Trailing slash on source dir is required — rsync syntax for "copy the
-# contents of, not the dir itself."
-rsync -avz --delete \
-    "${RSYNC_EXCLUDES[@]}" \
-    "$DIST_DIR/" \
-    "$REMOTE:$REMOTE_MOD_DIR/"
+if command -v rsync >/dev/null 2>&1; then
+    sync_via_rsync
+else
+    echo "  rsync not on PATH — falling back to scp + snapshot pattern."
+    echo "  This is normal on native Windows Git Bash. On Linux/macOS,"
+    echo "  installing rsync gives a faster delta transfer."
+    sync_via_scp_snapshot
+fi
 
 echo "=== Fixing ownership + restarting service ==="
-ssh "$REMOTE" "set -e
-    chown -R $KC_DEPLOY_SERVICE_USER:$KC_DEPLOY_SERVICE_USER '$REMOTE_MOD_DIR'
-    systemctl restart $KC_DEPLOY_SERVICE_NAME
-"
+ssh "$REMOTE" "bash -s" <<EOF
+set -e
+chown -R $KC_DEPLOY_SERVICE_USER:$KC_DEPLOY_SERVICE_USER '$REMOTE_MOD_DIR'
+systemctl restart $KC_DEPLOY_SERVICE_NAME
+EOF
 
 # Wait a few seconds + verify the service came back up. If it crashed
 # during boot, surface that loudly so the operator can roll back.

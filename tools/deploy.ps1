@@ -131,8 +131,12 @@ if (-not $Yes) {
 }
 
 # 1. Snapshot the admin-modifiable bits to a remote temp dir, then wipe
-#    the mod folder. Using a heredoc so we send one ssh round-trip
-#    instead of N — keeps the deploy tight on a high-latency link.
+#    the mod folder. The script is piped to `ssh ... bash -s` via stdin
+#    rather than passed as an argv string — Windows OpenSSH joins argv
+#    with spaces (not newlines), so a multi-line script-as-argv collapses
+#    to one line on the remote and bash chokes on `set -` / `-e` as
+#    separate tokens. Stdin-piping preserves newlines verbatim. The bash
+#    flavor in deploy.sh uses the same pattern for parity.
 Write-Host ""
 Write-Host "=== Snapshotting preserved paths + wiping remote ===" -ForegroundColor Cyan
 $snapshotScript = @"
@@ -151,7 +155,7 @@ fi
 echo "`$TMP" > /tmp/kc-deploy-last-snapshot
 rm -rf "$remoteModDir"
 "@
-ssh $remote $snapshotScript
+$snapshotScript | & ssh $remote "bash -s"
 if ($LASTEXITCODE -ne 0) { throw "snapshot step failed" }
 
 # 2. scp the fresh dist. The path is the parent dir; scp recreates
@@ -184,7 +188,7 @@ fi
 chown -R $serviceUser`:$serviceUser "$remoteModDir"
 systemctl restart $serviceName
 "@
-ssh $remote $restoreScript
+$restoreScript | & ssh $remote "bash -s"
 if ($LASTEXITCODE -ne 0) { throw "restore/restart step failed" }
 
 # 4. Health check. 7DTD takes 30-90s to come back online; we just check
