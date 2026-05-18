@@ -143,6 +143,8 @@ Older releases stay verifiable against the old public key (which lives forever i
 |---------|-------|-----|
 | `[sign-release] Skipping minisign signature: no private key` in CI logs | Secrets not set | Step 5 above |
 | `Wrong password` from minisign | Password mismatch | Re-set `KC_MINISIGN_PRIVATE_KEY_PASSWORD`. If you lost the password, see [key rotation](#key-rotation) |
+| `WARNING: key file does NOT start with 'untrusted comment:'` in CI logs | `KC_MINISIGN_PRIVATE_KEY` secret was pasted incompletely — only the base64 body, not the full file contents | Open `~/.keys/kc-minisign.key` in a text editor, copy **both lines** (the `untrusted comment: ...` header AND the base64 body), paste both as the secret value |
+| `<tempfile>: No error` and `minisign exited 2` | Older symptom of the same issue above — pre-hardening sign-release.ps1 didn't print the header check | After this PR merges, the WARNING above should appear instead; re-set the secret with both lines |
 | `Signature didn't verify` on the downloader's side | Zip was modified post-signing | Re-download. If it persists, open an issue. Don't extract the zip. |
 | `bash: minisign: command not found` locally | minisign not installed | Step 1 |
 

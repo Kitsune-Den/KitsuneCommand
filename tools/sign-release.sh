@@ -69,12 +69,29 @@ KEY_PATH=""
 KEY_IS_TEMP=0
 
 if [ -n "${KC_MINISIGN_PRIVATE_KEY:-}" ]; then
-    # CI mode: secret in env var. Write to temp file, sign, delete.
+    # CI mode: secret in env var. Normalize + write to temp file, sign, delete.
+    #
+    # Defensive normalization avoids three failure modes:
+    #   1. CRLF line endings from Windows-pasted secrets — strip to LF.
+    #   2. Missing trailing newline — minisign's bin_read_line wants one.
+    #   3. UTF-8 BOM — minisign reads it as part of the header and rejects.
     KEY_PATH=$(mktemp)
     KEY_IS_TEMP=1
-    # Use printf instead of echo to avoid adding/stripping trailing
-    # newlines that minisign cares about.
-    printf '%s' "$KC_MINISIGN_PRIVATE_KEY" > "$KEY_PATH"
+    # tr -d removes CR chars; printf '%s\n' guarantees exactly one
+    # trailing newline regardless of what the source had. The BOM
+    # issue is bash-side a non-issue (bash doesn't add a BOM) but the
+    # normalization is consistent with the PowerShell flavor.
+    printf '%s\n' "$KC_MINISIGN_PRIVATE_KEY" | tr -d '\r' > "$KEY_PATH"
+
+    # Sanity-print the first line header so a future failure log
+    # makes the cause obvious. Reveals nothing secret — every
+    # minisign key starts with this same header.
+    FIRST_LINE=$(head -n 1 "$KEY_PATH")
+    KEY_BYTES=$(wc -c < "$KEY_PATH")
+    echo "[sign-release] Wrote temp key file ($KEY_BYTES bytes, first line: '$FIRST_LINE')"
+    if ! echo "$FIRST_LINE" | grep -q '^untrusted comment:'; then
+        echo "[sign-release] WARNING: key file does NOT start with 'untrusted comment:' — minisign will reject this. Check that KC_MINISIGN_PRIVATE_KEY contains the FULL .key file contents (both lines, not just the base64 body)." >&2
+    fi
 elif [ -f "$KEY_FILE" ]; then
     KEY_PATH="$KEY_FILE"
 else
@@ -107,15 +124,16 @@ echo "[sign-release] Signing $ZIP_NAME with minisign ..."
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 TRUST_COMMENT="KitsuneCommand release: $ZIP_NAME signed $TIMESTAMP"
 
+# Pass password via MINISIGN_PASSWORD env var (supported since
+# minisign 0.10, 2021). Cleaner than stdin-piping — minisign's
+# stdout/stderr land directly in the calling shell so we see the
+# real error if one happens. Unset on exit so the password doesn't
+# leak to subsequent steps.
 if [ -n "${KC_MINISIGN_PRIVATE_KEY_PASSWORD:-}" ]; then
-    # Pipe password via stdin. minisign reads its key password from
-    # stdin when one isn't interactively available.
-    printf '%s\n' "$KC_MINISIGN_PRIVATE_KEY_PASSWORD" | \
-        minisign -Sm "$ZIP_FULL" -s "$KEY_PATH" -t "$TRUST_COMMENT" -x "$SIG_PATH"
-else
-    # Interactive: minisign prompts on stderr.
-    minisign -Sm "$ZIP_FULL" -s "$KEY_PATH" -t "$TRUST_COMMENT" -x "$SIG_PATH"
+    export MINISIGN_PASSWORD="$KC_MINISIGN_PRIVATE_KEY_PASSWORD"
+    trap 'unset MINISIGN_PASSWORD' EXIT
 fi
+minisign -Sm "$ZIP_FULL" -s "$KEY_PATH" -t "$TRUST_COMMENT" -x "$SIG_PATH"
 
 echo "[sign-release] Wrote $SIG_PATH"
 echo
