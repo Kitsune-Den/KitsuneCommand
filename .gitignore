@@ -65,3 +65,9 @@ ref-*.cs
 
 # Claude
 .claude/
+
+# Release-signing private keys. Default location for setup-signing-key
+# is ~/.keys/ which is outside the repo, but defend against a stray
+# copy landing in the tree by accident. See docs/SIGNING.md.
+*.key
+.keys/

@@ -64,45 +64,30 @@ GitHub prerelease — visible on the Releases page but not the Latest pill.
 
 ## Release process
 
-Today (v2.6.4) the cut is manual. Card [#136](https://kitsunebi.cloud)
-automates this; until then, the steps are:
+Tag-push triggers `.github/workflows/release.yml`. It builds, signs,
+and creates a draft GitHub release with three assets. Total maintainer
+work per release: ~5 minutes of edits + a Publish click after CI lands.
 
 ### 1. Bump version
 
-Three places (until [#137 lands a `tools/bump-version.{sh,ps1}`](https://kitsunebi.cloud)):
+Three places (a future `tools/bump-version.{sh,ps1}` will do this in
+one shot — kanban #137):
 
 - `src/KitsuneCommand/ModInfo.xml` (the version 7DTD displays)
 - `src/KitsuneCommand/KitsuneCommand.csproj` `<Version>` (if present)
 - `frontend/package.json` `"version"`
 
-Make sure the README's version pill (if any) refreshes — it usually pulls
-from one of the above at build time, but worth eyeballing.
-
 ### 2. Update CHANGELOG.md
 
-Move the `[Unreleased]` entries into a new `[X.Y.Z] - YYYY-MM-DD` section
-at the top. Add a compare link at the bottom (template at the end of the
-file).
+Move the `[Unreleased]` entries into a new `[X.Y.Z] - YYYY-MM-DD`
+section at the top. Add a compare link at the bottom (template at the
+end of the file).
 
-Keep entries skimmable. The GitHub release page is where the prose lives;
-CHANGELOG is what someone reads to answer "what's in this version?" in
-under a minute.
+The release workflow extracts the matching `## [X.Y.Z]` section as the
+GitHub release body, so write it like someone's actually going to read
+it on the release page.
 
-### 3. Build the zip
-
-```bash
-# Linux (the supported path for production deploys)
-tools/build.sh
-```
-
-```powershell
-# Windows (dev convenience)
-tools\build.ps1
-```
-
-Output: `dist/KitsuneCommand/`. Zip it as `KitsuneCommand-vX.Y.Z.zip`.
-
-### 4. Tag + push
+### 3. Tag + push
 
 ```bash
 git tag -a vX.Y.Z -m "vX.Y.Z — short headline"
@@ -110,42 +95,119 @@ git push origin main
 git push origin vX.Y.Z
 ```
 
-The tag annotation message becomes the release title fallback if the
-release notes page is empty when the workflow lands.
+GitHub Actions catches the tag push and runs `release.yml`. Watch the
+run at <https://github.com/Kitsune-Den/KitsuneCommand/actions>.
 
-### 5. Create the GitHub release
+The workflow:
+
+1. Builds the frontend + the .NET mod via `tools/build.ps1`
+2. Packages `dist/KitsuneCommand` as `KitsuneCommand-vX.Y.Z.zip`
+3. Computes the sha256 → writes `KitsuneCommand-vX.Y.Z.zip.sha256`
+4. Signs the zip with minisign → writes `KitsuneCommand-vX.Y.Z.zip.minisig`
+5. Extracts the matching `## [X.Y.Z]` section from CHANGELOG.md
+6. Creates a **draft** GitHub Release with all three assets attached
+
+Pre-release tags (`vX.Y.Z-rc.N`, `vX.Y.Z-beta.N`) get marked as
+prerelease automatically.
+
+### 4. Smoke-test the draft
+
+The release is a draft on purpose — that's the seam where you eyeball
+the notes, attach screenshots / migration notes, and verify the artifact
+before publishing.
 
 ```bash
+# From a clean dir, fetch all three from the draft release:
+gh release download vX.Y.Z --dir /tmp/kc-release-check
+
+# Verify integrity + authenticity
+cd /tmp/kc-release-check
+sha256sum -c KitsuneCommand-vX.Y.Z.zip.sha256
+minisign -Vm KitsuneCommand-vX.Y.Z.zip -P <public-key-below>
+```
+
+Both must pass. If either fails, the release is poisoned somehow — open
+an issue, do NOT publish the draft.
+
+### 5. Hit Publish
+
+Open the draft at <https://github.com/Kitsune-Den/KitsuneCommand/releases>,
+edit notes if you want, click Publish. The release goes live + the
+"latest" tag updates.
+
+### 6. Deploy to your own server (the existing flow)
+
+`tools/deploy.{sh,ps1}` handles this. See `docs/DEPLOYING.md` for the
+full walkthrough.
+
+## Verifying a release
+
+Every release zip ships with two sidecar files: a SHA-256 sum and a
+minisign Ed25519 signature. **As a downloader, verifying both before
+extracting is the recommended path** — it confirms the bytes are
+byte-identical to what GitHub Actions built (sha256) AND signed by the
+KC maintainer (minisign).
+
+You'll need [minisign](https://jedisct1.github.io/minisign/) installed:
+
+| Platform | Install |
+|----------|---------|
+| Linux (Debian/Ubuntu) | `sudo apt install minisign` |
+| Linux (Fedora/RHEL)   | `sudo dnf install minisign` |
+| macOS                 | `brew install minisign` |
+| Windows               | `choco install minisign -y` · or `scoop install minisign` · or download from [jedisct1/minisign releases](https://github.com/jedisct1/minisign/releases) |
+
+### Verify command
+
+Download `KitsuneCommand-vX.Y.Z.zip`, `.sha256`, and `.minisig` from the
+release page, then:
+
+```bash
+sha256sum -c KitsuneCommand-vX.Y.Z.zip.sha256
+minisign -Vm KitsuneCommand-vX.Y.Z.zip -P <PUBLIC-KEY-PLACEHOLDER>
+```
+
+If `minisign -V` prints `Signature and comment signature verified`,
+you're good. Anything else — don't extract the zip. Open an issue.
+
+### Public key
+
+```
+<PUBLIC-KEY-PLACEHOLDER>
+```
+
+(Replaced with the real key once the keypair is generated. See
+[`docs/SIGNING.md`](SIGNING.md) for the one-time setup walkthrough.)
+
+For the rationale (why minisign, key rotation, common failure modes),
+see [`docs/SIGNING.md`](SIGNING.md).
+
+## Manual fallback (if CI is down)
+
+If GitHub Actions is unavailable and you need to cut a release manually,
+the workflow's logic is mirrored in two scripts:
+
+```bash
+# 1. Build (PowerShell on Windows, bash on Linux)
+tools/build.ps1                  # or tools/build.sh
+
+# 2. Zip
+Compress-Archive -Path dist/KitsuneCommand -DestinationPath dist/KitsuneCommand-vX.Y.Z.zip
+
+# 3. Sign + checksum (graceful skip if minisign key isn't on disk)
+tools/sign-release.ps1 -ZipPath dist/KitsuneCommand-vX.Y.Z.zip
+#   or
+tools/sign-release.sh dist/KitsuneCommand-vX.Y.Z.zip
+
+# 4. Create release with all three assets
 gh release create vX.Y.Z \
-  --title "vX.Y.Z — short headline" \
-  --notes-file CHANGELOG-section.md \
-  KitsuneCommand-vX.Y.Z.zip
+    --title "vX.Y.Z — short headline" \
+    --notes-file CHANGELOG-section.md \
+    dist/KitsuneCommand-vX.Y.Z.zip \
+    dist/KitsuneCommand-vX.Y.Z.zip.sha256 \
+    dist/KitsuneCommand-vX.Y.Z.zip.minisig
 ```
 
-Or via the GitHub web UI. The notes body should be the matching CHANGELOG
-section, possibly enriched with screenshots / migration notes / "operators
-upgrading from vX.Y.Z-1" specifics.
-
-### 6. Deploy to your own server (smoke test)
-
-```bash
-scp -r dist/KitsuneCommand root@<your-box>:/path/to/7d2d-server/Mods/
-ssh root@<your-box> "chown -R <user>:<group> /path/to/Mods/KitsuneCommand && systemctl restart 7daystodie"
-```
-
-Verify the panel loads, the new features work, no regressions. If
-anything's broken: don't unpublish — cut a `vX.Y.Z+1` patch.
-
-## Future state (cards [#136](https://kitsunebi.cloud) and [#138](https://kitsunebi.cloud))
-
-Once the release workflow lands:
-
-1. Bump versions (one `tools/bump-version` invocation)
-2. Update CHANGELOG.md, commit
-3. `git tag vX.Y.Z && git push --tags`
-4. GHA produces a draft GitHub Release with the zip, SHA-256 sum, and
-   minisign signature attached, body pulled from CHANGELOG.md
-5. Hit Publish
-
-End to end: ~5 minutes of human time + ~10 min of GHA build time. Today
-it's ~30 min of careful manual ceremony.
+The manual path produces identical outputs to the CI path. Local
+signing needs `~/.keys/kc-minisign.key` present (see `docs/SIGNING.md`
+for setup).
