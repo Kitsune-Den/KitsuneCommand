@@ -121,6 +121,13 @@ jobs:
         env:
           KC_MINISIGN_PRIVATE_KEY:          ${{ secrets.KC_MINISIGN_PRIVATE_KEY }}
           KC_MINISIGN_PRIVATE_KEY_PASSWORD: ${{ secrets.KC_MINISIGN_PRIVATE_KEY_PASSWORD }}
+          # MINISIGN_PASSWORD is what minisign actually reads at runtime
+          # (since v0.10). Setting it here at the YAML env level — rather
+          # than in the script via `$env:MINISIGN_PASSWORD = ...` — makes
+          # sure it lands in the runner-process environment that minisign
+          # inherits. The script-level assignment was getting lost
+          # somewhere between PowerShell and the native minisign call.
+          MINISIGN_PASSWORD:                ${{ secrets.KC_MINISIGN_PRIVATE_KEY_PASSWORD }}
         run: |
           # When the secrets aren't set, this gracefully produces
           # only the .sha256 (still attached to the release) and

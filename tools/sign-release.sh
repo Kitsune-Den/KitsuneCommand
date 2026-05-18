@@ -124,15 +124,37 @@ echo "[sign-release] Signing $ZIP_NAME with minisign ..."
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 TRUST_COMMENT="KitsuneCommand release: $ZIP_NAME signed $TIMESTAMP"
 
-# Pass password via MINISIGN_PASSWORD env var (supported since
-# minisign 0.10, 2021). Cleaner than stdin-piping — minisign's
-# stdout/stderr land directly in the calling shell so we see the
-# real error if one happens. Unset on exit so the password doesn't
-# leak to subsequent steps.
-if [ -n "${KC_MINISIGN_PRIVATE_KEY_PASSWORD:-}" ]; then
+# Resolve password. Preferred path: the calling environment (CI
+# YAML or local export) sets MINISIGN_PASSWORD directly. Fallback:
+# promote KC_MINISIGN_PRIVATE_KEY_PASSWORD if MINISIGN_PASSWORD
+# isn't set. Minisign reads MINISIGN_PASSWORD via getenv() at sign
+# time (supported since minisign 0.10, 2021).
+if [ -z "${MINISIGN_PASSWORD:-}" ] && [ -n "${KC_MINISIGN_PRIVATE_KEY_PASSWORD:-}" ]; then
     export MINISIGN_PASSWORD="$KC_MINISIGN_PRIVATE_KEY_PASSWORD"
-    trap 'unset MINISIGN_PASSWORD' EXIT
 fi
+
+if [ -z "${MINISIGN_PASSWORD:-}" ]; then
+    cat >&2 <<'PWERR'
+[sign-release] Password env var not set.
+Neither MINISIGN_PASSWORD nor KC_MINISIGN_PRIVATE_KEY_PASSWORD found
+in the calling environment. In CI, check that the
+KC_MINISIGN_PRIVATE_KEY_PASSWORD GitHub secret is configured at:
+  https://github.com/Kitsune-Den/KitsuneCommand/settings/secrets/actions
+Without a password env var, minisign falls back to an interactive
+prompt that fails on CI (no TTY) - observed as 'Password: get_password()'
+in the log.
+PWERR
+    exit 1
+fi
+
+# Diagnostic: confirm env is set going into minisign without
+# revealing the password itself.
+if [ -n "${MINISIGN_PASSWORD:-}" ]; then
+    echo "[sign-release] MINISIGN_PASSWORD env: set"
+else
+    echo "[sign-release] MINISIGN_PASSWORD env: EMPTY"
+fi
+
 minisign -Sm "$ZIP_FULL" -s "$KEY_PATH" -t "$TRUST_COMMENT" -x "$SIG_PATH"
 
 echo "[sign-release] Wrote $SIG_PATH"
