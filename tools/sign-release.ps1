@@ -72,10 +72,46 @@ $keyPath    = $null
 $keyIsTemp  = $false
 
 if ($env:KC_MINISIGN_PRIVATE_KEY) {
-    # CI mode: secret in env var. Write to temp file, sign, delete.
+    # CI mode: secret in env var. Normalize + write to temp file, sign, delete.
+    #
+    # Defensive normalization avoids two real failure modes we've hit:
+    #   1. CRLF line endings from Windows-pasted secrets. Minisign on
+    #      Windows tolerates CRLF in some builds but not all; LF-only
+    #      is universally safe.
+    #   2. Missing trailing newline. Minisign's `bin_read_line` expects
+    #      every line (including the last) to end with `\n`; without
+    #      one, the second line's base64 can't be fully consumed.
+    #   3. UTF-8 BOM. Some PowerShell file writers prepend EF BB BF,
+    #      which minisign reads as the start of the header line and
+    #      rejects the file as "not a key file."
     $keyPath   = [System.IO.Path]::GetTempFileName()
     $keyIsTemp = $true
-    [System.IO.File]::WriteAllText($keyPath, $env:KC_MINISIGN_PRIVATE_KEY)
+
+    $rawKey = $env:KC_MINISIGN_PRIVATE_KEY
+    # Strip CR characters → LF-only.
+    $normalizedKey = $rawKey -replace "`r", ""
+    # Ensure exactly one trailing newline.
+    if (-not $normalizedKey.EndsWith("`n")) {
+        $normalizedKey += "`n"
+    }
+    # UTF-8 no-BOM. The explicit encoding object guarantees no BOM
+    # regardless of which PowerShell flavor is running.
+    [System.IO.File]::WriteAllText(
+        $keyPath,
+        $normalizedKey,
+        (New-Object System.Text.UTF8Encoding $false)
+    )
+
+    # Sanity-print the first line header (the "untrusted comment: ..."
+    # line) WITHOUT exposing the base64 body, so a future failure log
+    # makes the cause obvious. Reveals nothing secret — the header is
+    # the same on every minisign key file.
+    $firstLine = ($normalizedKey -split "`n", 2)[0]
+    $keyBytes  = (Get-Item $keyPath).Length
+    Write-Host "[sign-release] Wrote temp key file ($keyBytes bytes, first line: '$firstLine')"
+    if (-not $firstLine.StartsWith("untrusted comment:")) {
+        Write-Warning "[sign-release] WARNING: key file does NOT start with 'untrusted comment:' — minisign will reject this. Check that KC_MINISIGN_PRIVATE_KEY contains the FULL .key file contents (both lines, not just the base64 body)."
+    }
 } elseif (Test-Path $KeyFile) {
     # Local mode: key on disk at the expected path.
     $keyPath = $KeyFile
@@ -101,20 +137,26 @@ $timestamp = (Get-Date -AsUTC).ToString("yyyy-MM-ddTHH:mm:ssZ")
 $trustComment = "KitsuneCommand release: $zipName signed $timestamp"
 
 try {
+    # Pass the password via MINISIGN_PASSWORD env var (supported since
+    # minisign 0.10, 2021). Cleaner than stdin-piping — no shell
+    # quirks around how PowerShell pipes strings to native commands,
+    # and minisign's stdout/stderr land directly in our GHA log so
+    # we see the real error if one happens.
     if ($env:KC_MINISIGN_PRIVATE_KEY_PASSWORD) {
-        # Pipe the password via stdin. minisign reads its key password
-        # from stdin when one isn't interactively available.
-        $env:KC_MINISIGN_PRIVATE_KEY_PASSWORD | & minisign -Sm $zipFull -s $keyPath -t $trustComment -x $sigPath
-    } else {
-        # Interactive: minisign prompts on stderr.
-        & minisign -Sm $zipFull -s $keyPath -t $trustComment -x $sigPath
+        $env:MINISIGN_PASSWORD = $env:KC_MINISIGN_PRIVATE_KEY_PASSWORD
     }
+    & minisign -Sm $zipFull -s $keyPath -t $trustComment -x $sigPath
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "[sign-release] minisign exited $LASTEXITCODE"
+        Write-Error "[sign-release] minisign exited $LASTEXITCODE. See docs/SIGNING.md § Common failure modes."
     }
 } finally {
+    # Always clean up. Both the temp key file (if we made one) and
+    # the password env var so it doesn't leak into subsequent steps.
     if ($keyIsTemp -and (Test-Path $keyPath)) {
         Remove-Item -Force $keyPath
+    }
+    if ($env:MINISIGN_PASSWORD) {
+        Remove-Item Env:\MINISIGN_PASSWORD -ErrorAction SilentlyContinue
     }
 }
 
