@@ -28,6 +28,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -276,6 +277,135 @@ namespace KitsuneCommand.Web.Controllers
                 jobId,
                 modpackId,
             }));
+        }
+
+        // ─── Curator handoff (#152) ────────────────────────────────────────
+
+        /// <summary>
+        /// "Create new pack on packrelay.cloud" handoff (#152). Builds a
+        /// snapshot of the user's installed mods + the current modpack
+        /// hint, POSTs it anonymously to packrelay.cloud's draft-seed
+        /// endpoint, and returns the one-shot claim URL the frontend
+        /// opens in the user's default browser.
+        ///
+        /// Unlike the publish path, this endpoint does NOT need any
+        /// PackRelay credentials configured on KC ~ the user signs in
+        /// to packrelay.cloud in the browser after clicking the URL.
+        /// The seed itself just carries (folderName, displayName,
+        /// version) per mod; no sensitive material crosses the wire.
+        ///
+        /// We send the FULL installed-mods snapshot from disk (every
+        /// folder under Mods/), not just the bundled-for-publish
+        /// subset. Curators can trim in the cloud editor; the broader
+        /// the suggestion list, the more useful the handoff.
+        /// </summary>
+        [HttpPost]
+        [Route("draft-seed")]
+        [RoleAuthorize("admin")]
+        public async Task<IHttpActionResult> CreateDraftSeed()
+        {
+            var installedMods = _modManager.GetMods()
+                .Select(m => new
+                {
+                    name = m.FolderName,
+                    displayName = m.DisplayName,
+                    version = m.Version ?? "",
+                })
+                .OrderBy(m => m.name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (installedMods.Count == 0)
+            {
+                return Content(HttpStatusCode.BadRequest,
+                    ApiResponse.Error(400,
+                        "No mods installed under the Mods/ folder. Install at least one before sending a seed."));
+            }
+
+            // Optional pack-name + version hint from the saved modpack
+            // record. The cloud's claim page uses this to pre-fill the
+            // pack-creation form. Absent if the user hasn't saved a
+            // draft modpack yet ~ they'll just type a name fresh.
+            var modpack = _modpacks.Get();
+            object packHint = null;
+            if (modpack != null)
+            {
+                packHint = new
+                {
+                    name = modpack.Name,
+                    version = modpack.Version,
+                };
+            }
+
+            var payload = new
+            {
+                mods = installedMods,
+                packHint,
+            };
+
+            string responseBody;
+            using (var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) })
+            {
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("KitsuneCommand-PackRelay/1.0");
+                var content = new StringContent(
+                    JsonConvert.SerializeObject(payload),
+                    System.Text.Encoding.UTF8,
+                    "application/json");
+
+                HttpResponseMessage response;
+                try
+                {
+                    response = await http.PostAsync(DefaultCloudUrl + "/api/packs/draft-seed", content)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    return Content(HttpStatusCode.BadGateway,
+                        ApiResponse.Error(502,
+                            "Couldn't reach packrelay.cloud: " + ex.Message));
+                }
+
+                responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                {
+                    // Bubble up the cloud's error message (rate-limit,
+                    // schema validation, etc.) so the user sees the
+                    // real reason without having to crack open browser
+                    // devtools.
+                    return Content((HttpStatusCode)(int)response.StatusCode,
+                        ApiResponse.Error((int)response.StatusCode,
+                            "packrelay.cloud returned " + (int)response.StatusCode + ": " + responseBody));
+                }
+            }
+
+            // Cloud's POST returns { ok, token, url, expiresAt }. We
+            // pass url + expiresAt straight through to the frontend.
+            // The frontend opens the URL and discards the token; we
+            // don't need to track it here.
+            CloudDraftSeedResponse parsed;
+            try
+            {
+                parsed = JsonConvert.DeserializeObject<CloudDraftSeedResponse>(responseBody);
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadGateway,
+                    ApiResponse.Error(502,
+                        "Couldn't parse packrelay.cloud response: " + ex.Message));
+            }
+
+            return Ok(ApiResponse.Ok(new
+            {
+                url = parsed.Url,
+                expiresAt = parsed.ExpiresAt,
+                modCount = installedMods.Count,
+            }));
+        }
+
+        private class CloudDraftSeedResponse
+        {
+            [JsonProperty("token")] public string Token { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("expiresAt")] public string ExpiresAt { get; set; }
         }
 
         /// <summary>Poll for job status. Frontend hits this every ~1s while the job's running.</summary>

@@ -1223,6 +1223,16 @@ const es = {
   packrelay: {
     title: 'PackRelay',
     subtitle: 'Publish your modpack to packrelay.cloud — signed-manifest distribution that lets players auto-install through the launcher.',
+    createOnWeb: {
+      title: 'Create new pack on packrelay.cloud',
+      blurb: 'Send your installed mods over to packrelay.cloud and curate a pack from Nexus sources. No keys to configure here — you sign in to the cloud in your browser.',
+      button: 'Create on packrelay.cloud',
+      recommendedBadge: 'Recommended',
+      hint: 'We send a one-shot link that expires in an hour. Your browser opens it automatically.',
+      successSummary: 'Handoff link opened',
+      successDetail: 'Sent {n} installed mod(s) to packrelay.cloud — finish in your browser.',
+      error: 'Couldn’t reach packrelay.cloud to create the handoff link.',
+    },
     settings: {
       title: 'Publisher credentials',
       connected: 'Connected',

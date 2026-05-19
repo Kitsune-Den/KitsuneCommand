@@ -32,6 +32,7 @@ import {
   resetPackRelaySettings,
   startPublishToPackRelay,
   getPublishJob,
+  createDraftSeed,
   type PackRelayStatus,
   type PublishJobSnapshot,
 } from '@/api/packrelay'
@@ -57,6 +58,10 @@ const savingSettings = ref(false)
 const currentJob = ref<PublishJobSnapshot | null>(null)
 const publishStarting = ref(false)
 let pollHandle: number | null = null
+
+// Curator handoff state (#152). Independent of the direct-upload
+// publish flow ~ doesn't need creds configured.
+const draftSeedStarting = ref(false)
 
 const isConfigured = computed(
   () =>
@@ -245,6 +250,44 @@ function dismissJob() {
   currentJob.value = null
 }
 
+// ─── Curator handoff (#152) ──────────────────────────────────────────
+
+/**
+ * Build a one-shot draft seed on packrelay.cloud and open the claim
+ * URL in the user's default browser. The cloud's claim page handles
+ * sign-in, pack creation, and hand-off into the curate editor with
+ * the installed-mods list as suggestions.
+ *
+ * Unlike `publish()`, this doesn't need creds configured ~ the user
+ * authenticates to packrelay.cloud in the browser after clicking
+ * the URL. So the button stays usable even on a fresh KC install.
+ */
+async function createOnWeb() {
+  draftSeedStarting.value = true
+  try {
+    const resp = await createDraftSeed()
+    // window.open with _blank is the friendly hand-off ~ leaves KC
+    // open in its existing tab. The Tauri-shell KC build still
+    // routes _blank URLs through the OS default browser.
+    window.open(resp.url, '_blank', 'noopener,noreferrer')
+    toast.add({
+      severity: 'success',
+      summary: t('packrelay.createOnWeb.successSummary'),
+      detail: t('packrelay.createOnWeb.successDetail', { n: resp.modCount }),
+      life: 4500,
+    })
+  } catch (err: unknown) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: extractError(err, t('packrelay.createOnWeb.error')),
+      life: 5000,
+    })
+  } finally {
+    draftSeedStarting.value = false
+  }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function extractError(err: unknown, fallback: string): string {
@@ -277,7 +320,38 @@ function formatBytes(n: number): string {
     </div>
 
     <template v-else>
-      <!-- Settings -->
+      <!-- Curator handoff (#152) -->
+      <!-- Comes FIRST in the page because it's the easier on-ramp ~
+           no creds needed, opens packrelay.cloud's curate editor with
+           the installed mods pre-suggested. The direct-upload flow
+           below stays for the existing 'I have my own bytes' use case. -->
+      <Card class="settings-card packrelay-card">
+        <template #title>{{ t('packrelay.createOnWeb.title') }}</template>
+        <template #content>
+          <p class="page-subtitle createonweb-blurb">
+            {{ t('packrelay.createOnWeb.blurb') }}
+          </p>
+          <div class="createonweb-actions">
+            <Button
+              :label="t('packrelay.createOnWeb.button')"
+              :loading="draftSeedStarting"
+              icon="pi pi-external-link"
+              severity="info"
+              @click="createOnWeb"
+            />
+            <Tag
+              severity="info"
+              :value="t('packrelay.createOnWeb.recommendedBadge')"
+              class="createonweb-badge"
+            />
+          </div>
+          <p class="field-hint createonweb-hint">
+            {{ t('packrelay.createOnWeb.hint') }}
+          </p>
+        </template>
+      </Card>
+
+      <!-- Settings (direct-upload flow) -->
       <Card class="settings-card packrelay-card">
         <template #title>{{ t('packrelay.settings.title') }}</template>
         <template #content>
@@ -589,6 +663,32 @@ function formatBytes(n: number): string {
 }
 .packrelay-card:last-child {
   margin-bottom: 0;
+}
+
+/* Curator handoff card (#152). The intro paragraph sits under the
+ * card title and uses the same .page-subtitle look, then the button
+ * + badge live in a row so the user reads "do this -> recommended"
+ * left-to-right. */
+.createonweb-blurb {
+  margin: 0 0 1rem;
+}
+
+.createonweb-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.createonweb-badge {
+  /* The PrimeVue Tag pulls its own padding + radius; just nudge it
+   * into the row alignment baseline. */
+  align-self: center;
+}
+
+.createonweb-hint {
+  margin-top: 0.75rem;
+  max-width: 64ch;
 }
 
 /* Connection summary row at the top of the settings card */
