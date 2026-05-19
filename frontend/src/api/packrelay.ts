@@ -112,3 +112,30 @@ export async function getPublishJob(
   const r = await apiClient.get(`/api/packrelay/jobs/${jobId}`)
   return r.data.data
 }
+
+// ─── Curator handoff (#152) ──────────────────────────────────────────
+
+export interface DraftSeedResponse {
+  /** One-shot URL on packrelay.cloud the user opens in their default
+   *  browser. Carries an opaque token; we don't track it client-side
+   *  ~ the cloud handles claim + expiry. */
+  url: string
+  /** ISO 8601 timestamp when the seed becomes unclaimable. */
+  expiresAt: string
+  /** How many installed mods went into the seed payload. The button
+   *  surface uses this in the success toast so the admin sees
+   *  exactly what got sent. */
+  modCount: number
+}
+
+/**
+ * "Create new pack on packrelay.cloud" handoff. KC backend builds
+ * the installed-mods snapshot, POSTs it anonymously to
+ * packrelay.cloud, and hands back the claim URL. Caller is expected
+ * to window.open() the URL straight away ~ the seed expires after
+ * an hour even if the user never claims it.
+ */
+export async function createDraftSeed(): Promise<DraftSeedResponse> {
+  const r = await apiClient.post('/api/packrelay/draft-seed')
+  return r.data.data
+}
