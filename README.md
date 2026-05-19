@@ -14,7 +14,7 @@
   <a href="https://codecov.io/gh/Kitsune-Den/KitsuneCommand"><img src="https://img.shields.io/codecov/c/github/Kitsune-Den/KitsuneCommand?label=coverage" alt="Coverage" /></a>
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/releases/latest"><img src="https://img.shields.io/github/v/release/Kitsune-Den/KitsuneCommand?include_prereleases&label=release" alt="Release" /></a>
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-PolyForm--NC--1.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
-  <a href="docs/RELEASES.md#verifying-a-release"><img src="https://img.shields.io/badge/releases-signed-blue" alt="Signed releases (minisign + sha256)" /></a>
+  <a href="docs/RELEASES.md#verifying-a-release"><img src="https://img.shields.io/badge/releases-signed%20since%20v2.7.2-blue" alt="Signed releases since v2.7.2 (minisign + sha256)" /></a>
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/pulls"><img src="https://img.shields.io/github/issues-pr/Kitsune-Den/KitsuneCommand" alt="PRs" /></a>
   <img src="https://img.shields.io/badge/7D2D-V2.0-orange" alt="7 Days to Die V2" />
   <img src="https://img.shields.io/badge/.NET_4.8-C%23_11-purple" alt=".NET 4.8" />
