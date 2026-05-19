@@ -155,7 +155,15 @@ fi
 echo "`$TMP" > /tmp/kc-deploy-last-snapshot
 rm -rf "$remoteModDir"
 "@
-$snapshotScript | & ssh $remote "bash -s"
+# Strip ALL carriage returns before piping. Two sources of CR pollution:
+#   1. The here-string itself is CRLF when this script is saved on Windows.
+#   2. Values read from .deploy.env retain a trailing \r (the parser splits
+#      on \n, leaving \r in the value), which then interpolates into the
+#      script — that's why a one-line `systemctl restart $serviceName`
+#      ended up as `systemctl restart 7daystodie\r`.
+# Stripping every \r handles both cases. Bash is line-oriented on \n only,
+# so removing CRs is safe.
+($snapshotScript -replace "`r", "") | & ssh $remote "bash -s"
 if ($LASTEXITCODE -ne 0) { throw "snapshot step failed" }
 
 # 2. scp the fresh dist. The path is the parent dir; scp recreates
@@ -188,7 +196,7 @@ fi
 chown -R $serviceUser`:$serviceUser "$remoteModDir"
 systemctl restart $serviceName
 "@
-$restoreScript | & ssh $remote "bash -s"
+($restoreScript -replace "`r", "") | & ssh $remote "bash -s"
 if ($LASTEXITCODE -ne 0) { throw "restore/restart step failed" }
 
 # 4. Health check. 7DTD takes 30-90s to come back online; we just check
