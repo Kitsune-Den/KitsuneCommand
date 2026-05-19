@@ -1011,6 +1011,16 @@ const zhCN: Messages = {
     failedToToggle: '切换模组失败',
     enable: '启用',
     disable: '禁用',
+    // Update check (English placeholders — translations TBD)
+    checkForUpdates: 'Check for Updates',
+    updateAvailable: 'Update available',
+    versionDiffers: 'Version differs',
+    updateAvailableTooltip: 'Nexus has {latest}. Installed: {installed}. Click to open the Nexus mod page.',
+    versionDiffersTooltip: 'Nexus has {latest}, installed is {installed}. Versions don\'t match a numeric scheme — verify on Nexus.',
+    updateCheckDoneTitle: 'Update check complete',
+    updateCheckDoneDetail: '{n} mod(s) may have an update available — see the badges in the Version column.',
+    updateCheckAllCurrent: 'All installed mods that match a Nexus listing are up to date.',
+    updateCheckFailed: 'Failed to check for updates',
     // Discovery
     installed: '已安装',
     discover: '发现',

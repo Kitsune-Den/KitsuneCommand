@@ -43,6 +43,31 @@ export async function toggleMod(modName: string): Promise<string> {
   return res.data.message
 }
 
+// --- Mod Update Check ---
+
+export type ModUpdateStatus =
+  | 'up_to_date'
+  | 'update_available'
+  | 'version_differs'
+  | 'no_match'
+  | 'skipped'
+
+/** One result per installed mod after a check-for-updates sweep. */
+export interface ModUpdateCheckResult {
+  folderName: string
+  status: ModUpdateStatus
+  installedVersion: string | null
+  latestVersion: string | null
+  nexusModId: number | null
+  nexusUrl: string | null
+  matchedName: string | null
+}
+
+export async function checkModUpdates(): Promise<ModUpdateCheckResult[]> {
+  const res = await apiClient.post('/api/mods/check-updates')
+  return res.data.data ?? []
+}
+
 // --- Mod Discovery (Nexus Mods) ---
 
 export interface NexusMod {

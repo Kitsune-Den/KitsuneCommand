@@ -1010,6 +1010,16 @@ const de = {
     failedToToggle: 'Mod konnte nicht umgeschaltet werden',
     enable: 'Aktivieren',
     disable: 'Deaktivieren',
+    // Update check (against Nexus by exact-name match)
+    checkForUpdates: 'Auf Updates prüfen',
+    updateAvailable: 'Update verfügbar',
+    versionDiffers: 'Version unterscheidet sich',
+    updateAvailableTooltip: 'Nexus hat {latest}. Installiert: {installed}. Klicken Sie, um die Nexus-Mod-Seite zu öffnen.',
+    versionDiffersTooltip: 'Nexus hat {latest}, installiert ist {installed}. Versionen entsprechen keinem numerischen Schema — auf Nexus überprüfen.',
+    updateCheckDoneTitle: 'Update-Prüfung abgeschlossen',
+    updateCheckDoneDetail: '{n} Mod(s) haben möglicherweise ein Update verfügbar — siehe die Badges in der Versions-Spalte.',
+    updateCheckAllCurrent: 'Alle installierten Mods, die zu einem Nexus-Eintrag passen, sind aktuell.',
+    updateCheckFailed: 'Update-Prüfung fehlgeschlagen',
     // Discovery
     installed: 'Installiert',
     discover: 'Entdecken',

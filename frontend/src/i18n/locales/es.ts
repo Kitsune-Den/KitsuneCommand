@@ -1010,6 +1010,16 @@ const es = {
     failedToToggle: 'No se pudo cambiar el mod',
     enable: 'Habilitar',
     disable: 'Deshabilitar',
+    // Update check (against Nexus by exact-name match)
+    checkForUpdates: 'Comprobar actualizaciones',
+    updateAvailable: 'Actualización disponible',
+    versionDiffers: 'La versión difiere',
+    updateAvailableTooltip: 'Nexus tiene {latest}. Instalado: {installed}. Haga clic para abrir la página del mod en Nexus.',
+    versionDiffersTooltip: 'Nexus tiene {latest}, instalado es {installed}. Las versiones no siguen un esquema numérico — verifique en Nexus.',
+    updateCheckDoneTitle: 'Comprobación completada',
+    updateCheckDoneDetail: '{n} mod(s) pueden tener una actualización disponible — vea las insignias en la columna Versión.',
+    updateCheckAllCurrent: 'Todos los mods instalados que coinciden con un mod en Nexus están actualizados.',
+    updateCheckFailed: 'Error al comprobar las actualizaciones',
     // Discovery
     installed: 'Instalados',
     discover: 'Descubrir',
