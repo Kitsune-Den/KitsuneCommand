@@ -1007,6 +1007,16 @@ const en = {
     failedToToggle: 'Failed to toggle mod',
     enable: 'Enable',
     disable: 'Disable',
+    // Update check (against Nexus by exact-name match)
+    checkForUpdates: 'Check for Updates',
+    updateAvailable: 'Update available',
+    versionDiffers: 'Version differs',
+    updateAvailableTooltip: 'Nexus has {latest}. Installed: {installed}. Click to open the Nexus mod page.',
+    versionDiffersTooltip: 'Nexus has {latest}, installed is {installed}. Versions don\'t match a numeric scheme — verify on Nexus.',
+    updateCheckDoneTitle: 'Update check complete',
+    updateCheckDoneDetail: '{n} mod(s) may have an update available — see the badges in the Version column.',
+    updateCheckAllCurrent: 'All installed mods that match a Nexus listing are up to date.',
+    updateCheckFailed: 'Failed to check for updates',
     // Discovery
     installed: 'Installed',
     discover: 'Discover',

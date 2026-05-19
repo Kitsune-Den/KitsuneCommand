@@ -35,6 +35,7 @@ namespace KitsuneCommand.Core
             // Server management services
             builder.RegisterType<ServerConfigService>().AsSelf().SingleInstance();
             builder.RegisterType<ModManagerService>().AsSelf().SingleInstance();
+            builder.RegisterType<ModUpdateService>().AsSelf().SingleInstance();
             builder.RegisterType<BackupService>().AsSelf().SingleInstance();
             builder.RegisterType<ModpackService>().AsSelf().SingleInstance();
             builder.RegisterType<DiscordWebhookService>().AsSelf().SingleInstance();

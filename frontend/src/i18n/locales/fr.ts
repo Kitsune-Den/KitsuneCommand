@@ -1010,6 +1010,16 @@ const fr = {
     failedToToggle: 'Impossible de basculer le mod',
     enable: 'Activer',
     disable: 'Désactiver',
+    // Update check (against Nexus by exact-name match)
+    checkForUpdates: 'Vérifier les mises à jour',
+    updateAvailable: 'Mise à jour disponible',
+    versionDiffers: 'Version différente',
+    updateAvailableTooltip: 'Nexus a {latest}. Installé : {installed}. Cliquez pour ouvrir la page Nexus du mod.',
+    versionDiffersTooltip: 'Nexus a {latest}, installé : {installed}. Les versions ne suivent pas un schéma numérique — à vérifier sur Nexus.',
+    updateCheckDoneTitle: 'Vérification terminée',
+    updateCheckDoneDetail: '{n} mod(s) ont peut-être une mise à jour disponible — voir les badges dans la colonne Version.',
+    updateCheckAllCurrent: 'Tous les mods installés correspondant à un mod sur Nexus sont à jour.',
+    updateCheckFailed: 'Échec de la vérification des mises à jour',
     // Discovery
     installed: 'Installés',
     discover: 'Découvrir',

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { getMods, uploadMod, deleteMod, toggleMod, type ModInfo } from '@/api/mods'
+import { getMods, uploadMod, deleteMod, toggleMod, checkModUpdates, type ModInfo, type ModUpdateCheckResult } from '@/api/mods'
 import {
   getModpackState,
   saveModpackDraft,
@@ -42,6 +42,16 @@ const confirmDeleteVisible = ref(false)
 const modToDelete = ref<ModInfo | null>(null)
 const uploading = ref(false)
 
+// Update-check state. Map of folderName -> result so the Version column can
+// render its per-row badge without re-iterating an array. Cleared on a fresh
+// check or when the mods list reloads (deletes / uploads / toggles).
+const updateChecking = ref(false)
+const updateCheckResults = ref<Record<string, ModUpdateCheckResult>>({})
+
+function getUpdateResult(folderName: string): ModUpdateCheckResult | undefined {
+  return updateCheckResults.value[folderName]
+}
+
 const filteredMods = computed(() => {
   if (!search.value.trim()) return mods.value
   const q = search.value.toLowerCase()
@@ -62,12 +72,48 @@ function formatSize(bytes: number): string {
 
 async function loadMods() {
   loading.value = true
+  // Stale check results once the underlying mod set changes (upload, delete,
+  // toggle, etc.) — admin needs to re-check to refresh.
+  updateCheckResults.value = {}
   try {
     mods.value = await getMods()
   } catch {
     toast.add({ severity: 'error', summary: t('common.error'), detail: t('mods.failedToLoad'), life: 4000 })
   } finally {
     loading.value = false
+  }
+}
+
+async function handleCheckForUpdates() {
+  updateChecking.value = true
+  try {
+    const results = await checkModUpdates()
+    const next: Record<string, ModUpdateCheckResult> = {}
+    let updatesFound = 0
+    for (const r of results) {
+      next[r.folderName] = r
+      if (r.status === 'update_available' || r.status === 'version_differs') updatesFound++
+    }
+    updateCheckResults.value = next
+    if (updatesFound > 0) {
+      toast.add({
+        severity: 'info',
+        summary: t('mods.updateCheckDoneTitle'),
+        detail: t('mods.updateCheckDoneDetail', { n: updatesFound }),
+        life: 4000,
+      })
+    } else {
+      toast.add({
+        severity: 'success',
+        summary: t('mods.updateCheckDoneTitle'),
+        detail: t('mods.updateCheckAllCurrent'),
+        life: 3000,
+      })
+    }
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('mods.updateCheckFailed'), life: 4000 })
+  } finally {
+    updateChecking.value = false
   }
 }
 
@@ -302,6 +348,15 @@ onMounted(() => {
         <TabPanel value="0">
           <div class="tab-content">
             <div class="installed-header">
+              <Button
+                :label="t('mods.checkForUpdates')"
+                icon="pi pi-cloud-download"
+                severity="secondary"
+                outlined
+                :loading="updateChecking"
+                @click="handleCheckForUpdates"
+                class="check-updates-btn"
+              />
               <FileUpload
                 mode="basic"
                 accept=".zip"
@@ -344,9 +399,41 @@ onMounted(() => {
                   <span v-if="data.description" class="mod-desc">{{ data.description }}</span>
                 </template>
               </Column>
-              <Column field="version" :header="t('mods.version')" style="width: 100px">
+              <Column field="version" :header="t('mods.version')" style="width: 180px">
                 <template #body="{ data }">
-                  {{ data.version || '—' }}
+                  <div class="version-cell">
+                    <span>{{ data.version || '—' }}</span>
+                    <!-- Update-check badge. Only rendered for rows where the
+                         Check for Updates sweep returned an actionable status. -->
+                    <a
+                      v-if="getUpdateResult(data.folderName)?.status === 'update_available'"
+                      :href="getUpdateResult(data.folderName)?.nexusUrl ?? '#'"
+                      target="_blank"
+                      rel="noopener"
+                      class="update-badge update-badge--available"
+                      :title="t('mods.updateAvailableTooltip', {
+                        installed: getUpdateResult(data.folderName)?.installedVersion ?? '?',
+                        latest: getUpdateResult(data.folderName)?.latestVersion ?? '?'
+                      })"
+                    >
+                      <i class="pi pi-arrow-circle-up" />
+                      {{ t('mods.updateAvailable') }}
+                    </a>
+                    <a
+                      v-else-if="getUpdateResult(data.folderName)?.status === 'version_differs'"
+                      :href="getUpdateResult(data.folderName)?.nexusUrl ?? '#'"
+                      target="_blank"
+                      rel="noopener"
+                      class="update-badge update-badge--differs"
+                      :title="t('mods.versionDiffersTooltip', {
+                        installed: getUpdateResult(data.folderName)?.installedVersion ?? '?',
+                        latest: getUpdateResult(data.folderName)?.latestVersion ?? '?'
+                      })"
+                    >
+                      <i class="pi pi-info-circle" />
+                      {{ t('mods.versionDiffers') }}
+                    </a>
+                  </div>
                 </template>
               </Column>
               <Column field="author" :header="t('mods.author')" style="width: 140px">
@@ -574,6 +661,54 @@ onMounted(() => {
 .installed-header {
   display: flex;
   justify-content: flex-end;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Version column gets a wider track to fit the update-check badge inline. */
+.version-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.update-badge i {
+  font-size: 0.75rem;
+}
+
+.update-badge--available {
+  background: rgba(34, 197, 94, 0.15);
+  color: rgb(74, 222, 128);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.update-badge--available:hover {
+  background: rgba(34, 197, 94, 0.25);
+  border-color: rgba(34, 197, 94, 0.6);
+}
+
+.update-badge--differs {
+  background: rgba(234, 179, 8, 0.12);
+  color: rgb(250, 204, 21);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.update-badge--differs:hover {
+  background: rgba(234, 179, 8, 0.22);
+  border-color: rgba(234, 179, 8, 0.55);
 }
 
 .restart-banner {

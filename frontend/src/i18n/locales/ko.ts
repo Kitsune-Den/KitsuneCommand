@@ -1011,6 +1011,16 @@ const ko: Messages = {
     failedToToggle: '모드 전환에 실패했습니다',
     enable: '활성화',
     disable: '비활성화',
+    // Update check (English placeholders — translations TBD)
+    checkForUpdates: 'Check for Updates',
+    updateAvailable: 'Update available',
+    versionDiffers: 'Version differs',
+    updateAvailableTooltip: 'Nexus has {latest}. Installed: {installed}. Click to open the Nexus mod page.',
+    versionDiffersTooltip: 'Nexus has {latest}, installed is {installed}. Versions don\'t match a numeric scheme — verify on Nexus.',
+    updateCheckDoneTitle: 'Update check complete',
+    updateCheckDoneDetail: '{n} mod(s) may have an update available — see the badges in the Version column.',
+    updateCheckAllCurrent: 'All installed mods that match a Nexus listing are up to date.',
+    updateCheckFailed: 'Failed to check for updates',
     // Discovery
     installed: '설치됨',
     discover: '탐색',

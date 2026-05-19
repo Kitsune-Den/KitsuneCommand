@@ -18,10 +18,34 @@ namespace KitsuneCommand.Web.Controllers
     public class ModsController : ApiController
     {
         private readonly ModManagerService _modService;
+        private readonly ModUpdateService _updateService;
 
-        public ModsController(ModManagerService modService)
+        public ModsController(ModManagerService modService, ModUpdateService updateService)
         {
             _modService = modService;
+            _updateService = updateService;
+        }
+
+        /// <summary>
+        /// Cross-reference every installed mod against Nexus by exact name match
+        /// and surface available updates. Read-only — no downloads, no in-place
+        /// replacements. The frontend shows a badge + Nexus link per row; admin
+        /// re-downloads + uploads through the existing flow if they want to update.
+        /// </summary>
+        [HttpPost]
+        [Route("check-updates")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult CheckForUpdates()
+        {
+            try
+            {
+                var results = _updateService.CheckAll();
+                return Ok(ApiResponse.Ok(results));
+            }
+            catch (Exception ex)
+            {
+                return Ok(ApiResponse.Error(500, $"Failed to check for updates: {ex.Message}"));
+            }
         }
 
         /// <summary>
