@@ -12,6 +12,38 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.7.3] - 2026-05-19
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.7.3)
+> · Patch release — mods page gets a "Check for Updates" button that
+> cross-references installed mods against Nexus, and the mod uploader
+> now streams large files to disk instead of buffering in RAM (no more
+> OOM on big modpacks).
+
+### Added
+
+- **Mods → Check for Updates** — new button on the Mods page that
+  cross-references every installed mod against Nexus by exact-name
+  match and surfaces a per-row badge (`update available` / `version
+  differs`) linking to the matching Nexus page. Stateless, on-demand —
+  no `mod_origins` table or persisted match cache. Skips
+  `IsProtected` (KitsuneCommand itself). New
+  `Services/ModUpdateService.cs` + `POST /api/mods/check-updates` +
+  i18n keys across all eight locales (en/de/fr/es translated;
+  ja/ko/zh-CN/zh-TW carry English placeholders pending translation).
+  (PR #86)
+
+### Fixed
+
+- **Mod uploader — large modpacks no longer OOM the mod process.**
+  `ModsController.UploadMod` was using `MultipartMemoryStreamProvider`,
+  which buffers the entire multipart body in RAM — a 500MB modpack
+  allocated 500MB+ inside the mod process, enough to OOM-kill prod on
+  an 8GB box with the game server already resident. Swapped in
+  `MultipartFileStreamProvider` so the upload streams to a temp file
+  in constant memory. Temp dir cleaned up in a `finally` block.
+  Frontend FileUpload cap bumped 200MB → 1GB to match. (PR #87)
+
 ## [2.7.2] - 2026-05-18
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.7.2)
@@ -457,7 +489,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.2...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.3...HEAD
+[2.7.3]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.2...v2.7.3
 [2.7.2]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.1...v2.7.2
 [2.7.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.6.4...v2.7.0
