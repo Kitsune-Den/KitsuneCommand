@@ -28,7 +28,7 @@ You'll need [minisign](https://jedisct1.github.io/minisign/) installed (single s
 sha256sum -c KitsuneCommand-vX.Y.Z.zip.sha256
 
 # 2. Verify the signature — proves the zip was signed by the KC maintainer
-minisign -Vm KitsuneCommand-vX.Y.Z.zip -P <PUBLIC-KEY-PLACEHOLDER>
+minisign -Vm KitsuneCommand-vX.Y.Z.zip -P RWQ+HmFzPKzD6llIm6vKIVja0QU1t5DPYBxHfPb6tcRqQecwAlWjyyln
 ```
 
 The public key is published in [`docs/RELEASES.md`](RELEASES.md#verifying-a-release) and on the GitHub release notes for the first release that shipped signed.
@@ -79,7 +79,7 @@ The script:
 
 ### 3. Commit the public key
 
-The script prints the public key contents. Paste them into [`docs/RELEASES.md`](RELEASES.md) under the `Verifying a release` section, replacing the `<PUBLIC-KEY-PLACEHOLDER>` marker. Commit the change.
+The script prints the public key contents. Paste them into [`docs/RELEASES.md`](RELEASES.md) under the `Verifying a release > Public key` section, replacing the existing key block. Commit the change. (Old releases stay verifiable against the old key — see [key rotation](#key-rotation).)
 
 ### 4. Back up the private key + password
 

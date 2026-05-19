@@ -164,7 +164,7 @@ release page, then:
 
 ```bash
 sha256sum -c KitsuneCommand-vX.Y.Z.zip.sha256
-minisign -Vm KitsuneCommand-vX.Y.Z.zip -P <PUBLIC-KEY-PLACEHOLDER>
+minisign -Vm KitsuneCommand-vX.Y.Z.zip -P RWQ+HmFzPKzD6llIm6vKIVja0QU1t5DPYBxHfPb6tcRqQecwAlWjyyln
 ```
 
 If `minisign -V` prints `Signature and comment signature verified`,
@@ -172,12 +172,17 @@ you're good. Anything else — don't extract the zip. Open an issue.
 
 ### Public key
 
+In effect since **v2.7.2** (2026-05-18):
+
 ```
-<PUBLIC-KEY-PLACEHOLDER>
+untrusted comment: minisign public key EAC3AC3C73611E3E
+RWQ+HmFzPKzD6llIm6vKIVja0QU1t5DPYBxHfPb6tcRqQecwAlWjyyln
 ```
 
-(Replaced with the real key once the keypair is generated. See
-[`docs/SIGNING.md`](SIGNING.md) for the one-time setup walkthrough.)
+The second line (the base64 string starting `RWQ+...`) is what
+`minisign -V`'s `-P` argument expects. The `untrusted comment:`
+line is the file-format header and isn't part of the key
+identity.
 
 For the rationale (why minisign, key rotation, common failure modes),
 see [`docs/SIGNING.md`](SIGNING.md).
