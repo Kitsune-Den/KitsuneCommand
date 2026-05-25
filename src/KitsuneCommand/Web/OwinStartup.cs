@@ -94,6 +94,14 @@ namespace KitsuneCommand.Web
             config.Services.Replace(typeof(System.Web.Http.Dispatcher.IAssembliesResolver),
                 new SafeAssembliesResolver());
 
+            // Opt the mod-upload endpoint out of WebAPI request buffering so that
+            // MultipartFileStreamProvider can actually stream the body to disk in
+            // constant memory. Without this replacement the default policy buffers
+            // the entire request first, OOM-killing the host on big modpacks.
+            // See: KitsuneCommand.Web.StreamingUploadBufferPolicy.
+            config.Services.Replace(typeof(System.Web.Http.Hosting.IHostBufferPolicySelector),
+                new StreamingUploadBufferPolicy());
+
             config.MapHttpAttributeRoutes();
 
             config.Routes.MapHttpRoute(

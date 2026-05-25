@@ -76,7 +76,10 @@ namespace KitsuneCommand.Web.Controllers
         ///
         /// Uses <see cref="MultipartFileStreamProvider"/> so the upload streams to
         /// disk in constant memory — large modpacks (500MB+) no longer risk
-        /// OOM-killing the host process.
+        /// OOM-killing the host process. Note: this only actually streams because
+        /// <c>KitsuneCommand.Web.StreamingUploadBufferPolicy</c> is registered in
+        /// <c>OwinStartup</c> to opt this route out of WebAPI's default request
+        /// buffering. Removing that policy will silently re-introduce the OOM.
         /// </summary>
         [HttpPost]
         [Route("upload")]
