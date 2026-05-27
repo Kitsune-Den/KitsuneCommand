@@ -1,3 +1,4 @@
+using KitsuneCommand.Configuration;
 using KitsuneCommand.Data;
 using KitsuneCommand.Data.Entities;
 using KitsuneCommand.Data.Repositories;
@@ -42,19 +43,22 @@ namespace KitsuneCommand.Web.Auth
             Log.Out($"[KitsuneCommand]   Username: admin");
             Log.Out($"[KitsuneCommand]   Password: {password}");
             Log.Out("[KitsuneCommand]   Please change this password after first login.");
+            // Reassurance for operators who used to see this block re-print on
+            // every world regen: the data dir is now world-agnostic, so this
+            // password persists across worlds, mod updates, and server reboots
+            // — it will only regenerate if the underlying user_accounts table
+            // is empty (i.e. the DB was deleted or freshly re-initialized).
+            Log.Out("[KitsuneCommand]   Data dir is world-agnostic — restarts and");
+            Log.Out("[KitsuneCommand]   new worlds will NOT rotate this password.");
             Log.Out("============================================================");
 
-            // Also write to a file for convenience
-            var passwordFile = Path.Combine(
-                Path.GetDirectoryName(_userRepo is UserAccountRepository repo
-                    ? "." : "."),
-                "FIRST_RUN_PASSWORD.txt"
-            );
-
+            // Also write to a convenience file next to the DB. Same world-agnostic
+            // location as the rest of KC's persistent data; see
+            // ConfigManager.ResolveWorldAgnosticDataDir for the resolution.
             try
             {
-                var saveDir = Path.Combine(GameIO.GetSaveGameDir(), "KitsuneCommand");
-                passwordFile = Path.Combine(saveDir, "FIRST_RUN_PASSWORD.txt");
+                var dataDir = ConfigManager.ResolveWorldAgnosticDataDir();
+                var passwordFile = Path.Combine(dataDir, "FIRST_RUN_PASSWORD.txt");
                 File.WriteAllText(passwordFile,
                     $"KitsuneCommand Admin Credentials (delete this file after reading)\n" +
                     $"Username: admin\n" +
