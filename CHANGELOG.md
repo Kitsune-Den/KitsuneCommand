@@ -12,6 +12,33 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.7.4] - 2026-05-27
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.7.4)
+> · Patch release — the KC admin password no longer rotates on new
+> worlds. Persistent data (DB, FIRST_RUN / RESET password files) now
+> lives in a world-agnostic location.
+
+### Fixed
+
+- **Admin password no longer rotates on world regen.** The KC data dir
+  was anchored to `GameIO.GetSaveGameDir()`, which returns the
+  *current world's* save folder. Every new world (or any 7DTD boot
+  that landed on a different save dir) produced an empty KC database
+  and re-ran `AuthService.EnsureAdminExists`, silently rotating the
+  admin password and writing a fresh `FIRST_RUN_PASSWORD.txt`.
+  Observed on a live server as four "FIRST RUN" blocks in two days,
+  each invalidating the operator's stored panel creds with no obvious
+  cause. Fix: anchor the data dir to the 7DTD user-data root (parent
+  of `Saves/`) so the DB, `appsettings.json` override,
+  `FIRST_RUN_PASSWORD.txt`, and `RESET_PASSWORD.txt` survive world
+  regen, save deletion, and PackRelay mod re-installs. Includes a
+  best-effort one-time migration that copies any existing per-world
+  data forward on first boot with the new code. New
+  `ConfigManager.ResolveWorldAgnosticDataDir()` is the single source
+  of truth — `AuthService` and `WebServerHost` both call it instead
+  of duplicating the path walk.
+
 ## [2.7.3] - 2026-05-19
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.7.3)
@@ -489,7 +516,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.3...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.4...HEAD
+[2.7.4]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.3...v2.7.4
 [2.7.3]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.2...v2.7.3
 [2.7.2]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.1...v2.7.2
 [2.7.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.0...v2.7.1

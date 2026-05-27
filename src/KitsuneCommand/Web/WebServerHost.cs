@@ -228,12 +228,14 @@ namespace KitsuneCommand.Web
                 {
                     // Emergency password reset mechanism: if BCrypt verification fails (e.g. hash
                     // was corrupted or the Mono runtime mangled it), the server admin can place a
-                    // plaintext RESET_PASSWORD.txt in the save-game KitsuneCommand folder. When the
-                    // submitted password matches that file's contents, the password is re-hashed
-                    // with BCrypt and the reset file is deleted, restoring normal login.
+                    // plaintext RESET_PASSWORD.txt in the KitsuneCommand data folder — same
+                    // world-agnostic location as the DB (see
+                    // ConfigManager.ResolveWorldAgnosticDataDir). When the submitted password
+                    // matches that file's contents, the password is re-hashed with BCrypt and
+                    // the reset file is deleted, restoring normal login.
                     try
                     {
-                        var resetFile = Path.Combine(GameIO.GetSaveGameDir(), "KitsuneCommand", "RESET_PASSWORD.txt");
+                        var resetFile = Path.Combine(ConfigManager.ResolveWorldAgnosticDataDir(), "RESET_PASSWORD.txt");
                         if (File.Exists(resetFile))
                         {
                             var resetPassword = File.ReadAllText(resetFile).Trim();
