@@ -47,6 +47,7 @@ const zhTW: Messages = {
     dashboard: '儀表板',
     players: '玩家',
     console: '主控台',
+    joinAttempts: 'Join Attempts',
     map: '地圖',
     chat: '聊天',
     teleport: '傳送',
@@ -243,6 +244,29 @@ const zhTW: Messages = {
     welcomeMessage: 'KitsuneCommand 主控台 - 在下方輸入指令。使用上/下方向鍵瀏覽歷史指令。',
     autoScroll: '自動捲動',
     clearLog: '清除',
+  },
+
+  // English placeholders pending translation.
+  joinAttempts: {
+    title: 'Join Attempts',
+    subtitle: 'Live view of LiteNetLib-layer connection events. Powered by KitsuneCommand\'s in-process ring buffer. Restart clears the ring.',
+    totalRecorded: 'Events (lifetime)',
+    bufferUsage: 'Buffer usage',
+    verbose: 'Verbose console logging',
+    verboseOn: 'Now logging each event to nssm-stdout.log as [KC-NetDiag] lines.',
+    verboseOff: 'Console logging disabled; ring buffer recording continues.',
+    autoRefresh: 'Auto-refresh',
+    clear: 'Clear ring',
+    cleared: 'Join-attempt ring cleared.',
+    failedToClear: 'Failed to clear ring.',
+    failedToLoad: 'Failed to load join attempts',
+    failedToToggle: 'Failed to toggle verbose logging.',
+    peer: 'Peer',
+    time: 'When',
+    events: 'Events',
+    outcome: 'Outcome',
+    steps: 'Steps',
+    empty: 'No join attempts in the ring buffer. Try clicking Direct Connect on a 7DTD client to populate it.',
   },
 
   map: {

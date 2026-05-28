@@ -47,6 +47,7 @@ const ko: Messages = {
     dashboard: '대시보드',
     players: '플레이어',
     console: '콘솔',
+    joinAttempts: 'Join Attempts',
     map: '지도',
     chat: '채팅',
     teleport: '텔레포트',
@@ -243,6 +244,29 @@ const ko: Messages = {
     welcomeMessage: 'KitsuneCommand 콘솔 - 아래에 명령어를 입력하세요. 위/아래 화살표로 명령어 기록을 탐색할 수 있습니다.',
     autoScroll: '자동 스크롤',
     clearLog: '지우기',
+  },
+
+  // English placeholders pending translation.
+  joinAttempts: {
+    title: 'Join Attempts',
+    subtitle: 'Live view of LiteNetLib-layer connection events. Powered by KitsuneCommand\'s in-process ring buffer. Restart clears the ring.',
+    totalRecorded: 'Events (lifetime)',
+    bufferUsage: 'Buffer usage',
+    verbose: 'Verbose console logging',
+    verboseOn: 'Now logging each event to nssm-stdout.log as [KC-NetDiag] lines.',
+    verboseOff: 'Console logging disabled; ring buffer recording continues.',
+    autoRefresh: 'Auto-refresh',
+    clear: 'Clear ring',
+    cleared: 'Join-attempt ring cleared.',
+    failedToClear: 'Failed to clear ring.',
+    failedToLoad: 'Failed to load join attempts',
+    failedToToggle: 'Failed to toggle verbose logging.',
+    peer: 'Peer',
+    time: 'When',
+    events: 'Events',
+    outcome: 'Outcome',
+    steps: 'Steps',
+    empty: 'No join attempts in the ring buffer. Try clicking Direct Connect on a 7DTD client to populate it.',
   },
 
   map: {

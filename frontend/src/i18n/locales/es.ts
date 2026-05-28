@@ -46,6 +46,7 @@ const es = {
     dashboard: 'Panel principal',
     players: 'Jugadores',
     console: 'Consola',
+    joinAttempts: 'Intentos de conexión',
     map: 'Mapa',
     chat: 'Chat',
     teleport: 'Teletransporte',
