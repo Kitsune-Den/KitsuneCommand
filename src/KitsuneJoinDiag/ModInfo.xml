@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+    <Name value="KitsuneJoinDiag" />
+    <DisplayName value="Kitsune Join Diagnostics" />
+    <Version value="0.1.0" />
+    <Description value="Client-side companion to KitsuneCommand's Join Attempts panel. When a connection to a 7DTD server fails, vanilla 7DTD shows 'Could not retrieve server information' with no detail. This mod intercepts the LiteNetLib disconnect event on the client and dumps the actual DisconnectReason (PeerNotFound, Timeout, ConnectionFailed, InvalidProtocol, etc.) to the client's log so a failing player can immediately see what went wrong, or paste it to an admin who can. Harmless on dedicated servers (the client-side code path doesn't exist there)." />
+    <Author value="AdaInTheLab" />
+    <Website value="https://github.com/Kitsune-Den/KitsuneCommand" />
+</xml>
