@@ -46,6 +46,7 @@ const de = {
     dashboard: 'Übersicht',
     players: 'Spieler',
     console: 'Konsole',
+    joinAttempts: 'Verbindungsversuche',
     map: 'Karte',
     chat: 'Chat',
     teleport: 'Teleport',

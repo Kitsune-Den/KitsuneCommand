@@ -46,6 +46,7 @@ const fr = {
     dashboard: 'Tableau de bord',
     players: 'Joueurs',
     console: 'Console',
+    joinAttempts: 'Tentatives de connexion',
     map: 'Carte',
     chat: 'Chat',
     teleport: 'Téléportation',

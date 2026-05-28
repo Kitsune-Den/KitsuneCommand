@@ -37,6 +37,16 @@ const router = createRouter({
           component: () => import('@/views/ConsoleView.vue'),
         },
         {
+          // Diagnostic surface for LiteNetLib-layer connection events,
+          // powered by AuthWrapperServerDiagnostics + JoinAttemptRing.
+          // Lives alongside /console because it's the same family —
+          // operator-facing live diagnostics — just structured (events
+          // table) instead of free-form (log lines).
+          path: 'join-attempts',
+          name: 'JoinAttempts',
+          component: () => import('@/views/JoinAttemptsView.vue'),
+        },
+        {
           path: 'server',
           name: 'ServerControl',
           component: () => import('@/views/ServerControlView.vue'),

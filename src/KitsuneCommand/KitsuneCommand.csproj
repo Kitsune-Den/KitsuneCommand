@@ -123,6 +123,17 @@
       <HintPath>refs\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!--
+      LiteNetLib: 7DTD's UDP networking library, shipped in the dedicated
+      server's Managed/ folder. We reference it (read-only, Private=false)
+      so Harmony patches in GameIntegration/Harmony/AuthWrapperServerDiagnostics
+      can statically type the LiteNetLib types (ConnectionRequest, NetPeer,
+      DisconnectInfo, etc.) used in NetworkServerLiteNetLib's auth wrapper.
+    -->
+    <Reference Include="LiteNetLib">
+      <HintPath>refs\LiteNetLib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- System Compression (for ZIP handling in mods/backups) -->
@@ -163,6 +174,17 @@
       test fails OneTimeSetUp with DllNotFoundException.
     -->
     <None Include="x64\sqlite3.dll" Link="x64\sqlite3.dll" CopyToOutputDirectory="PreserveNewest" />
+    <!--
+      Native libSkiaSharp lives next to sqlite3 ~ ModEntry's PreloadNativeLibrary
+      and RegisterMonoDllMap calls already expect both files in <modPath>/x64/.
+      Without these files on disk the preload silently no-ops; the first call
+      into Skia (MapTileRenderer) then throws
+      `Unable to load library 'libSkiaSharp'` from SkiaSharp.SKData's static
+      constructor. Sourced from the SkiaSharp 2.80.4 + SkiaSharp.NativeAssets.
+      Linux.NoDependencies 2.80.4 NuGet packages.
+    -->
+    <None Include="x64\libSkiaSharp.dll" Link="x64\libSkiaSharp.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="x64\libSkiaSharp.so" Link="x64\libSkiaSharp.so" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
