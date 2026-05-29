@@ -513,5 +513,22 @@ export interface PlayerMetadata {
   nameColor: string | null
   customTag: string | null
   notes: string | null
+  vipTier: string | null
   updatedAt: string
+}
+
+// ─── VIP Perks (board #233, #234) ────────────────────
+export interface TierGiftRule {
+  tier: string
+  templateName: string
+  period: string // 'daily' | 'weekly' | 'monthly'
+}
+
+export interface VipPerksSettings {
+  enabled: boolean
+  tiers: string[]
+  firstLoginPackEnabled: boolean
+  firstLoginTemplateName: string
+  firstLoginMessage: string
+  tierGifts: TierGiftRule[]
 }

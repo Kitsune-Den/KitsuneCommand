@@ -66,5 +66,21 @@ namespace KitsuneCommand.Web.Controllers
             _metadataRepo.Upsert(metadata);
             return Ok(ApiResponse.Ok(metadata));
         }
+
+        /// <summary>
+        /// Set (or clear) a player's VIP tier. Kept on its own route because it
+        /// writes only the vip_tier column — UpdateMetadata overwrites name colour
+        /// / tag / notes, so folding tier into that body would clobber them.
+        /// </summary>
+        [HttpPut]
+        [Route("{playerId}/tier")]
+        public IHttpActionResult SetTier(string playerId, [FromBody] SetVipTierRequest request)
+        {
+            if (request == null)
+                return BadRequest("Request body is required.");
+
+            _metadataRepo.SetTier(playerId, request.Tier);
+            return Ok(ApiResponse.Ok(_metadataRepo.GetByPlayerId(playerId)));
+        }
     }
 }

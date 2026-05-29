@@ -76,3 +76,8 @@ export async function updatePlayerMetadata(
 export async function setAdminLevel(entityId: number, level: number): Promise<void> {
   await apiClient.post(`/api/players/${entityId}/admin-level`, { level })
 }
+
+export async function setPlayerTier(playerId: string, tier: string | null): Promise<PlayerMetadata> {
+  const response = await apiClient.put(`/api/players/metadata/${encodeURIComponent(playerId)}/tier`, { tier })
+  return response.data.data
+}

@@ -11,12 +11,13 @@ import {
 } from '@/api/settings'
 import { getVoteSettings, updateVoteSettings } from '@/api/bloodmoonvote'
 import { getVoteRewardsSettings, updateVoteRewardsSettings, getVoteGrants } from '@/api/voterewards'
+import { getVipPerksSettings, updateVipPerksSettings } from '@/api/vipperks'
 import { getRestartSettings, updateRestartSettings, triggerRestartNow } from '@/api/restart'
 import { getTicketSettings, updateTicketSettings } from '@/api/tickets'
 import { getDiscordSettings, updateDiscordSettings, getDiscordStatus, testDiscordConnection } from '@/api/discord'
 import { restartServer } from '@/api/serverControl'
 import type { UserResponse, CreateUserRequest } from '@/api/users'
-import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings, TicketSettings, DiscordSettings, DiscordStatus, VoteRewardsSettings, VoteGrant, GracefulRestartSettings } from '@/types'
+import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings, TicketSettings, DiscordSettings, DiscordStatus, VoteRewardsSettings, VoteGrant, GracefulRestartSettings, VipPerksSettings } from '@/types'
 import { VOTE_REWARD_TYPE } from '@/types'
 import { usePermissions } from '@/composables/usePermissions'
 import { useToast } from 'primevue/usetoast'
@@ -717,6 +718,76 @@ async function refreshDiscordStatus() {
   } catch { /* ignore */ }
 }
 
+// ---- VIP Perks Tab (board #233, #234) ----
+//
+// Backed by VipPerksController (REST) + VipPerksFeature (spawn-driven grants).
+// Tier names are free-form and admin-editable; the first-login pack and the
+// recurring tier gifts both reference VIP-gift templates by name.
+const vipPerksSettings = ref<VipPerksSettings>({
+  enabled: false,
+  tiers: [],
+  firstLoginPackEnabled: false,
+  firstLoginTemplateName: '',
+  firstLoginMessage: '',
+  tierGifts: [],
+})
+const loadingVipPerks = ref(false)
+const savingVipPerks = ref(false)
+
+const vipPeriodOptions = [
+  { label: t('settings.vipPerksPeriodDaily'), value: 'daily' },
+  { label: t('settings.vipPerksPeriodWeekly'), value: 'weekly' },
+  { label: t('settings.vipPerksPeriodMonthly'), value: 'monthly' },
+]
+
+// Literal placeholder kept as a const so vue-i18n doesn't try to interpolate {player}.
+const vipFirstLoginPlaceholder = "Welcome, {player}! Enjoy your starter pack."
+
+async function fetchVipPerksSettings() {
+  loadingVipPerks.value = true
+  try {
+    vipPerksSettings.value = await getVipPerksSettings()
+    // Defensive: server may omit empty collections.
+    vipPerksSettings.value.tiers ??= []
+    vipPerksSettings.value.tierGifts ??= []
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadVipPerks'), life: 3000 })
+  } finally {
+    loadingVipPerks.value = false
+  }
+}
+
+function addVipTier() {
+  vipPerksSettings.value.tiers.push('')
+}
+function removeVipTier(idx: number) {
+  vipPerksSettings.value.tiers.splice(idx, 1)
+}
+function addTierGift() {
+  vipPerksSettings.value.tierGifts.push({ tier: '', templateName: '', period: 'weekly' })
+}
+function removeTierGift(idx: number) {
+  vipPerksSettings.value.tierGifts.splice(idx, 1)
+}
+
+async function handleSaveVipPerks() {
+  savingVipPerks.value = true
+  try {
+    // Drop blank tier names so they don't pollute the dropdown / rules.
+    vipPerksSettings.value.tiers = vipPerksSettings.value.tiers
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+    await updateVipPerksSettings(vipPerksSettings.value)
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.vipPerksSaved'), life: 3000 })
+    await fetchVipPerksSettings()
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
+  } finally {
+    savingVipPerks.value = false
+  }
+}
+
 onMounted(() => {
   if (isAdmin.value) {
     fetchUsers()
@@ -729,6 +800,7 @@ onMounted(() => {
     fetchDiscordSettings()
     fetchVoteRewardsSettings()
     fetchVoteGrants()
+    fetchVipPerksSettings()
     fetchRestartSettings()
   }
 })
@@ -750,6 +822,7 @@ onMounted(() => {
         <Tab v-if="isAdmin" value="7">{{ t('settings.tickets') }}</Tab>
         <Tab v-if="isAdmin" value="8">Discord</Tab>
         <Tab v-if="isAdmin" value="9">{{ t('settings.voteRewards') }}</Tab>
+        <Tab v-if="isAdmin" value="11">{{ t('settings.vipPerks') }}</Tab>
         <Tab v-if="isAdmin" value="10">{{ t('settings.serverRestart') }}</Tab>
       </TabList>
       <TabPanels>
@@ -1522,6 +1595,97 @@ onMounted(() => {
           </div>
         </TabPanel>
 
+        <!-- VIP Perks Tab (board #233, #234) -->
+        <TabPanel v-if="isAdmin" value="11">
+          <div v-if="loadingVipPerks" class="loading-state">{{ t('settings.loadingSettings') }}</div>
+          <div v-else class="settings-section">
+            <Card class="settings-card">
+              <template #title>{{ t('settings.vipPerksTitle') }}</template>
+              <template #subtitle>{{ t('settings.vipPerksSubtitle') }}</template>
+              <template #content>
+                <div class="toggle-row">
+                  <label>{{ t('settings.vipPerksMasterToggle') }}</label>
+                  <ToggleSwitch v-model="vipPerksSettings.enabled" />
+                </div>
+                <small class="settings-hint">{{ t('settings.vipPerksMasterToggleHint') }}</small>
+              </template>
+            </Card>
+
+            <!-- Tiers -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.vipPerksTiersHeader') }}</template>
+              <template #subtitle>{{ t('settings.vipPerksTiersHint') }}</template>
+              <template #content>
+                <div v-for="(_, idx) in vipPerksSettings.tiers" :key="`tier-${idx}`" class="vip-row">
+                  <InputText v-model="vipPerksSettings.tiers[idx]" class="form-input" :placeholder="t('settings.vipPerksTierNamePlaceholder')" />
+                  <Button icon="pi pi-trash" text severity="danger" @click="removeVipTier(idx)" />
+                </div>
+                <Button :label="t('settings.vipPerksAddTier')" icon="pi pi-plus" text severity="secondary" @click="addVipTier" />
+              </template>
+            </Card>
+
+            <!-- First-login pack (#233) -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.vipPerksFirstLoginHeader') }}</template>
+              <template #subtitle>{{ t('settings.vipPerksFirstLoginHint') }}</template>
+              <template #content>
+                <div class="toggle-row">
+                  <label>{{ t('settings.vipPerksFirstLoginEnable') }}</label>
+                  <ToggleSwitch v-model="vipPerksSettings.firstLoginPackEnabled" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.vipPerksTemplateName') }}</label>
+                  <InputText v-model="vipPerksSettings.firstLoginTemplateName" class="form-input" />
+                  <small class="settings-hint">{{ t('settings.vipPerksTemplateNameHint') }}</small>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.vipPerksFirstLoginMessage') }}</label>
+                  <InputText v-model="vipPerksSettings.firstLoginMessage" class="form-input" :placeholder="vipFirstLoginPlaceholder" />
+                  <small class="settings-hint">{{ t('settings.vipPerksFirstLoginMessageHint', { playerToken: '{player}' }) }}</small>
+                </div>
+              </template>
+            </Card>
+
+            <!-- Recurring tier gifts (#234) -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.vipPerksTierGiftsHeader') }}</template>
+              <template #subtitle>{{ t('settings.vipPerksTierGiftsHint') }}</template>
+              <template #content>
+                <div v-for="(rule, idx) in vipPerksSettings.tierGifts" :key="`rule-${idx}`" class="vip-gift-rule">
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.vipPerksRuleTier') }}</label>
+                    <Select
+                      v-model="rule.tier"
+                      :options="vipPerksSettings.tiers"
+                      :placeholder="t('settings.vipPerksRuleTierPlaceholder')"
+                      class="form-input"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.vipPerksTemplateName') }}</label>
+                    <InputText v-model="rule.templateName" class="form-input" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.vipPerksRulePeriod') }}</label>
+                    <Select v-model="rule.period" :options="vipPeriodOptions" optionLabel="label" optionValue="value" class="form-input" />
+                  </div>
+                  <Button icon="pi pi-trash" text severity="danger" @click="removeTierGift(idx)" />
+                </div>
+                <Button :label="t('settings.vipPerksAddTierGift')" icon="pi pi-plus" text severity="secondary" @click="addTierGift" />
+              </template>
+            </Card>
+
+            <Button
+              :label="t('settings.saveSettings')"
+              icon="pi pi-save"
+              @click="handleSaveVipPerks"
+              :loading="savingVipPerks"
+              severity="info"
+              class="save-btn"
+            />
+          </div>
+        </TabPanel>
+
         <!-- Server Restart Tab -->
         <TabPanel v-if="isAdmin" value="10">
           <div v-if="loadingRestart" class="loading-state">{{ t('settings.loadingSettings') }}</div>
@@ -1825,6 +1989,25 @@ onMounted(() => {
   color: var(--kc-text-secondary);
   margin-top: 0.25rem;
 }
+
+/* VIP Perks rows */
+.vip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.vip-row .form-input { flex: 1; }
+.vip-gift-rule {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--kc-border, rgba(255,255,255,0.08));
+}
+.vip-gift-rule .form-group { flex: 1; min-width: 140px; margin-bottom: 0; }
 
 .loading-state {
   padding: 2rem;

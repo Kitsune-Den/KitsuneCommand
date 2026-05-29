@@ -66,6 +66,12 @@ namespace KitsuneCommand.Web.Models
         public int Level { get; set; }
     }
 
+    public class SetVipTierRequest
+    {
+        /// <summary>Tier name to assign. null / empty clears the tier ("pleb").</summary>
+        public string Tier { get; set; }
+    }
+
     public class GiveItemResult
     {
         public bool Success { get; set; }
