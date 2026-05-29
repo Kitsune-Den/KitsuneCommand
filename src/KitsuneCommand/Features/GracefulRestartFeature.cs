@@ -321,6 +321,7 @@ namespace KitsuneCommand.Features
                     if (loaded != null)
                     {
                         Settings = loaded;
+                        HealTimezoneIfInvalid();
                         return;
                     }
                 }
@@ -328,6 +329,58 @@ namespace KitsuneCommand.Features
             catch (Exception ex)
             {
                 Log.Warning($"[KitsuneCommand] Failed to load graceful-restart settings, using defaults: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// If the persisted ScheduledTimezone doesn't resolve on this host
+        /// (common case: IANA ID like "America/Los_Angeles" on .NET Framework
+        /// 4.8 / Windows, or garbage like "UTC-5" we've seen in the wild),
+        /// fall back to <see cref="TimeZoneInfo.Local"/> (or Utc if Local
+        /// has no Id), log a single INFO line, and persist the corrected
+        /// value back to the DB so we don't have to heal again on the next
+        /// boot and so the panel reflects what's actually in effect.
+        /// </summary>
+        private void HealTimezoneIfInvalid()
+        {
+            var configured = Settings.ScheduledTimezone;
+            if (!string.IsNullOrWhiteSpace(configured))
+            {
+                try
+                {
+                    TimeZoneInfo.FindSystemTimeZoneById(configured);
+                    return; // resolves — nothing to do
+                }
+                catch
+                {
+                    // fall through to heal
+                }
+            }
+
+            string healed;
+            try
+            {
+                healed = TimeZoneInfo.Local?.Id;
+                if (string.IsNullOrWhiteSpace(healed))
+                    healed = TimeZoneInfo.Utc.Id;
+            }
+            catch
+            {
+                healed = TimeZoneInfo.Utc.Id;
+            }
+
+            Log.Out($"[KitsuneCommand] GracefulRestart: configured timezone '{configured}' did not resolve on this host. Healing to '{healed}' and persisting.");
+
+            Settings.ScheduledTimezone = healed;
+
+            try
+            {
+                var json = JsonConvert.SerializeObject(Settings);
+                _settingsRepo.Set(SettingsKey, json);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[KitsuneCommand] GracefulRestart: failed to persist healed timezone: {ex.Message}");
             }
         }
     }

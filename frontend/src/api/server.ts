@@ -51,3 +51,21 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const response = await apiClient.get('/api/dashboard/stats')
   return response.data.data
 }
+
+/**
+ * One entry from GET /api/server/timezones. The `id` is whatever string the
+ * runtime will accept back via TimeZoneInfo.FindSystemTimeZoneById — Windows
+ * registry IDs on .NET Framework / Windows ("Pacific Standard Time"), IANA
+ * IDs on .NET Core / Linux ("America/Los_Angeles"). Don't try to interpret
+ * it; just round-trip it.
+ */
+export interface TimezoneOption {
+  id: string
+  displayName: string
+  baseUtcOffsetMinutes: number
+}
+
+export async function getTimezones(): Promise<TimezoneOption[]> {
+  const response = await apiClient.get('/api/server/timezones')
+  return response.data.data
+}
