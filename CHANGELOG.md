@@ -12,6 +12,26 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **No more stack overflow from `LogCallbackEvent` re-entrancy during
+  shutdown.** `EventBroadcaster` subscribed to `LogCallbackEvent` and
+  broadcast each fired log message over the WebSocket. When KC was
+  mid-shutdown and the WebSocket manager had already stopped, the
+  inner `Broadcast` threw ("The current state of the manager is not
+  Start.") and the catch block called `Log.Warning(...)` — which fired
+  another `LogCallbackEvent`, re-entered the same subscriber, threw
+  again, logged again, and recursed until the stack overflowed and KC
+  crashed. Observed live on a Windows prod box: a botched
+  `GracefulRestart` left the WS manager stopped while the event bus
+  was still alive, and KC logged "Error in event handler for
+  LogCallbackEvent: The requested operation caused a stack overflow."
+  dozens of times before the service died. Fix: a `[ThreadStatic]`
+  re-entrancy guard scoped to the `LogCallbackEvent` path only (other
+  events don't loop back into the logger), and the failure path on
+  that path writes to `Console.Error` instead of `Log.Warning` so the
+  recursion can't restart.
+
 ## [2.8.1] - 2026-05-29
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.8.1)
