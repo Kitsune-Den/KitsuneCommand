@@ -12,6 +12,39 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.8.1] - 2026-05-29
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.8.1)
+> · VIP tiers, join diagnostics, and the PackRelay Launcher land here.
+> Supersedes v2.8.0, which shipped without the Windows SkiaSharp native
+> (broken map rendering) and self-reported the wrong version.
+
+### Added
+
+- **VIP tiers.** Per-player tiers with a first-login welcome pack and
+  recurring tier gifts. New `012_vip_tiers` migration; set a player's
+  tier straight from the Players panel.
+- **Join diagnostics.** A companion `KitsuneJoinDiag` mod feeds a new
+  "Join Attempts" panel - see who tried to connect, when, and why a
+  join failed.
+- **PackRelay Launcher v0.1.** Scaffold that hooks the main menu
+  (`XUiC_MainMenu.OnOpen`) - groundwork for launching straight into a
+  PackRelay-published modpack.
+
+### Fixed
+
+- **Windows map rendering no longer breaks on a clean install.** The
+  release build sourced `libSkiaSharp.dll` only from version-pinned
+  NuGet-cache paths and skipped it with a warning when they weren't
+  there, so the v2.8.0 zip shipped without the Windows SkiaSharp native
+  and `MapTileRenderer` threw "Unable to load library 'libSkiaSharp'".
+  Both Skia natives now come from the committed `src/.../x64/` copies
+  (same as `sqlite3.dll`), and a missing native is a hard build error
+  instead of a silent skip.
+- **Mod version matches the release again.** `ModInfo.xml` was stuck at
+  2.7.4, so the in-game mod list disagreed with the release tag. Bumped
+  to track the release.
+
 ## [2.7.4] - 2026-05-27
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.7.4)

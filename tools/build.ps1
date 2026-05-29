@@ -63,8 +63,14 @@ if ($Platform -eq "windows" -or $Platform -eq "both") {
         Write-Warning "sqlite3.dll not found at $sqliteSrc. Download from https://sqlite.org/download.html"
     }
 
-    # libSkiaSharp.dll (Windows)
+    # libSkiaSharp.dll (Windows). Sourced from the committed src/<mod>/x64/ copy first
+    # (force-added to git, same as sqlite3.dll) so CI never depends on a NuGet-cache
+    # path that shifts with the SkiaSharp version. NuGet cache + bin kept as dev
+    # fallbacks. HARD FAIL if absent: shipping without it produces a Windows map
+    # renderer that throws "Unable to load library 'libSkiaSharp'" at runtime — a
+    # silent Write-Warning here let exactly that escape into the v2.8.0 release.
     $skiaWinPaths = @(
+        "src/$modName/x64/libSkiaSharp.dll",
         "$nugetCache/skiasharp.nativeassets.win32/3.116.1/runtimes/win-x64/native/libSkiaSharp.dll",
         "$nugetCache/skiasharp.nativeassets.win32/2.80.4/runtimes/win-x64/native/libSkiaSharp.dll",
         "$binDir/libSkiaSharp.dll"
@@ -74,9 +80,9 @@ if ($Platform -eq "windows" -or $Platform -eq "both") {
         $nativeDir = "$modDir/x64"
         New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
         Copy-Item $skiaWin $nativeDir
-        Write-Host "    Copied libSkiaSharp.dll to x64/" -ForegroundColor Gray
+        Write-Host "    Copied libSkiaSharp.dll to x64/  (from $skiaWin)" -ForegroundColor Gray
     } else {
-        Write-Warning "libSkiaSharp.dll (Windows) not found"
+        throw "libSkiaSharp.dll (Windows native) not found. Expected the committed copy at src/$modName/x64/libSkiaSharp.dll. Without it the Windows map renderer will not load. Searched: $($skiaWinPaths -join '; ')"
     }
 
     # System.Runtime.InteropServices.RuntimeInformation is provided by RuntimeInfoShim.dll
@@ -99,8 +105,10 @@ if (Test-Path $dataAnnotations) {
 if ($Platform -eq "linux" -or $Platform -eq "both") {
     Write-Host "`n  [Linux native libraries]" -ForegroundColor Cyan
 
-    # libSkiaSharp.so (Linux, NoDependencies variant)
+    # libSkiaSharp.so (Linux, NoDependencies variant). Committed src/<mod>/x64/ copy
+    # first (same rationale as the Windows native), NuGet cache as dev fallback.
     $skiaLinuxPaths = @(
+        "src/$modName/x64/libSkiaSharp.so",
         "$nugetCache/skiasharp.nativeassets.linux.nodependencies/2.80.4/runtimes/linux-x64/native/libSkiaSharp.so",
         "$nugetCache/skiasharp.nativeassets.linux.nodependencies/2.80.2/runtimes/linux-x64/native/libSkiaSharp.so"
     )
@@ -112,9 +120,9 @@ if ($Platform -eq "linux" -or $Platform -eq "both") {
         $nativeDir = "$modDir/x64"
         New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
         Copy-Item $skiaLinux $nativeDir
-        Write-Host "    Copied libSkiaSharp.so to x64/" -ForegroundColor Gray
+        Write-Host "    Copied libSkiaSharp.so to x64/  (from $skiaLinux)" -ForegroundColor Gray
     } else {
-        Write-Warning "libSkiaSharp.so (Linux) not found. Run 'dotnet restore' to download NuGet packages."
+        throw "libSkiaSharp.so (Linux native) not found. Expected the committed copy at src/$modName/x64/libSkiaSharp.so. Searched: $($skiaLinuxPaths -join '; ')"
     }
 
     # SQLite: no native library needed for Linux!
