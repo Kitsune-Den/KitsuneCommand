@@ -30,6 +30,14 @@ namespace KitsuneCommand.Data.Repositories
 
         // Claiming
         void MarkAsClaimed(int giftId);
+
+        /// <summary>
+        /// True if the player already has a gift with this name + claim period.
+        /// Used by the VipPerks feature to avoid assigning the same recurring tier
+        /// gift twice — the repeatable row is created once, then the existing
+        /// GetPendingForPlayer / MarkAsClaimed cadence drives re-claims.
+        /// </summary>
+        bool HasGiftByNameAndPeriod(string playerId, string name, string claimPeriod);
     }
 
     /// <summary>
@@ -217,6 +225,15 @@ namespace KitsuneCommand.Data.Repositories
                     last_claimed_at = datetime('now')
                 WHERE id = @Id",
                 new { Id = giftId });
+        }
+
+        public bool HasGiftByNameAndPeriod(string playerId, string name, string claimPeriod)
+        {
+            using var conn = _db.CreateConnection();
+            return conn.ExecuteScalar<int>(@"
+                SELECT COUNT(*) FROM vip_gifts
+                WHERE player_id = @PlayerId AND name = @Name AND claim_period = @ClaimPeriod",
+                new { PlayerId = playerId, Name = name, ClaimPeriod = claimPeriod }) > 0;
         }
     }
 }

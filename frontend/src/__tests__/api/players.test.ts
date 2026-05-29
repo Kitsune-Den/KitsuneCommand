@@ -22,6 +22,7 @@ import {
   giveItem,
   getAllPlayerMetadata,
   updatePlayerMetadata,
+  setPlayerTier,
 } from '@/api/players'
 
 describe('Players API', () => {
@@ -95,5 +96,18 @@ describe('Players API', () => {
     mockPut.mockResolvedValue({ data: { data: { playerId: 'abc', nameColor: '#00ff00' } } })
     await updatePlayerMetadata('abc', { nameColor: '#00ff00' })
     expect(mockPut).toHaveBeenCalledWith('/api/players/metadata/abc', { nameColor: '#00ff00' })
+  })
+
+  it('setPlayerTier calls PUT /api/players/metadata/{id}/tier with the tier', async () => {
+    mockPut.mockResolvedValue({ data: { data: { playerId: 'abc', vipTier: 'VIP' } } })
+    const result = await setPlayerTier('abc', 'VIP')
+    expect(mockPut).toHaveBeenCalledWith('/api/players/metadata/abc/tier', { tier: 'VIP' })
+    expect(result.vipTier).toBe('VIP')
+  })
+
+  it('setPlayerTier sends null to clear the tier and encodes the id', async () => {
+    mockPut.mockResolvedValue({ data: { data: { playerId: 'EOS_x/y', vipTier: null } } })
+    await setPlayerTier('EOS_x/y', null)
+    expect(mockPut).toHaveBeenCalledWith('/api/players/metadata/EOS_x%2Fy/tier', { tier: null })
   })
 })

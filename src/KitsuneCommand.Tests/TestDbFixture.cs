@@ -62,6 +62,12 @@ namespace KitsuneCommand.Tests
             // continuous-migration property; it just needs the
             // tables the test under exercise references).
             connection.Execute(Schema011);
+
+            // 008_player_metadata.sql + 012_vip_tiers.sql — player_metadata with the
+            // vip_tier column folded in, plus the first_login_grants table. The
+            // production path is two migrations (008 creates the table, 012 ALTERs
+            // in vip_tier); the test DB just creates the final shape directly.
+            connection.Execute(Schema012);
         }
 
         /// <summary>
@@ -350,6 +356,25 @@ CREATE TABLE IF NOT EXISTS pack_relay_settings (
     public_key_id         TEXT,
     publisher_slug        TEXT,
     updated_at            TEXT NOT NULL DEFAULT (datetime('now'))
+);
+";
+
+        // Mirrors Config/Migrations/008_player_metadata.sql + 012_vip_tiers.sql.
+        // Update all three when the schema changes.
+        private const string Schema012 = @"
+CREATE TABLE IF NOT EXISTS player_metadata (
+    player_id TEXT PRIMARY KEY,
+    name_color TEXT,
+    custom_tag TEXT,
+    notes TEXT,
+    vip_tier TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS first_login_grants (
+    player_id  TEXT PRIMARY KEY NOT NULL,
+    player_name TEXT,
+    granted_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ";
 

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlayersStore } from '@/stores/players'
-import { updatePlayerMetadata, setAdminLevel } from '@/api/players'
+import { updatePlayerMetadata, setAdminLevel, setPlayerTier } from '@/api/players'
+import { getVipTiers } from '@/api/vipperks'
 import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
@@ -29,6 +30,15 @@ const customTag = ref('')
 const adminLevel = ref(1000)
 const notes = ref('')
 
+// VIP tier — '' means no tier ("pleb"). The available tier names are defined
+// in the VipPerks feature settings; fetched fresh each time the dialog opens.
+const vipTier = ref('')
+const availableTiers = ref<string[]>([])
+const tierOptions = computed(() => [
+  { label: t('players.tierNone'), value: '' },
+  ...availableTiers.value.map((name) => ({ label: name, value: name })),
+])
+
 const tagPresets = [
   { label: 'VIP', value: 'VIP' },
   { label: 'Supporter', value: 'Supporter' },
@@ -43,13 +53,19 @@ const adminLevelOptions = [
 ]
 
 // Load current metadata when dialog opens
-watch(visible, (v) => {
+watch(visible, async (v) => {
   if (v && props.player) {
     const meta = playersStore.getMetadata(props.player.playerId)
     nameColor.value = meta?.nameColor ?? null
     customTag.value = meta?.customTag ?? ''
     adminLevel.value = props.player.adminLevel ?? 1000
     notes.value = meta?.notes ?? ''
+    vipTier.value = meta?.vipTier ?? ''
+    try {
+      availableTiers.value = await getVipTiers()
+    } catch {
+      availableTiers.value = []
+    }
   }
 })
 
@@ -64,6 +80,10 @@ async function save() {
       customTag: customTag.value || null,
       notes: notes.value || null,
     })
+
+    // Save VIP tier separately — it's a distinct column written on its own
+    // route so it never clobbers the name colour / tag / notes above.
+    await setPlayerTier(props.player.playerId, vipTier.value || null)
 
     // Change admin level if needed
     const currentIsAdmin = props.player.isAdmin
@@ -149,6 +169,19 @@ async function save() {
         />
       </div>
 
+      <!-- VIP Tier -->
+      <div class="field">
+        <label>{{ t('players.vipTier') }}</label>
+        <Select
+          v-model="vipTier"
+          :options="tierOptions"
+          optionLabel="label"
+          optionValue="value"
+          class="full-width"
+        />
+        <small class="field-hint">{{ t('players.vipTierHint') }}</small>
+      </div>
+
       <!-- Notes -->
       <div class="field">
         <label>{{ t('players.notes') }}</label>
@@ -172,6 +205,7 @@ async function save() {
 .edit-form { display: flex; flex-direction: column; gap: 1rem; }
 .field { display: flex; flex-direction: column; gap: 0.35rem; }
 .field label { font-size: 0.85rem; font-weight: 600; color: var(--kc-text-secondary); }
+.field-hint { font-size: 0.75rem; color: var(--kc-text-secondary); opacity: 0.8; }
 .color-row { display: flex; align-items: center; gap: 0.75rem; }
 .color-preview { font-weight: 600; font-size: 1rem; }
 .tag-row { display: flex; gap: 0.5rem; }
