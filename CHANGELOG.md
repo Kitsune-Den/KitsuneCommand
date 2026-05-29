@@ -31,6 +31,24 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   events don't loop back into the logger), and the failure path on
   that path writes to `Console.Error` instead of `Log.Warning` so the
   recursion can't restart.
+- **Restart Server no longer probes `systemctl` on Windows.** The
+  `POST /api/server/restart` endpoint always tried
+  `sudo -n systemctl restart 7daystodie.service` first and waited up to
+  5 seconds before falling back to in-game shutdown. On Windows there
+  is no `systemctl`, so every restart click wasted ~5s and logged a
+  misleading `systemctl restart failed or not available...` warning.
+  On a live Windows prod box this code path was the trigger for a
+  cascading crash — the fallback in-game shutdown ran concurrent with
+  a stuck main-thread operation and snowballed into a stack overflow.
+  Fix: new `Core/OsRestartStrategy.cs` picks the path per OS. Windows
+  goes straight to in-game shutdown and relies on the service
+  supervisor (NSSM `AppExit Restart`, which is its default) to bounce
+  7DTD on game exit; an INFO-level log line announces the chosen path
+  instead of the warning. Linux behavior is unchanged — systemctl
+  first, fall back to in-game shutdown for `Restart=always`. Console
+  command `krestart` already uses the OS-agnostic
+  `GracefulRestartFeature.TriggerNow` (no shell-out) so it didn't need
+  to change.
 
 ## [2.8.1] - 2026-05-29
 

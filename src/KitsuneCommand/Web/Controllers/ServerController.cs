@@ -218,13 +218,21 @@ namespace KitsuneCommand.Web.Controllers
         }
 
         /// <summary>
-        /// Restart the server. Two-step:
-        ///   1. Try `sudo -n systemctl restart 7daystodie.service` (non-interactive).
-        ///      Works if install-linux-updater.sh has been run (adds the sudoers entry).
-        ///   2. If systemctl fails, fall back to in-game shutdown with a short delay.
-        ///      This relies on systemd having `Restart=always` configured to bounce it.
+        /// Restart the server. OS-aware:
+        ///   - Linux: try `sudo -n systemctl restart 7daystodie.service` first
+        ///     (works if install-linux-updater.sh has been run to add the
+        ///     sudoers entry). If that fails, fall back to in-game shutdown
+        ///     and rely on systemd `Restart=always` to bounce the service.
+        ///   - Windows: skip the systemctl probe entirely — `systemctl`
+        ///     doesn't exist on Windows, so probing it just wastes ~5s and
+        ///     produces a misleading "systemctl failed" warning. Go straight
+        ///     to in-game shutdown; NSSM (the standard Windows service
+        ///     supervisor for 7DTD) ships with `AppExit Restart` as its
+        ///     default and auto-bounces the service when the game exits.
         ///
-        /// If neither path works, the server stays down - tell the admin to run the installer.
+        /// The strategy decision is delegated to <see cref="OsRestartStrategy"/>
+        /// so it stays testable and shareable with any other restart entry
+        /// point (e.g. krestart) we add later.
         /// </summary>
         [HttpPost]
         [Route("restart")]
@@ -236,15 +244,29 @@ namespace KitsuneCommand.Web.Controllers
             if (!System.Text.RegularExpressions.Regex.IsMatch(serviceName, @"^[a-zA-Z0-9._-]+$"))
                 return BadRequest("Invalid service name.");
 
-            // Try systemctl first (Linux path).
-            if (TryStart("sudo", $"-n systemctl restart {serviceName}", out var stderr, 5000))
+            var strategy = OsRestartStrategy.DecideForCurrentHost();
+
+            if (strategy == OsRestartStrategy.Kind.SystemctlThenInGameShutdown)
             {
-                return Ok(ApiResponse.Ok($"Restart triggered via systemctl ({serviceName}). Server bouncing."));
+                // Try systemctl first (Linux path).
+                if (TryStart("sudo", $"-n systemctl restart {serviceName}", out var stderr, 5000))
+                {
+                    return Ok(ApiResponse.Ok($"Restart triggered via systemctl ({serviceName}). Server bouncing."));
+                }
+
+                global::Log.Warning($"[KitsuneCommand] systemctl restart failed or not available ({stderr}). Falling back to in-game shutdown.");
+            }
+            else
+            {
+                // Windows: NSSM (AppExit Restart) handles the bounce after the
+                // game process exits. INFO log so the operator sees we *chose*
+                // this path rather than failed into it.
+                global::Log.Out("[KitsuneCommand] Windows install detected; using in-game shutdown + service-supervisor restart (NSSM AppExit Restart).");
             }
 
-            global::Log.Warning($"[KitsuneCommand] systemctl restart failed or not available ({stderr}). Falling back to in-game shutdown.");
-
-            // Fallback: in-game shutdown with short delay, rely on systemd Restart=always.
+            // Common path: in-game shutdown with short delay. On Linux this is
+            // the fallback after systemctl failed; on Windows it's the only
+            // path we take.
             ModEntry.MainThreadContext.Post(_ =>
             {
                 try
@@ -253,9 +275,14 @@ namespace KitsuneCommand.Web.Controllers
                 }
                 catch (Exception ex)
                 {
-                    global::Log.Error($"[KitsuneCommand] Fallback shutdown command failed: {ex.Message}");
+                    global::Log.Error($"[KitsuneCommand] In-game shutdown command failed: {ex.Message}");
                 }
             }, null);
+
+            if (strategy == OsRestartStrategy.Kind.InGameShutdownOnly)
+            {
+                return Ok(ApiResponse.Ok("Restart requested via in-game shutdown (5s delay). The Windows service supervisor (NSSM) will auto-bounce 7DTD when the game exits, provided AppExit Restart is configured (the NSSM default)."));
+            }
 
             return Ok(ApiResponse.Ok("Restart requested via in-game shutdown (5s delay). If systemd Restart=always is not set, server will stay down - run scripts/linux-updater/install-linux-updater.sh to configure."));
         }
