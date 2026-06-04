@@ -68,6 +68,36 @@ namespace KitsuneCommand.Web.Controllers
         }
 
         /// <summary>
+        /// Return the set of timezones the runtime can resolve via
+        /// <see cref="TimeZoneInfo.FindSystemTimeZoneById(string)"/>, sorted by
+        /// UTC offset. Used by the panel to populate the graceful-restart
+        /// timezone dropdown.
+        ///
+        /// On .NET Framework 4.8 / Windows this returns Windows registry IDs
+        /// (e.g. "Pacific Standard Time"); on .NET Core 3.1+ / Linux it returns
+        /// IANA IDs (e.g. "America/Los_Angeles"). Either way, the IDs we hand
+        /// back here are guaranteed to round-trip through
+        /// FindSystemTimeZoneById on THIS host — which is the whole point.
+        /// </summary>
+        [HttpGet]
+        [Route("timezones")]
+        public IHttpActionResult GetTimezones()
+        {
+            var zones = TimeZoneInfo.GetSystemTimeZones()
+                .OrderBy(tz => tz.BaseUtcOffset)
+                .ThenBy(tz => tz.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(tz => new
+                {
+                    id = tz.Id,
+                    displayName = tz.DisplayName,
+                    baseUtcOffsetMinutes = (int)tz.BaseUtcOffset.TotalMinutes,
+                })
+                .ToList();
+
+            return Ok(ApiResponse.Ok(zones));
+        }
+
+        /// <summary>
         /// Get server performance stats including system information.
         /// </summary>
         [HttpGet]

@@ -49,6 +49,26 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   command `krestart` already uses the OS-agnostic
   `GracefulRestartFeature.TriggerNow` (no shell-out) so it didn't need
   to change.
+- **Graceful restart timezone is now host-resolvable.** The
+  GracefulRestart feature called
+  `TimeZoneInfo.FindSystemTimeZoneById` with whatever string was in
+  the persisted config. On .NET Framework 4.8 / Windows, IANA IDs
+  like `America/Los_Angeles` aren't recognized, so the tick threw,
+  the catch block logged "bad schedule config" every 30 seconds, and
+  the daily restart never fired. Observed in the wild with a value
+  of `"UTC-5"` (not even an IANA ID) where nobody realized the
+  feature was a no-op. Two-part fix: (1) `LoadPersistedSettings`
+  now probes the configured timezone, and if it doesn't resolve,
+  falls back to `TimeZoneInfo.Local` (or `Utc` if Local is unset),
+  logs one INFO line, and persists the corrected value back to the
+  DB so the next boot is clean. (2) New `GET /api/server/timezones`
+  endpoint returns the runtime-resolvable timezone list sorted by
+  UTC offset; the Settings → Server Restart panel now renders a
+  PrimeVue `Select` populated from that endpoint instead of a
+  free-text input that admins would fill with strings the host
+  couldn't parse. Saves `id` (whatever the runtime accepts:
+  Windows registry IDs on .NET Framework, IANA on .NET Core),
+  shows `displayName` to the user.
 
 ## [2.8.1] - 2026-05-29
 

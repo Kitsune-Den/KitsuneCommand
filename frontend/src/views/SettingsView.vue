@@ -13,6 +13,7 @@ import { getVoteSettings, updateVoteSettings } from '@/api/bloodmoonvote'
 import { getVoteRewardsSettings, updateVoteRewardsSettings, getVoteGrants } from '@/api/voterewards'
 import { getVipPerksSettings, updateVipPerksSettings } from '@/api/vipperks'
 import { getRestartSettings, updateRestartSettings, triggerRestartNow } from '@/api/restart'
+import { getTimezones, type TimezoneOption } from '@/api/server'
 import { getTicketSettings, updateTicketSettings } from '@/api/tickets'
 import { getDiscordSettings, updateDiscordSettings, getDiscordStatus, testDiscordConnection } from '@/api/discord'
 import { restartServer } from '@/api/serverControl'
@@ -516,6 +517,27 @@ const savingRestart = ref(false)
 const triggeringRestart = ref(false)
 const restartLeadMinutes = ref(10)
 
+// Timezones the backend host can actually resolve. We fetch from the server
+// rather than shipping a static IANA list because on .NET Framework / Windows
+// installs the runtime returns Windows registry IDs ("Pacific Standard Time"),
+// not IANA. The dropdown shows the friendly DisplayName but saves the raw Id.
+const availableTimezones = ref<TimezoneOption[]>([])
+const loadingTimezones = ref(false)
+
+async function fetchTimezones() {
+  loadingTimezones.value = true
+  try {
+    availableTimezones.value = await getTimezones()
+  } catch {
+    // Non-fatal — the dropdown just stays empty and the existing value still
+    // shows as the selected label. Don't toast: the restart tab itself toasts
+    // for the main settings load failure and we don't want to double-noise.
+    availableTimezones.value = []
+  } finally {
+    loadingTimezones.value = false
+  }
+}
+
 async function fetchRestartSettings() {
   loadingRestart.value = true
   try {
@@ -802,6 +824,7 @@ onMounted(() => {
     fetchVoteGrants()
     fetchVipPerksSettings()
     fetchRestartSettings()
+    fetchTimezones()
   }
 })
 </script>
@@ -1711,7 +1734,17 @@ onMounted(() => {
 
                     <div class="form-group">
                       <label class="form-label">{{ t('settings.serverRestartTimezone') }}</label>
-                      <InputText v-model="restartSettings.scheduledTimezone" class="form-input" placeholder="America/Los_Angeles" />
+                      <Select
+                        v-model="restartSettings.scheduledTimezone"
+                        :options="availableTimezones"
+                        optionLabel="displayName"
+                        optionValue="id"
+                        :loading="loadingTimezones"
+                        :filter="true"
+                        :placeholder="t('settings.serverRestartTimezonePlaceholder')"
+                        class="form-input"
+                        :editable="availableTimezones.length === 0"
+                      />
                       <small class="settings-hint">{{ t('settings.serverRestartTimezoneHint') }}</small>
                     </div>
                   </div>
