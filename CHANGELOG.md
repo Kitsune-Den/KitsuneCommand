@@ -12,6 +12,13 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.8.2] - 2026-06-04
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.8.2)
+> · Patch release — three stability fixes from a live Windows prod box,
+> plus the timezone field on the Server Restart panel grows up into a
+> host-resolvable dropdown. No new features, no schema changes.
+
 ### Fixed
 
 - **No more stack overflow from `LogCallbackEvent` re-entrancy during
