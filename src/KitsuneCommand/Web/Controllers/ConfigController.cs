@@ -40,7 +40,9 @@ namespace KitsuneCommand.Web.Controllers
                 {
                     properties,
                     groups,
-                    configPath
+                    configPath,
+                    is30 = _configService.GameSupportsSandboxCode(),
+                    needsMigration = _configService.NeedsMigrationTo30()
                 }));
             }
             catch (Exception ex)
@@ -132,6 +134,42 @@ namespace KitsuneCommand.Web.Controllers
             catch
             {
                 return Ok(ApiResponse.Ok(new List<string> { "Navezgane" }));
+            }
+        }
+
+        /// <summary>
+        /// Migrate serverconfig.xml to the 7D2D 3.0 layout: comment out the sandbox-governed
+        /// properties (3.0 reads those from SandboxCode) and ensure a SandboxCode property
+        /// exists. Refuses on a non-3.0 server. Backs up before writing; idempotent.
+        /// </summary>
+        [HttpPost]
+        [Route("migrate-3.0")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult MigrateTo30()
+        {
+            if (!_configService.GameSupportsSandboxCode())
+                return Ok(ApiResponse.Error(400, "This server isn't running 7D2D 3.0 — nothing to migrate (the 3.0 Sandbox system isn't present)."));
+
+            try
+            {
+                var result = _configService.MigrateConfigTo30();
+                var message = result.Changed
+                    ? $"Migrated to 3.0: commented out {result.Neutralized.Count} sandbox-governed setting(s)"
+                      + (result.AddedSandboxCode ? " and added SandboxCode" : "")
+                      + ". A backup was saved. Paste your Sandbox code, then restart to apply."
+                    : "Already on the 3.0 layout — nothing to change.";
+                return Ok(ApiResponse.Ok(new
+                {
+                    result.Changed,
+                    result.AddedSandboxCode,
+                    result.Neutralized,
+                    result.BackupPath,
+                    message
+                }));
+            }
+            catch (Exception ex)
+            {
+                return Ok(ApiResponse.Error(500, $"Migration failed: {ex.Message}"));
             }
         }
     }

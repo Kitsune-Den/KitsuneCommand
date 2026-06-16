@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { getConfig, getRawXml, saveConfig, saveRawXml, getWorlds, type ConfigFieldGroup } from '@/api/config'
+import { getConfig, getRawXml, saveConfig, saveRawXml, getWorlds, migrateConfigTo30, type ConfigFieldGroup } from '@/api/config'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -31,6 +31,9 @@ function formatFieldLabel(key: string): string {
 /** Keys handled by the DayNightCycleWidget — skip rendering them individually. */
 const DAY_NIGHT_KEYS = ['DayNightLength', 'DayLightLength']
 
+/** The 7D2D 3.0 Sandbox code field — shown only on 3.0, hidden on 2.x. */
+const SANDBOX_CODE_KEY = 'SandboxCode'
+
 const { t } = useI18n()
 const toast = useToast()
 
@@ -54,8 +57,35 @@ const isDirty = computed(() => {
   return JSON.stringify(properties.value) !== JSON.stringify(originalProperties.value)
 })
 
+/**
+ * True when the running game is 7D2D 3.0+ (supports the SandboxCode system) — set from the
+ * backend's GameSupportsSandboxCode(). Controls whether the SandboxCode field is shown: it
+ * must appear on ANY 3.0 server, even before a code has been pasted in (otherwise you could
+ * never add one — chicken-and-egg).
+ */
+const is30 = ref(false)
+
+/** True when a 3.0 server's serverconfig.xml still carries the old sandbox-governed
+ *  properties — i.e. a one-click "Migrate to 3.0" would do something. */
+const needsMigration = ref(false)
+const migrating = ref(false)
+
+/**
+ * True when a non-empty SandboxCode is actually set. Only then does it override the
+ * individual sandbox-governed settings, so only then are those hidden. With an empty/absent
+ * code, 3.0 still reads the individual serverconfig properties (backward-compat), so they
+ * stay visible and editable.
+ */
+const hasSandboxCode = computed(() => {
+  const k = Object.keys(properties.value).find(k => k.toLowerCase() === SANDBOX_CODE_KEY.toLowerCase())
+  return !!(k && properties.value[k] && properties.value[k].trim())
+})
+
 const coreGroup = computed(() => groups.value.find(g => g.key === 'core'))
-const otherGroups = computed(() => groups.value.filter(g => g.key !== 'core'))
+// Hide groups that have no visible fields (e.g. Blood Moon is entirely sandbox-governed on 3.0).
+const otherGroups = computed(() =>
+  groups.value.filter(g => g.key !== 'core' && visibleFieldsFor(g).length > 0)
+)
 
 const groupLabels: Record<string, string> = {
   core: 'config.group.core',
@@ -96,10 +126,27 @@ async function loadConfig() {
     groups.value = configData.groups
     configPath.value = configData.configPath
     worlds.value = worldList
+    is30.value = configData.is30 ?? false
+    needsMigration.value = configData.needsMigration ?? false
   } catch (err) {
     toast.add({ severity: 'error', summary: t('common.error'), detail: t('config.failedToLoad'), life: 4000 })
   } finally {
     loading.value = false
+  }
+}
+
+/** One-click 3.0 migration: the server comments out the sandbox-governed props,
+ *  adds SandboxCode, and backs up first. Reloads so the editor reflects the result. */
+async function runMigration() {
+  migrating.value = true
+  try {
+    const result = await migrateConfigTo30()
+    toast.add({ severity: 'success', summary: t('common.success', 'Done'), detail: result.message, life: 6000 })
+    await loadConfig()
+  } catch (err) {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('config.migrate30Failed', 'Migration failed'), life: 4000 })
+  } finally {
+    migrating.value = false
   }
 }
 
@@ -190,10 +237,21 @@ function getSelectOptions(field: { key: string; options?: string[]; labels?: str
  * DayNightLength + DayLightLength because the DayNightCycleWidget covers them.
  */
 function visibleFieldsFor(group: ConfigFieldGroup) {
+  let fields = group.fields
+  // DayNight pair is rendered by the DayNightCycleWidget, not as individual fields.
   if (group.key === 'gameplay') {
-    return group.fields.filter((f) => !DAY_NIGHT_KEYS.includes(f.key))
+    fields = fields.filter((f) => !DAY_NIGHT_KEYS.includes(f.key))
   }
-  return group.fields
+  // The SandboxCode field only makes sense on a 3.0 server (show it even before one is set).
+  if (!is30.value) {
+    fields = fields.filter((f) => f.key !== SANDBOX_CODE_KEY)
+  }
+  // Hide the sandbox-governed settings only when a SandboxCode actually overrides them.
+  // With no code set, 3.0 still reads these individual properties, so keep them editable.
+  if (hasSandboxCode.value) {
+    fields = fields.filter((f) => !f.sandboxGoverned)
+  }
+  return fields
 }
 
 function onDayNightUpdate(cfg: { DayNightLength: number; DayLightLength: number }) {
@@ -239,6 +297,21 @@ onMounted(loadConfig)
 
     <Message v-if="isDirty" severity="warn" :closable="false" class="dirty-banner">
       {{ t('config.unsavedChanges') }}
+    </Message>
+
+    <Message v-if="!loading && activeTab === 'form' && is30 && needsMigration" severity="warn" :closable="false" class="sandbox-banner">
+      <div class="migrate-row">
+        <span>{{ t('config.migrate30Notice', 'This server is on 7 Days to Die 3.0, but serverconfig.xml still has the old per-setting properties that 3.0 moved into the Sandbox. Migrating comments them out (preserved, not deleted), adds a Sandbox Code field, and leaves everything else alone. A backup is saved first.') }}</span>
+        <Button :label="t('config.migrate30Button', 'Migrate to 3.0')" icon="pi pi-sync" severity="warn" size="small" :loading="migrating" @click="runMigration" />
+      </div>
+    </Message>
+
+    <Message v-if="!loading && activeTab === 'form' && is30 && !hasSandboxCode" severity="info" :closable="false" class="sandbox-banner">
+      {{ t('config.sandboxUpgradeNotice', 'This is a 7 Days to Die 3.0 server. Your individual settings below are still active — 3.0 reads them when no Sandbox code is set. To switch to the new Sandbox system and unlock 3.0-only options, generate a code in-game (New Game → Sandbox Options → copy code) and paste it into the Sandbox Code field. Saving writes it to both serverconfig.xml and the sticky .bak, so it survives restarts.') }}
+    </Message>
+
+    <Message v-if="!loading && activeTab === 'form' && hasSandboxCode" severity="info" :closable="false" class="sandbox-banner">
+      {{ t('config.sandboxActiveNotice', 'A Sandbox code is set — it governs difficulty, XP, blood moon, loot, zombie behavior and other world settings, so those individual settings are hidden (the server reads them from the code, not serverconfig.xml). Clear the Sandbox Code field to return to individual settings.') }}
     </Message>
 
     <div v-if="loading" class="loading-state">
@@ -297,7 +370,7 @@ onMounted(loadConfig)
           <div class="group-card-fields">
             <!-- Day/Night cycle widget lives in the gameplay group, above the grid -->
             <div
-              v-if="group.key === 'gameplay'"
+              v-if="group.key === 'gameplay' && !hasSandboxCode"
               class="field-item field-item-widget"
             >
               <DayNightCycleWidget
@@ -424,6 +497,18 @@ onMounted(loadConfig)
 
 .dirty-banner {
   margin: 0;
+}
+
+.migrate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.migrate-row > span {
+  flex: 1;
+  min-width: 240px;
 }
 
 .loading-state {

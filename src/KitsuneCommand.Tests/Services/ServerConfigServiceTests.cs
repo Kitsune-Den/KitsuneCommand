@@ -150,6 +150,63 @@ namespace KitsuneCommand.Tests.Services
             Assert.Throws<FileNotFoundException>(() => service.ReadConfig());
         }
 
+        [Test]
+        public void MigrateConfigTo30_NeutralizesGovernedProps_AddsSandboxCode_KeepsSurvivors()
+        {
+            File.WriteAllText(_configPath, MigrationSample);
+
+            var result = _service.MigrateConfigTo30();
+
+            Assert.That(result.Changed, Is.True);
+            Assert.That(result.AddedSandboxCode, Is.True);
+            Assert.That(result.Neutralized, Does.Contain("DeathPenalty"));
+            Assert.That(result.Neutralized, Does.Contain("XPMultiplier"));
+            Assert.That(result.Neutralized, Does.Contain("BloodMoonFrequency"));
+
+            var config = _service.ReadConfig(); // live <property> elements only (comments excluded)
+            // The sandbox-governed props are no longer live properties...
+            Assert.That(config, Does.Not.ContainKey("DeathPenalty"));
+            Assert.That(config, Does.Not.ContainKey("XPMultiplier"));
+            Assert.That(config, Does.Not.ContainKey("BloodMoonFrequency"));
+            // ...SandboxCode now exists, and the survivors are untouched.
+            Assert.That(config, Does.ContainKey("SandboxCode"));
+            Assert.That(config, Does.ContainKey("GameDifficulty"));      // survivor — stays
+            Assert.That(config["GameDifficulty"], Is.EqualTo("3"));
+            Assert.That(config, Does.ContainKey("LootAbundance"));       // survivor — stays
+            Assert.That(config["ServerName"], Is.EqualTo("My Test Server"));
+
+            // Old values are preserved in comments, not destroyed.
+            var raw = _service.ReadRawXml();
+            Assert.That(raw, Does.Contain("DeathPenalty"));
+            Assert.That(raw, Does.Contain("moved to the in-game Sandbox"));
+
+            // A timestamped backup was written before the change.
+            Assert.That(result.BackupPath, Is.Not.Null);
+            Assert.That(File.Exists(result.BackupPath), Is.True);
+        }
+
+        [Test]
+        public void MigrateConfigTo30_IsIdempotent()
+        {
+            File.WriteAllText(_configPath, MigrationSample);
+            Assert.That(_service.MigrateConfigTo30().Changed, Is.True);
+
+            var second = _service.MigrateConfigTo30();
+            Assert.That(second.Changed, Is.False);          // already 3.0-shaped
+            Assert.That(second.Neutralized, Is.Empty);
+            Assert.That(second.AddedSandboxCode, Is.False);
+            Assert.That(second.BackupPath, Is.Null);        // no backup churn on a no-op
+        }
+
+        [Test]
+        public void NeedsMigrationTo30_TrueOnlyWhileGovernedPropsRemain()
+        {
+            File.WriteAllText(_configPath, MigrationSample);
+            Assert.That(_service.NeedsMigrationTo30(), Is.True);
+            _service.MigrateConfigTo30();
+            Assert.That(_service.NeedsMigrationTo30(), Is.False);
+        }
+
         /// <summary>
         /// Testable subclass that bypasses ModEntry/GameIO path resolution.
         /// </summary>
@@ -162,7 +219,7 @@ namespace KitsuneCommand.Tests.Services
                 _fixedPath = configPath;
             }
 
-            public new string GetConfigPath()
+            public override string GetConfigPath()
             {
                 if (File.Exists(_fixedPath))
                     return _fixedPath;
@@ -253,6 +310,19 @@ namespace KitsuneCommand.Tests.Services
     <property name=""ServerMaxPlayerCount"" value=""8"" />
     <property name=""GameWorld"" value=""Navezgane"" />
     <property name=""GameName"" value=""MyGame"" />
+</ServerSettings>";
+
+        // A 2.x-shaped config carrying both sandbox-governed props (DeathPenalty,
+        // XPMultiplier, BloodMoonFrequency) and survivors (GameDifficulty, LootAbundance),
+        // with no SandboxCode yet — the exact input the 3.0 migration handles.
+        private const string MigrationSample = @"<?xml version=""1.0""?>
+<ServerSettings>
+    <property name=""ServerName"" value=""My Test Server"" />
+    <property name=""GameDifficulty"" value=""3"" />
+    <property name=""DeathPenalty"" value=""1"" />
+    <property name=""XPMultiplier"" value=""150"" />
+    <property name=""BloodMoonFrequency"" value=""7"" />
+    <property name=""LootAbundance"" value=""100"" />
 </ServerSettings>";
     }
 }
