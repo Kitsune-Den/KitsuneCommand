@@ -3,8 +3,33 @@ using System.Collections.Generic;
 namespace KitsuneCommand.Services
 {
     /// <summary>
-    /// Defines all known serverconfig.xml fields with metadata for the config editor UI.
-    /// Covers vanilla 7D2D V2 server settings.
+    /// Defines serverconfig.xml fields with metadata for the config editor UI.
+    ///
+    /// VERSION COVERAGE
+    ///   • 2.x: every per-property field below is authoritative and edited individually.
+    ///   • 3.0 ("Dead Hot Summer", 2026-06): 7D2D moved the world/gameplay "sandbox"
+    ///     settings (difficulty, XP, blood moon, loot, zombie speeds, land claims, etc.)
+    ///     out of serverconfig.xml and into the in-game Sandbox, encoded as a single
+    ///     "SandboxCode" property. On a 3.0 server the individual sandbox-governed
+    ///     properties are IGNORED in favor of SandboxCode. We keep those fields here so
+    ///     2.x servers still edit cleanly (the "keep the current structure for 2.x"
+    ///     requirement) and add SandboxCode alongside them (additive, low-risk).
+    ///     A version-aware editor that HIDES the sandbox-governed fields when a 3.0 server
+    ///     is detected is the planned follow-up — but the exact removed/kept split must be
+    ///     confirmed against a pristine 3.0 default serverconfig.xml first, so do NOT
+    ///     delete any field here until then. (The serverconfig property is "SandboxCode"
+    ///     per 3.0 hosting docs; the binary also exposes a "ServerSandboxCode" accessor —
+    ///     reconcile the exact key against the pristine default during the follow-up.)
+    ///
+    /// VERSION-AGNOSTIC BY DESIGN
+    ///   • Properties not modeled here are preserved untouched on save (see
+    ///     ServerConfigService.SaveConfig), so a 2.x box never loses settings KC doesn't
+    ///     render — and the "Folder and file locations" group (AdminFileName /
+    ///     UserDataFolder / SaveGameFolder) is intentionally omitted: operators shouldn't
+    ///     repoint data paths on a live world from a web panel.
+    ///   • GameWorld options are merged at runtime with worlds discovered on disk (see
+    ///     ServerConfigService.GetAvailableWorlds), so 3.0 Pregen worlds appear in the
+    ///     dropdown automatically without being hardcoded.
     ///
     /// Descriptions are written to be useful at editing-time — what the field does, a
     /// sensible default, and the side-effect of cranking it up or down. Tone is warm
@@ -15,7 +40,7 @@ namespace KitsuneCommand.Services
     {
         public static List<ConfigFieldGroup> GetGroups()
         {
-            return new List<ConfigFieldGroup>
+            var groups = new List<ConfigFieldGroup>
             {
                 new ConfigFieldGroup
                 {
@@ -96,6 +121,8 @@ namespace KitsuneCommand.Services
                     Key = "gameplay",
                     Fields = new List<ConfigFieldDef>
                     {
+                        TextField("SandboxCode", "",
+                            "7D2D 3.0+ only. Paste the Sandbox code you generate in-game (New Game → Sandbox Options → copy code). On a 3.0 server this single value drives difficulty, XP, blood moon, loot, zombie behavior, land claims, and the rest of the world ruleset — the matching individual settings in this editor are ignored in its favor. Leave blank on 2.x servers, where those individual settings apply instead."),
                         SelectField("GameDifficulty", "2",
                             new[] { "0", "1", "2", "3", "4", "5" },
                             new[] { "Scavenger", "Adventurer", "Nomad", "Warrior", "Survivalist", "Insane" },
@@ -322,7 +349,51 @@ namespace KitsuneCommand.Services
                     }
                 },
             };
+
+            // Flag the 3.0 sandbox-governed fields so the editor can hide them on a 3.0
+            // server (see SandboxGovernedKeys for how this set was derived).
+            foreach (var g in groups)
+                foreach (var f in g.Fields)
+                    f.SandboxGoverned = SandboxGovernedKeys.Contains(f.Key);
+            return groups;
         }
+
+        /// <summary>
+        /// serverconfig.xml properties that 7D2D 3.0 moved into the in-game Sandbox
+        /// (governed by the SandboxCode property). On a 3.0 server these are read from the
+        /// SandboxCode, NOT from serverconfig.xml, so the editor hides them once a 3.0
+        /// server is detected.
+        ///
+        /// Derived authoritatively from the game, NOT from patch notes: each key here is an
+        /// EnumGamePrefs member whose name also exists in the SandboxOptions enum of the 3.0
+        /// Assembly-CSharp — which is exactly the game's own sandbox-link test
+        /// (GamePrefs.SetupSandboxReferences does Enum.TryParse&lt;SandboxOptions&gt;(prefName)).
+        /// Verified against the 3.0 "Dead Hot Summer" server build (2026-06).
+        ///
+        /// Note the non-obvious SURVIVORS that stay in serverconfig and are deliberately NOT
+        /// listed: GameDifficulty, BlockDamagePlayer, EnemyDifficulty, MaxSpawnedZombies,
+        /// MaxSpawnedAnimals, LootAbundance, all LandClaim*, PlayerSafeZone*,
+        /// BedrollDeadZoneSize. (e.g. BlockDamageAI/AIBM move but BlockDamagePlayer stays;
+        /// LootRespawnDays moves but LootAbundance stays.)
+        /// </summary>
+        private static readonly HashSet<string> SandboxGovernedKeys = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase)
+        {
+            "DeathPenalty", "DropOnDeath", "DropOnQuit", "DayNightLength", "DayLightLength",
+            "QuestProgressionDailyLimit", "JarRefund", "BiomeProgression", "StormFreq",
+            "BlockDamageAI", "BlockDamageAIBM", "XPMultiplier", "EnemySpawnMode",
+            "ZombieFeralSense", "ZombieMove", "ZombieMoveNight", "ZombieFeralMove",
+            "ZombieBMMove", "AISmellMode", "BloodMoonFrequency", "BloodMoonRange",
+            "BloodMoonWarning", "BloodMoonEnemyCount", "LootRespawnDays", "AirDropFrequency",
+            "AirDropMarker",
+        };
+
+        /// <summary>
+        /// The 3.0 sandbox-governed property keys, for the serverconfig.xml 3.0 migration
+        /// in <see cref="ServerConfigService.MigrateConfigTo30"/>. Read-only — the set is
+        /// derived authoritatively from the game (see <see cref="SandboxGovernedKeys"/>).
+        /// </summary>
+        public static System.Collections.Generic.IReadOnlyCollection<string> GetSandboxGovernedKeys()
+            => SandboxGovernedKeys;
 
         private static ConfigFieldDef TextField(string key, string defaultValue, string description = null)
             => new ConfigFieldDef { Key = key, Type = "text", DefaultValue = defaultValue, Description = description };
@@ -373,6 +444,8 @@ namespace KitsuneCommand.Services
     {
         public string Key { get; set; }
         public string Type { get; set; } // text, password, number, bool, select
+        // True when 7D2D 3.0 governs this setting via SandboxCode; the editor hides it on 3.0.
+        public bool SandboxGoverned { get; set; }
         public string DefaultValue { get; set; }
         public int? Min { get; set; }
         public int? Max { get; set; }
