@@ -205,7 +205,10 @@ namespace KitsuneCommand.Web
                     body = reader.ReadToEnd();
 
                 var loginReq = JsonConvert.DeserializeObject<LoginPayload>(body);
-                string username = loginReq?.username;
+                // Normalize to match how accounts are stored: UserController.Create lowercases +
+                // trims the username, and SQLite compares TEXT case-sensitively. Without this, a
+                // username created/typed as "KCAdmin" is stored "kcadmin" and never matches at login.
+                string username = loginReq?.username?.Trim().ToLowerInvariant();
                 string password = loginReq?.password;
 
                 if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
