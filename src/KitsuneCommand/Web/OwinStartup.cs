@@ -125,8 +125,16 @@ namespace KitsuneCommand.Web
 
             config.EnsureInitialized();
 
-            app.UseAutofacMiddleware(_container);
-            app.UseAutofacWebApi(config);
+            // NOTE: deliberately NOT using app.UseAutofacMiddleware / app.UseAutofacWebApi.
+            // Those register Autofac.Integration.Owin's per-request lifetime-scope injector,
+            // which disposes the scope with `await using` → IAsyncDisposable.DisposeAsync().
+            // 7D2D's Mono runtime does not implement that method, so it throws
+            // MissingMethodException at JIT in front of the whole pipeline — taking down EVERY
+            // /api/* request on Linux/Mono. Web API's own AutofacWebApiDependencyResolver (set
+            // above) creates and disposes the per-request lifetime scope SYNCHRONOUSLY via
+            // IDisposable.Dispose(), which Mono has. InstancePerRequest registrations still
+            // resolve correctly (same RequestLifetimeScopeTag). Do not re-add the injector
+            // without confirming Mono gained IAsyncDisposable support.
             app.UseWebApi(config);
         }
     }
