@@ -126,7 +126,7 @@ namespace KitsuneCommand.Services
                         SelectField("GameDifficulty", "2",
                             new[] { "0", "1", "2", "3", "4", "5" },
                             new[] { "Scavenger", "Adventurer", "Nomad", "Warrior", "Survivalist", "Insane" },
-                            "Global difficulty. Nomad is the vanilla sweet spot; Survivalist for veterans; Insane for pain."),
+                            "Global difficulty. Nomad is the vanilla sweet spot; Survivalist for veterans; Insane for pain. On 3.x servers this has little effect — difficulty comes from the SandboxCode preset instead."),
                         NumberField("DayNightLength", "60", 10, 240,
                             "Real-time minutes per in-game 24h day. 60 = one hour real per in-game day. Pair with DayLightLength below to set the day/night split."),
                         NumberField("DayLightLength", "18", 1, 23,
@@ -169,7 +169,7 @@ namespace KitsuneCommand.Services
                         SelectField("EnemyDifficulty", "0",
                             new[] { "0", "1" },
                             new[] { "Normal", "Feral (tougher roster)" },
-                            "Feral adds higher-tier zombie variants to the mix. Bumps perceived difficulty noticeably."),
+                            "Feral adds higher-tier zombie variants to the mix. Bumps perceived difficulty noticeably. On 3.x servers this has little effect — the enemy roster comes from the SandboxCode instead."),
                         SelectField("ZombieFeralSense", "0",
                             new[] { "0", "1", "2", "3" },
                             new[] { "Off", "Day only", "Night only", "Always" },
@@ -364,27 +364,46 @@ namespace KitsuneCommand.Services
         /// SandboxCode, NOT from serverconfig.xml, so the editor hides them once a 3.0
         /// server is detected.
         ///
-        /// Derived authoritatively from the game, NOT from patch notes: each key here is an
-        /// EnumGamePrefs member whose name also exists in the SandboxOptions enum of the 3.0
-        /// Assembly-CSharp — which is exactly the game's own sandbox-link test
-        /// (GamePrefs.SetupSandboxReferences does Enum.TryParse&lt;SandboxOptions&gt;(prefName)).
-        /// Verified against the 3.0 "Dead Hot Summer" server build (2026-06).
+        /// Derived authoritatively from the game, NOT from patch notes, as the union of two
+        /// links the game makes:
+        ///   1. Name link — an EnumGamePrefs member whose name also exists in the
+        ///      SandboxOptions enum, which is exactly the game's own sandbox-link test
+        ///      (GamePrefs.SetupSandboxReferences does Enum.TryParse&lt;SandboxOptions&gt;(prefName)).
+        ///   2. Overwrite link — prefs that SandboxOptionManager's apply step writes back
+        ///      from a DIFFERENTLY-named option, so the name test misses them:
+        ///      BlockDamagePlayer ← SandboxOptions.BlockDamage, and
+        ///      LootAbundance ← SandboxOptions.GlobalLootCount. Whatever serverconfig says,
+        ///      the sandbox value wins on a 3.x server.
+        ///
+        /// History: 3.0 "Dead Hot Summer" (2026-06) — the original 26 name-linked keys.
+        /// 3.1 "Henpocalypse" (2026-08) — LootTimer joined the name intersection; the
+        /// removal of BiomeEnemyDensity/BiomeZombieRespawn/BiomeAnimalRespawn (split into
+        /// BiomeDay*/BiomeNight* options) didn't touch this set, none were serverconfig
+        /// properties. 3.3 (v3.30 b18, 2026-10) — name intersection unchanged at 27 keys,
+        /// link mechanism unchanged; re-verifying it surfaced the overwrite link, which was
+        /// already present in 3.2 (and is why the pristine 3.x serverconfig.xml template
+        /// ships without BlockDamagePlayer/LootAbundance), so those two moved in here.
+        /// (3.3's new SandboxOverridesFromXml is a modlet XML hook for presets/overrides,
+        /// not a serverconfig path — it doesn't affect this set.)
         ///
         /// Note the non-obvious SURVIVORS that stay in serverconfig and are deliberately NOT
-        /// listed: GameDifficulty, BlockDamagePlayer, EnemyDifficulty, MaxSpawnedZombies,
-        /// MaxSpawnedAnimals, LootAbundance, all LandClaim*, PlayerSafeZone*,
-        /// BedrollDeadZoneSize. (e.g. BlockDamageAI/AIBM move but BlockDamagePlayer stays;
-        /// LootRespawnDays moves but LootAbundance stays.)
+        /// listed: GameDifficulty, EnemyDifficulty, MaxSpawnedZombies, MaxSpawnedAnimals,
+        /// all LandClaim*, PlayerSafeZone*, BedrollDeadZoneSize. (GameDifficulty and
+        /// EnemyDifficulty are still read from serverconfig into GameStats but are largely
+        /// vestigial on 3.x — the Sandbox difficulty preset is what players feel.)
         /// </summary>
         private static readonly HashSet<string> SandboxGovernedKeys = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase)
         {
+            // Name link (EnumGamePrefs ∩ SandboxOptions)
             "DeathPenalty", "DropOnDeath", "DropOnQuit", "DayNightLength", "DayLightLength",
             "QuestProgressionDailyLimit", "JarRefund", "BiomeProgression", "StormFreq",
             "BlockDamageAI", "BlockDamageAIBM", "XPMultiplier", "EnemySpawnMode",
             "ZombieFeralSense", "ZombieMove", "ZombieMoveNight", "ZombieFeralMove",
             "ZombieBMMove", "AISmellMode", "BloodMoonFrequency", "BloodMoonRange",
             "BloodMoonWarning", "BloodMoonEnemyCount", "LootRespawnDays", "AirDropFrequency",
-            "AirDropMarker",
+            "AirDropMarker", "LootTimer",
+            // Overwrite link (SandboxOptionManager writes these from differently-named options)
+            "BlockDamagePlayer", "LootAbundance",
         };
 
         /// <summary>
