@@ -29,6 +29,32 @@ namespace KitsuneCommand.GameIntegration.Harmony
                 Log.Out($"[KitsuneCommand] Trader protection bypassed: {where}");
         }
 
+        private static bool _blockPosWarned;
+
+        /// <summary>
+        /// Where a block change lands, via GameCompat (the field moved in V3.2).
+        /// If that can't be resolved the change is let through: a broken lookup
+        /// must not stop every block change on the server.
+        /// </summary>
+        private static bool TryGetBlockPos(BlockChangeInfo change, World world, out Vector3i pos)
+        {
+            try
+            {
+                pos = GameCompat.GetBlockPos(change, world);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (!_blockPosWarned)
+                {
+                    _blockPosWarned = true;
+                    Log.Warning($"[KitsuneCommand] Trader protection can't read block change positions on this game version; server-side enforcement is off. {ex.GetType().Name}: {ex.Message}");
+                }
+                pos = default;
+                return false;
+            }
+        }
+
         [HarmonyPatch(typeof(World), "IsWithinTraderPlacingProtection", typeof(Vector3i))]
         public static class WorldIsWithinTraderPlacingProtection_Vec3i
         {
@@ -144,10 +170,10 @@ namespace KitsuneCommand.GameIntegration.Harmony
                 {
                     // Our IsWithinTraderArea prefix is pass-through when ProtectionEnabled=true,
                     // so this returns the real vanilla answer.
-                    if (world.IsWithinTraderArea(_blocksToChange[i].pos))
+                    if (TryGetBlockPos(_blocksToChange[i], world, out var pos) && world.IsWithinTraderArea(pos))
                     {
                         if (TraderProtectionConfig.LogBypasses)
-                            Log.Out($"[KitsuneCommand] Rejected block change at {_blocksToChange[i].pos} (ktrader on)");
+                            Log.Out($"[KitsuneCommand] Rejected block change at {pos} (ktrader on)");
                         _blocksToChange.RemoveAt(i);
                         removed++;
                     }
@@ -201,10 +227,10 @@ namespace KitsuneCommand.GameIntegration.Harmony
 
                 for (int i = list.Count - 1; i >= 0; i--)
                 {
-                    if (world.IsWithinTraderArea(list[i].pos))
+                    if (TryGetBlockPos(list[i], world, out var pos) && world.IsWithinTraderArea(pos))
                     {
                         if (TraderProtectionConfig.LogBypasses)
-                            Log.Out($"[KitsuneCommand] Filtered client packet block change at {list[i].pos} (ktrader on)");
+                            Log.Out($"[KitsuneCommand] Filtered client packet block change at {pos} (ktrader on)");
                         list.RemoveAt(i);
                     }
                 }

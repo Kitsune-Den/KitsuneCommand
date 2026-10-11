@@ -16,7 +16,7 @@
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-PolyForm--NC--1.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
   <a href="docs/RELEASES.md#verifying-a-release"><img src="https://img.shields.io/badge/releases-signed%20since%20v2.7.2-blue" alt="Signed releases since v2.7.2 (minisign + sha256)" /></a>
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/pulls"><img src="https://img.shields.io/github/issues-pr/Kitsune-Den/KitsuneCommand" alt="PRs" /></a>
-  <img src="https://img.shields.io/badge/7D2D-V2.0-orange" alt="7 Days to Die V2" />
+  <img src="https://img.shields.io/badge/7D2D-V2.5%E2%80%93V3.3-orange" alt="7 Days to Die V2.5 to V3.3" />
   <img src="https://img.shields.io/badge/.NET_4.8-C%23_11-purple" alt=".NET 4.8" />
   <img src="https://img.shields.io/badge/Vue_3-TypeScript-blue" alt="Vue 3" />
 </p>
@@ -137,7 +137,7 @@ Self-service password change for the logged-in user. If you ever lock yourself o
 
 ## Requirements
 
-- 7 Days to Die Dedicated Server (V2.5+)
+- 7 Days to Die Dedicated Server (V2.5 through V3.3)
 - **Windows**: .NET Framework 4.8 runtime (included with Windows)
 - **Linux**: Mono runtime (included with 7D2D server), `libsqlite3-0` (usually pre-installed)
 - For building from source: .NET SDK 8.0+ and Node.js 18+

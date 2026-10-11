@@ -12,6 +12,49 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **7D2D 3.3 support: player inventory, give-item and the item catalog
+  work again.** KC compiles against V2.5 reference assemblies, and 3.3
+  reshaped members it uses: `Bag.GetSlots()` / `Inventory.GetSlots()` are
+  gone (both now sit on an `ItemStackGrid`), and `ItemStack.itemValue` /
+  `count` and `ItemValue.type` / `Quality` / `UseTimes` turned from fields
+  into properties. That still compiles from source but the shipped DLL
+  doesn't bind, so on a 3.3 server the player detail page, the inventory
+  view and Give Item threw `MissingFieldException` / `MissingMethodException`.
+  `Localization.Get` also gained an optional parameter by 3.2, which broke
+  the item catalog there too (its `try/catch` couldn't help: the exception
+  fires when the method is JIT-compiled, before the `try` runs).
+- **Trader protection's server-side enforcement works on 3.2+.**
+  `BlockChangeInfo.pos` became `blockValueRef` (which can point at a block
+  or a prop) by 3.2, so the `GameManager.ChangeBlocks` and
+  `NetPackageSetBlock` filters threw on every block change while
+  ktrader was on. They now read the position through the new accessor,
+  props included, and if it can't be read they let the change through
+  and log one warning rather than blocking every block change.
+- New `GameIntegration/GameCompat` binds each of these members by name to
+  whatever the running game has (field or property, old or new signature)
+  and compiles it to a delegate, so one DLL still runs on V2.5 through
+  V3.3. Checked against real V3.2 (b10) and V3.3 (b18) assemblies: every
+  game reference in every mod DLL resolves, and the accessors read and write
+  the right values. All 18 Harmony patch targets were unchanged in 3.3,
+  parameter names included.
+- **Sandbox-governed keys re-verified against 3.3.** 3.3 governs the same
+  27 keys as 3.1. Separately, `BlockDamagePlayer` and `LootAbundance` have
+  been overwritten by the Sandbox since 3.x under different names, so on a
+  3.x server serverconfig's values for them are ignored. The editor now
+  hides them and the 3.0 migration comments them out. Servers that already
+  migrated will see the banner again; re-running it only touches those two
+  lines.
+
+### Added
+
+- `tools/GameCompatCheck`: run it against a local 7D2D install after a game
+  update to list every game type or member KC's built DLLs reference that the
+  new version no longer has. It catches what the compiler can't (fields that
+  became properties, new optional parameters). See
+  [`docs/REFERENCE-ASSEMBLIES.md`](docs/REFERENCE-ASSEMBLIES.md#checking-a-new-game-version).
+
 ## [2.8.2] - 2026-06-04
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.8.2)
