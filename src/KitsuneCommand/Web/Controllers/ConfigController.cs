@@ -16,10 +16,12 @@ namespace KitsuneCommand.Web.Controllers
     public class ConfigController : ApiController
     {
         private readonly ServerConfigService _configService;
+        private readonly SandboxTableService _sandboxTables;
 
-        public ConfigController(ServerConfigService configService)
+        public ConfigController(ServerConfigService configService, SandboxTableService sandboxTables)
         {
             _configService = configService;
+            _sandboxTables = sandboxTables;
         }
 
         /// <summary>
@@ -135,6 +137,20 @@ namespace KitsuneCommand.Web.Controllers
             {
                 return Ok(ApiResponse.Ok(new List<string> { "Navezgane" }));
             }
+        }
+
+        /// <summary>
+        /// The running game's Sandbox option table (7D2D 3.0+) for the Sandbox editor,
+        /// plus the code the running world started with. The editor decodes and
+        /// encodes codes against this table and saves the result as SandboxCode
+        /// through PUT /api/config. supported=false on a pre-3.0 server.
+        /// </summary>
+        [HttpGet]
+        [Route("sandbox")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult GetSandbox()
+        {
+            return Ok(ApiResponse.Ok(_sandboxTables.GetSandboxConfig()));
         }
 
         /// <summary>

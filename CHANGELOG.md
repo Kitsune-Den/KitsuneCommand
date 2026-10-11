@@ -12,6 +12,33 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Added
+
+- **Sandbox editor for 7D2D 3.x.** 3.0 packed the world/gameplay ruleset
+  into one opaque `SandboxCode`, and until now the only way to change it was
+  to build the settings in-game, copy the code and paste it into the config
+  editor. The config editor now edits it directly. You get all 165 options
+  under the game's own category tabs, with the game's names, value labels and
+  descriptions. There's a preset picker (built-in, user and modded presets,
+  and it recognizes which preset a code already is), search, paste-a-code,
+  reset, and "Stop using Sandbox" to go back to the individual serverconfig
+  settings. Options the game switches off (Stamina Regen while Stamina Usage
+  is None, and so on) are shown as off and say why. The code updates as you
+  edit and is saved as `SandboxCode` with the rest of the config. It's the
+  same code the game's own copy button gives for those settings, with
+  triples in the same order. A note shows when the saved code isn't the one
+  the running world started with (it applies on restart).
+  - Unlike a per-version table, KC reads the option table from the running
+    game (`SandboxOptionManager`, via reflection, `GET /api/config/sandbox`),
+    so it's always right for the build it's on. That matters because the
+    letters in a code mean different things on different builds (3.2
+    shifted every item-tier letter by one).
+  - Checked against the real V3.2 (b10) and V3.3 (b18) assemblies: all 165
+    options match PackRelay's independently extracted tables (index, default,
+    every value, category, encode order). The codec decodes a code captured
+    from a live 3.3 server to exactly what that server applied, re-encodes it
+    byte for byte, and every built-in preset code decodes cleanly.
+
 ### Fixed
 
 - **7D2D 3.3 support: player inventory, give-item and the item catalog

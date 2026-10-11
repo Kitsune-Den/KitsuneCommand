@@ -1,4 +1,5 @@
 import apiClient from './client'
+import type { SandboxTable } from '@/lib/sandboxCode'
 
 export interface ConfigFieldDef {
   key: string
@@ -58,6 +59,22 @@ export async function saveRawXml(xml: string): Promise<string> {
 
 export async function getWorlds(): Promise<string[]> {
   const res = await apiClient.get('/api/config/worlds')
+  return res.data.data
+}
+
+export interface SandboxConfig {
+  /** False on a pre-3.0 server (no Sandbox system). */
+  supported: boolean
+  /** The running game's option table, read live from the game. Null if it couldn't be read. */
+  table: SandboxTable | null
+  /** The code the running world started with; differs from serverconfig's until a restart. */
+  liveCode: string | null
+  error?: string | null
+}
+
+/** The running game's Sandbox option table, for the Sandbox editor. */
+export async function getSandboxConfig(): Promise<SandboxConfig> {
+  const res = await apiClient.get('/api/config/sandbox')
   return res.data.data
 }
 

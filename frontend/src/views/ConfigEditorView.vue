@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { getConfig, getRawXml, saveConfig, saveRawXml, getWorlds, migrateConfigTo30, type ConfigFieldGroup } from '@/api/config'
+import { getConfig, getRawXml, saveConfig, saveRawXml, getWorlds, migrateConfigTo30, getSandboxConfig, type ConfigFieldGroup, type SandboxConfig } from '@/api/config'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -12,6 +12,7 @@ import Textarea from 'primevue/textarea'
 import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
 import DayNightCycleWidget from '@/components/DayNightCycleWidget.vue'
+import SandboxEditor from '@/components/SandboxEditor.vue'
 
 /**
  * camelCase / PascalCase → human-readable title case.
@@ -71,6 +72,14 @@ const needsMigration = ref(false)
 const migrating = ref(false)
 
 /**
+ * The running game's Sandbox option table (3.0+). With it, the Sandbox editor
+ * replaces the plain SandboxCode text field; without it (couldn't be read) the
+ * text field stays so a code can still be pasted in.
+ */
+const sandbox = ref<SandboxConfig | null>(null)
+const sandboxTable = computed(() => (is30.value ? sandbox.value?.table ?? null : null))
+
+/**
  * True when a non-empty SandboxCode is actually set. Only then does it override the
  * individual sandbox-governed settings, so only then are those hidden. With an empty/absent
  * code, 3.0 still reads the individual serverconfig properties (backward-compat), so they
@@ -128,11 +137,29 @@ async function loadConfig() {
     worlds.value = worldList
     is30.value = configData.is30 ?? false
     needsMigration.value = configData.needsMigration ?? false
+    if (is30.value) await loadSandbox()
   } catch (err) {
     toast.add({ severity: 'error', summary: t('common.error'), detail: t('config.failedToLoad'), life: 4000 })
   } finally {
     loading.value = false
   }
+}
+
+async function loadSandbox() {
+  try {
+    sandbox.value = await getSandboxConfig()
+    if (sandbox.value?.supported && !sandbox.value.table && sandbox.value.error) {
+      toast.add({ severity: 'warn', summary: t('config.sandbox.title'), detail: t('config.sandbox.loadFailed', { error: sandbox.value.error }), life: 6000 })
+    }
+  } catch {
+    sandbox.value = null // the plain SandboxCode field still works
+  }
+}
+
+function getOriginalValue(key: string): string {
+  const lower = key.toLowerCase()
+  const match = Object.keys(originalProperties.value).find(k => k.toLowerCase() === lower)
+  return match ? originalProperties.value[match] : ''
 }
 
 /** One-click 3.0 migration: the server comments out the sandbox-governed props,
@@ -242,8 +269,9 @@ function visibleFieldsFor(group: ConfigFieldGroup) {
   if (group.key === 'gameplay') {
     fields = fields.filter((f) => !DAY_NIGHT_KEYS.includes(f.key))
   }
-  // The SandboxCode field only makes sense on a 3.0 server (show it even before one is set).
-  if (!is30.value) {
+  // The SandboxCode field only makes sense on a 3.0 server (show it even before one is set),
+  // and there the Sandbox editor edits it when the game's option table could be read.
+  if (!is30.value || sandboxTable.value) {
     fields = fields.filter((f) => f.key !== SANDBOX_CODE_KEY)
   }
   // Hide the sandbox-governed settings only when a SandboxCode actually overrides them.
@@ -306,11 +334,15 @@ onMounted(loadConfig)
       </div>
     </Message>
 
-    <Message v-if="!loading && activeTab === 'form' && is30 && !hasSandboxCode" severity="info" :closable="false" class="sandbox-banner">
+    <Message v-if="!loading && activeTab === 'form' && is30 && !hasSandboxCode && !sandboxTable" severity="info" :closable="false" class="sandbox-banner">
       {{ t('config.sandboxUpgradeNotice', 'This is a 7 Days to Die 3.0 server. Your individual settings below are still active — 3.0 reads them when no Sandbox code is set. To switch to the new Sandbox system and unlock 3.0-only options, generate a code in-game (New Game → Sandbox Options → copy code) and paste it into the Sandbox Code field. Saving writes it to both serverconfig.xml and the sticky .bak, so it survives restarts.') }}
     </Message>
 
-    <Message v-if="!loading && activeTab === 'form' && hasSandboxCode" severity="info" :closable="false" class="sandbox-banner">
+    <Message v-if="!loading && activeTab === 'form' && hasSandboxCode && sandboxTable" severity="info" :closable="false" class="sandbox-banner">
+      {{ t('config.sandboxActiveNoticeEditor', 'A Sandbox code is set, so difficulty, XP, blood moon, loot, zombie behavior and the other world settings come from the Sandbox below, not from serverconfig.xml. The individual settings it replaces are hidden. Use "Stop using Sandbox" to go back to them.') }}
+    </Message>
+
+    <Message v-if="!loading && activeTab === 'form' && hasSandboxCode && !sandboxTable" severity="info" :closable="false" class="sandbox-banner">
       {{ t('config.sandboxActiveNotice', 'A Sandbox code is set — it governs difficulty, XP, blood moon, loot, zombie behavior and other world settings, so those individual settings are hidden (the server reads them from the code, not serverconfig.xml). Clear the Sandbox Code field to return to individual settings.') }}
     </Message>
 
@@ -360,6 +392,16 @@ onMounted(loadConfig)
           </div>
         </div>
       </div>
+
+      <!-- 7D2D 3.x Sandbox — edits the SandboxCode property -->
+      <SandboxEditor
+        v-if="sandboxTable"
+        :table="sandboxTable"
+        :code="getFieldValue(SANDBOX_CODE_KEY)"
+        :savedCode="getOriginalValue(SANDBOX_CODE_KEY)"
+        :liveCode="sandbox?.liveCode"
+        @update:code="setFieldValue(SANDBOX_CODE_KEY, $event)"
+      />
 
       <!-- Other groups — 3-column card grid -->
       <div class="groups-grid">
