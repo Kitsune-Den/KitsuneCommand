@@ -1,5 +1,6 @@
 using KitsuneCommand.Abstractions.Models;
 using KitsuneCommand.Web.Models;
+using KitsuneCommand.GameIntegration;
 
 namespace KitsuneCommand.Core
 {
@@ -77,8 +78,8 @@ namespace KitsuneCommand.Core
                 var ep = GetEntityPlayer(entityId);
                 if (ep == null) return (new List<InventorySlot>(), new List<InventorySlot>());
 
-                var bag = ReadInventorySlots(ep.bag.GetSlots(), "bag");
-                var belt = ReadInventorySlots(ep.inventory.GetSlots(), "belt");
+                var bag = ReadInventorySlots(GameCompat.GetSlots(ep.bag), "bag");
+                var belt = ReadInventorySlots(GameCompat.GetSlots(ep.inventory), "belt");
                 return (bag, belt);
             });
         }
@@ -310,19 +311,19 @@ namespace KitsuneCommand.Core
                 // Create the item value
                 var itemValue = new ItemValue(itemClass.Id);
                 if (itemClass.HasQuality)
-                    itemValue.Quality = (ushort)Math.Max(1, Math.Min(quality, 6));
+                    GameCompat.SetQuality(itemValue, (ushort)Math.Max(1, Math.Min(quality, 6)));
 
                 // Check bag + belt for available space
-                var bagSlots = ep.bag.GetSlots();
-                var beltSlots = ep.inventory.GetSlots();
+                var bagSlots = GameCompat.GetSlots(ep.bag);
+                var beltSlots = GameCompat.GetSlots(ep.inventory);
                 int maxStack = itemClass.Stacknumber.Value;
-                int freeSpace = CountFreeSpace(bagSlots, itemValue.type, maxStack)
-                              + CountFreeSpace(beltSlots, itemValue.type, maxStack);
+                int freeSpace = CountFreeSpace(bagSlots, GameCompat.GetItemType(itemValue), maxStack)
+                              + CountFreeSpace(beltSlots, GameCompat.GetItemType(itemValue), maxStack);
 
                 if (freeSpace < count)
                 {
                     // Notify the player their inventory is full
-                    var fullDisplayName = Localization.Get(itemName);
+                    var fullDisplayName = GameCompat.Localize(itemName);
                     try
                     {
                         SdtdConsole.Instance.ExecuteSync(
@@ -337,7 +338,7 @@ namespace KitsuneCommand.Core
                     };
                 }
 
-                var displayName = Localization.Get(itemName);
+                var displayName = GameCompat.Localize(itemName);
                 var stack = new ItemStack(itemValue, count);
 
                 // Drop item right at the player's position — auto-pickup will collect it
@@ -364,13 +365,17 @@ namespace KitsuneCommand.Core
             if (slots == null) return space;
             for (int i = 0; i < slots.Length; i++)
             {
-                if (slots[i].IsEmpty())
+                var slot = slots[i];
+                if (slot == null || slot.IsEmpty())
                 {
                     space += maxStack;
+                    continue;
                 }
-                else if (slots[i].itemValue.type == itemType && slots[i].count < maxStack)
+
+                int slotCount = GameCompat.GetCount(slot);
+                if (GameCompat.GetItemType(GameCompat.GetItemValue(slot)) == itemType && slotCount < maxStack)
                 {
-                    space += maxStack - slots[i].count;
+                    space += maxStack - slotCount;
                 }
             }
             return space;
@@ -378,8 +383,8 @@ namespace KitsuneCommand.Core
 
         private static void PopulateInventory(PlayerDetailInfo detail, EntityPlayer ep)
         {
-            detail.BagItems = ReadInventorySlots(ep.bag.GetSlots(), "bag");
-            detail.BeltItems = ReadInventorySlots(ep.inventory.GetSlots(), "belt");
+            detail.BagItems = ReadInventorySlots(GameCompat.GetSlots(ep.bag), "bag");
+            detail.BeltItems = ReadInventorySlots(GameCompat.GetSlots(ep.inventory), "belt");
         }
 
         private static List<InventorySlot> ReadInventorySlots(ItemStack[] items, string type)
@@ -389,22 +394,23 @@ namespace KitsuneCommand.Core
             for (int i = 0; i < items.Length; i++)
             {
                 var stack = items[i];
-                if (stack.IsEmpty()) continue;
+                if (stack == null || stack.IsEmpty()) continue;
 
-                var slotItemName = stack.itemValue.ItemClass?.GetItemName() ?? "unknown";
+                var itemValue = GameCompat.GetItemValue(stack);
+                var slotItemName = itemValue.ItemClass?.GetItemName() ?? "unknown";
                 var slotDisplayName = slotItemName;
-                try { slotDisplayName = Localization.Get(slotItemName); } catch { }
+                try { slotDisplayName = GameCompat.Localize(slotItemName); } catch { }
 
                 slots.Add(new InventorySlot
                 {
                     SlotIndex = i,
                     ItemName = slotItemName,
                     DisplayName = slotDisplayName,
-                    Count = stack.count,
-                    Quality = (int)stack.itemValue.Quality,
-                    Durability = stack.itemValue.UseTimes,
-                    MaxDurability = stack.itemValue.MaxUseTimes,
-                    IconName = stack.itemValue.ItemClass?.GetIconName() ?? ""
+                    Count = GameCompat.GetCount(stack),
+                    Quality = GameCompat.GetQuality(itemValue),
+                    Durability = GameCompat.GetUseTimes(itemValue),
+                    MaxDurability = itemValue.MaxUseTimes,
+                    IconName = itemValue.ItemClass?.GetIconName() ?? ""
                 });
             }
             return slots;

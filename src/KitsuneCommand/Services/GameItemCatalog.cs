@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using KitsuneCommand.GameIntegration;
 using KitsuneCommand.Web.Models;
 
 namespace KitsuneCommand.Services
@@ -34,7 +35,7 @@ namespace KitsuneCommand.Services
                 var displayName = itemName;
                 try
                 {
-                    var localized = Localization.Get(itemName);
+                    var localized = GameCompat.Localize(itemName);
                     if (!string.IsNullOrEmpty(localized))
                         displayName = localized;
                 }

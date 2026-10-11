@@ -34,6 +34,25 @@ Run `tools/strip-refs.{sh,ps1}` whenever:
 
 In practice this is rare — most 7DTD patches don't touch the API KC depends on. v2.7.x has been running against the same refasm output as v2.5.x.
 
+**Don't regenerate them just because a new game version shipped.** The refs are V2.5 on purpose: KC compiles against the oldest version it supports, and one DLL runs on all of them. Moving the refs up to V3.3 would make the build bind to 3.3-only members and break every older server. When a newer version reshapes something KC uses, the fix goes in `GameIntegration/GameCompat.cs` instead (next section).
+
+## Checking a new game version
+
+A clean compile doesn't prove KC works on a new game build. The shipped DLL names the exact members it saw in the V2.5 refs, so when a later version turns a field into a property, or adds an optional parameter to a method, the source still compiles but the game throws `MissingFieldException` / `MissingMethodException` the first time a method touching that member is JIT-compiled. 3.3 did this to `ItemStack.itemValue`, `ItemValue.Quality` and friends. Compiling against the 3.3 DLLs caught only 3 of the 9 breaks.
+
+So after every game update, run the binary check against a local install of the new version:
+
+```bash
+dotnet build KitsuneCommand.sln -c Release
+dotnet build src/KitsuneJoinDiag/KitsuneJoinDiag.csproj -c Release
+dotnet build src/KitsunePackRelayLauncher/KitsunePackRelayLauncher.csproj -c Release
+dotnet run --project tools/GameCompatCheck -- "<path to the 7D2D dedicated server>"
+```
+
+It resolves every type, method and field reference each mod DLL makes into the game's assemblies, and lists the ones the new version doesn't have. `OK: every game reference resolves.` means nothing will throw for a missing member. It doesn't check behavior, and it doesn't check Harmony patch targets named by string: diff those signatures (parameter names too, Harmony injects by name) with `ilspycmd -t <Type>` on the old and new `Assembly-CSharp.dll`.
+
+For anything it flags, add an accessor to `GameCompat` that binds by name to whatever the running game has, and route the call sites through it. Don't reference the member directly, and don't reference a replacement that only exists on the new version.
+
 ## How to regenerate
 
 ### Prereqs

@@ -162,17 +162,22 @@ namespace KitsuneCommand.Tests.Services
             Assert.That(result.Neutralized, Does.Contain("DeathPenalty"));
             Assert.That(result.Neutralized, Does.Contain("XPMultiplier"));
             Assert.That(result.Neutralized, Does.Contain("BloodMoonFrequency"));
+            // Overwrite-linked (sandbox writes them from differently-named options).
+            Assert.That(result.Neutralized, Does.Contain("LootAbundance"));
+            Assert.That(result.Neutralized, Does.Contain("BlockDamagePlayer"));
 
             var config = _service.ReadConfig(); // live <property> elements only (comments excluded)
             // The sandbox-governed props are no longer live properties...
             Assert.That(config, Does.Not.ContainKey("DeathPenalty"));
             Assert.That(config, Does.Not.ContainKey("XPMultiplier"));
             Assert.That(config, Does.Not.ContainKey("BloodMoonFrequency"));
+            Assert.That(config, Does.Not.ContainKey("LootAbundance"));
+            Assert.That(config, Does.Not.ContainKey("BlockDamagePlayer"));
             // ...SandboxCode now exists, and the survivors are untouched.
             Assert.That(config, Does.ContainKey("SandboxCode"));
             Assert.That(config, Does.ContainKey("GameDifficulty"));      // survivor — stays
             Assert.That(config["GameDifficulty"], Is.EqualTo("3"));
-            Assert.That(config, Does.ContainKey("LootAbundance"));       // survivor — stays
+            Assert.That(config, Does.ContainKey("MaxSpawnedZombies"));   // survivor — stays
             Assert.That(config["ServerName"], Is.EqualTo("My Test Server"));
 
             // Old values are preserved in comments, not destroyed.
@@ -312,9 +317,10 @@ namespace KitsuneCommand.Tests.Services
     <property name=""GameName"" value=""MyGame"" />
 </ServerSettings>";
 
-        // A 2.x-shaped config carrying both sandbox-governed props (DeathPenalty,
-        // XPMultiplier, BloodMoonFrequency) and survivors (GameDifficulty, LootAbundance),
-        // with no SandboxCode yet — the exact input the 3.0 migration handles.
+        // A 2.x-shaped config carrying sandbox-governed props — name-linked (DeathPenalty,
+        // XPMultiplier, BloodMoonFrequency) and overwrite-linked (LootAbundance,
+        // BlockDamagePlayer) — plus survivors (GameDifficulty, MaxSpawnedZombies), with no
+        // SandboxCode yet — the exact input the 3.x migration handles.
         private const string MigrationSample = @"<?xml version=""1.0""?>
 <ServerSettings>
     <property name=""ServerName"" value=""My Test Server"" />
@@ -323,6 +329,8 @@ namespace KitsuneCommand.Tests.Services
     <property name=""XPMultiplier"" value=""150"" />
     <property name=""BloodMoonFrequency"" value=""7"" />
     <property name=""LootAbundance"" value=""100"" />
+    <property name=""BlockDamagePlayer"" value=""100"" />
+    <property name=""MaxSpawnedZombies"" value=""64"" />
 </ServerSettings>";
     }
 }

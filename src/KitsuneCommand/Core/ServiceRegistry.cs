@@ -34,6 +34,7 @@ namespace KitsuneCommand.Core
 
             // Server management services
             builder.RegisterType<ServerConfigService>().AsSelf().SingleInstance();
+            builder.RegisterType<SandboxTableService>().AsSelf().SingleInstance();
             builder.RegisterType<ModManagerService>().AsSelf().SingleInstance();
             builder.RegisterType<ModUpdateService>().AsSelf().SingleInstance();
             builder.RegisterType<BackupService>().AsSelf().SingleInstance();

@@ -16,7 +16,7 @@
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-PolyForm--NC--1.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
   <a href="docs/RELEASES.md#verifying-a-release"><img src="https://img.shields.io/badge/releases-signed%20since%20v2.7.2-blue" alt="Signed releases since v2.7.2 (minisign + sha256)" /></a>
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/pulls"><img src="https://img.shields.io/github/issues-pr/Kitsune-Den/KitsuneCommand" alt="PRs" /></a>
-  <img src="https://img.shields.io/badge/7D2D-V2.0-orange" alt="7 Days to Die V2" />
+  <img src="https://img.shields.io/badge/7D2D-V2.5%E2%80%93V3.3-orange" alt="7 Days to Die V2.5 to V3.3" />
   <img src="https://img.shields.io/badge/.NET_4.8-C%23_11-purple" alt=".NET 4.8" />
   <img src="https://img.shields.io/badge/Vue_3-TypeScript-blue" alt="Vue 3" />
 </p>
@@ -59,7 +59,7 @@ KitsuneCommand is a source-available mod for 7 Days to Die dedicated servers tha
 ### Server Management (Self-Hoster Tools)
 - **Server Control** — Save world, shutdown server, live resource monitoring
 - **Graceful Restart** — Schedule daily restarts with player-friendly in-game countdown warnings. Configurable warning ladder, IANA-timezone schedule (DST-aware), and a `krestart` console command for one-off restarts
-- **Config Editor** — Edit `serverconfig.xml` with a rich form UI (10 grouped categories) or raw XML
+- **Config Editor** — Edit `serverconfig.xml` with a rich form UI (10 grouped categories) or raw XML, plus a full 7D2D 3.x Sandbox editor
 - **Mods Manager** — Browse, upload (ZIP), delete, and enable/disable server mods
 - **Modpack** — Bundle installed mods into a single zip players can download from the login page (no panel account required). Draft / Publish / Archive lifecycle with a top-right download CTA on login
 - **Auto Backup** — Create, restore, delete, and schedule world save backups
@@ -88,6 +88,8 @@ Auto-update via SteamCMD on every server start, with a "sticky" `serverconfig.xm
 ### Config Editor
 
 `serverconfig.xml` as a real form instead of a wall of XML. Settings are grouped (Core, World, Player, Gameplay, Block Damage), every field has plain-English help text with vanilla-reference numbers ("100% is vanilla, 125% is a gentle boost"), and there's a visual day/night cycle widget with a warm/cool split bar.
+
+On 7D2D 3.x, where the world and gameplay settings live in a single `SandboxCode`, there's a Sandbox editor. It has every option the game has, with the game's own names, descriptions and presets (built-in, user and modded). It also shows which options switch others off, and you can search or paste a code. The code is generated live as you change things, and it's the same code the game's copy button would give. KC reads the option table from the running game, so it's always right for the build you're on.
 
 <a href="docs/screenshots/config-editor.png" target="_blank" rel="noopener"><img src="docs/screenshots/config-editor.png" alt="Config Editor" /></a>
 
@@ -137,7 +139,7 @@ Self-service password change for the logged-in user. If you ever lock yourself o
 
 ## Requirements
 
-- 7 Days to Die Dedicated Server (V2.5+)
+- 7 Days to Die Dedicated Server (V2.5 through V3.3)
 - **Windows**: .NET Framework 4.8 runtime (included with Windows)
 - **Linux**: Mono runtime (included with 7D2D server), `libsqlite3-0` (usually pre-installed)
 - For building from source: .NET SDK 8.0+ and Node.js 18+

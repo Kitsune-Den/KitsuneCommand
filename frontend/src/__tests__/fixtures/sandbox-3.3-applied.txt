@@ -1,0 +1,29 @@
+# Captured from a live 7 Days to Die V 3.3.0 (b18) dedicated server (ada, 2026-10-03).
+# Boot-time dump of the Sandbox options a PackRelay-generated code applied.
+# code: AAAAABMASKBBGBIEBMDBWABZICAGCOHCZDCXFDXIDWBFGGFACEOAFRB
+*** GENERAL ***
+Option RangedDamage: 0/None (default: 7/100%)
+Option MeleeDamage: 12/300% (default: 7/100%)
+Option XPMultiplier: 10/500% (default: 4/100%)
+Option DropOnDeath: 6/Delete All (default: 1/All)
+*** ENTITIES ***
+Option ZombieMove: 4/Nightmare (default: 0/Walk)
+Option ZombieFeralSense: 3/All (default: 0/Disabled)
+*** WORLD ***
+Option BloodMoonFrequency: 0/Disabled (default: 7/7 Days)
+Option BloodMoonEnemyCount: 8/64 Enemies (default: 2/8 Enemies)
+Option AirDropFrequency: 6/1-7 Days (default: 3/3 Days)
+Option DayNightLength: 7/120 (default: 5/60)
+*** RESOURCES ***
+Option LootMaxTier: 3/3 (default: 0/Default)
+Option LootRespawnDays: 5/20 (default: 2/7)
+Option MiningOutput: 8/125% (default: 7/100%)
+*** CRAFTING ***
+Option CraftingMaxTier: 1/1 (default: 0/Default)
+*** TRADERS ***
+Option TraderMaxTier: 6/6 (default: 0/Default)
+Option TraderSellPrices: 2/50% (default: 4/100%)
+*** TASKS ***
+Option QuestsEnabled: 0/No (default: 1/Yes)
+*** MISC ***
+Option SillyBigHeads: 1/Yes (default: 0/No)
