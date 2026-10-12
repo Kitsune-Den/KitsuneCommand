@@ -12,6 +12,16 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-10-12
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.9.0)
+> · 7 Days to Die 3.3 support. Player inventory, Give Item, the item
+> catalog and trader protection work on 3.3 again, and the config editor
+> gets a full Sandbox editor. One build still runs on V2.5 through V3.3.
+> No schema changes. If your 3.x server already ran "Migrate to 3.0",
+> you'll see the banner once more; re-running it only comments out
+> `BlockDamagePlayer` and `LootAbundance`.
+
 ### Added
 
 - **Sandbox editor for 7D2D 3.x.** 3.0 packed the world/gameplay ruleset
@@ -684,7 +694,10 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.4...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.9.0...HEAD
+[2.9.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.8.2...v2.9.0
+[2.8.2]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.8.1...v2.8.2
+[2.8.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.4...v2.8.1
 [2.7.4]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.3...v2.7.4
 [2.7.3]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.2...v2.7.3
 [2.7.2]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.1...v2.7.2
