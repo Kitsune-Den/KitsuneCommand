@@ -68,32 +68,53 @@ Tag-push triggers `.github/workflows/release.yml`. It builds, signs,
 and creates a draft GitHub release with three assets. Total maintainer
 work per release: ~5 minutes of edits + a Publish click after CI lands.
 
-### 1. Bump version
+### 1. Bump the version and roll the CHANGELOG
 
-Three places (a future `tools/bump-version.{sh,ps1}` will do this in
-one shot — kanban #137):
-
-- `src/KitsuneCommand/ModInfo.xml` (the version 7DTD displays)
-- `src/KitsuneCommand/KitsuneCommand.csproj` `<Version>` (if present)
-- `frontend/package.json` `"version"`
-
-### 2. Update CHANGELOG.md
-
-Move the `[Unreleased]` entries into a new `[X.Y.Z] - YYYY-MM-DD`
-section at the top. Add a compare link at the bottom (template at the
-end of the file).
-
-The release workflow extracts the matching `## [X.Y.Z]` section as the
-GitHub release body, so write it like someone's actually going to read
-it on the release page.
-
-### 3. Tag + push
+On a `release/vX.Y.Z` branch off `main`:
 
 ```bash
+tools/bump-version.sh X.Y.Z          # or: tools/bump-version.ps1 X.Y.Z
+```
+
+That one command updates every place the version lives and rolls the
+CHANGELOG:
+
+- `src/KitsuneCommand/ModInfo.xml` (the version 7DTD displays, and what
+  `ModEntry.ModVersion` reads at runtime)
+- `frontend/package.json` and `frontend/package-lock.json` (via
+  `npm version`, so npm must be on PATH)
+- `CHANGELOG.md`: the `[Unreleased]` entries move under a new
+  `## [X.Y.Z] - YYYY-MM-DD` heading with its `> [Full notes](...)` line,
+  and the compare links at the bottom are updated
+
+It refuses if the version files already disagree, if X.Y.Z isn't higher
+than the current version, if the tag exists, or if `[Unreleased]` is
+empty (`--allow-empty` / `-AllowEmpty` overrides that, e.g. for a final
+release after an rc). `--dry-run` / `-DryRun` previews without writing;
+`--date` / `-Date` sets the heading date (default today). It doesn't
+commit, tag or push.
+
+### 2. Write the release summary
+
+Under the new `> [Full notes](...)` line, add a short `> ` summary of the
+release (see earlier entries). The release workflow extracts the matching
+`## [X.Y.Z]` section as the GitHub release body, so write it like
+someone's actually going to read it on the release page.
+
+### 3. Release PR, then tag
+
+Commit, open the release PR into `main`, and merge it. Then tag the merge
+commit and push the tag:
+
+```bash
+git checkout main && git pull
 git tag -a vX.Y.Z -m "vX.Y.Z — short headline"
-git push origin main
 git push origin vX.Y.Z
 ```
+
+`release.yml` first checks that the version files match the tag
+(`bump-version -Check`), so a tag pushed without the bump fails before
+anything is packaged.
 
 GitHub Actions catches the tag push and runs `release.yml`. Watch the
 run at <https://github.com/Kitsune-Den/KitsuneCommand/actions>.
