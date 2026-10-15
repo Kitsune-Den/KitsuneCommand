@@ -7,19 +7,18 @@ namespace KitsuneCommand.Services
     ///
     /// VERSION COVERAGE
     ///   • 2.x: every per-property field below is authoritative and edited individually.
-    ///   • 3.0 ("Dead Hot Summer", 2026-06): 7D2D moved the world/gameplay "sandbox"
-    ///     settings (difficulty, XP, blood moon, loot, zombie speeds, land claims, etc.)
-    ///     out of serverconfig.xml and into the in-game Sandbox, encoded as a single
-    ///     "SandboxCode" property. On a 3.0 server the individual sandbox-governed
-    ///     properties are IGNORED in favor of SandboxCode. We keep those fields here so
-    ///     2.x servers still edit cleanly (the "keep the current structure for 2.x"
-    ///     requirement) and add SandboxCode alongside them (additive, low-risk).
-    ///     A version-aware editor that HIDES the sandbox-governed fields when a 3.0 server
-    ///     is detected is the planned follow-up — but the exact removed/kept split must be
-    ///     confirmed against a pristine 3.0 default serverconfig.xml first, so do NOT
-    ///     delete any field here until then. (The serverconfig property is "SandboxCode"
-    ///     per 3.0 hosting docs; the binary also exposes a "ServerSandboxCode" accessor —
-    ///     reconcile the exact key against the pristine default during the follow-up.)
+    ///   • 3.x ("Dead Hot Summer" onward, 2026-06+): 7D2D moved the world/gameplay
+    ///     "sandbox" settings (XP, blood moon, zombie speeds, block damage, loot, etc.)
+    ///     out of serverconfig.xml into the in-game Sandbox, encoded as the single
+    ///     "SandboxCode" property (the key in the pristine 3.x serverconfig.xml). On a
+    ///     3.x server the individual sandbox-governed properties are IGNORED in favor of
+    ///     SandboxCode. The fields stay defined here so 2.x servers still edit them;
+    ///     each is flagged SandboxGoverned (see SandboxGovernedKeys for how that set is
+    ///     derived from the game). On a 3.x server the editor shows SandboxCode and
+    ///     hides the flagged fields once a SandboxCode is actually set, and
+    ///     ServerConfigService.MigrateConfigTo30 comments them out of the file.
+    ///     SandboxCode is edited through the Sandbox editor when the game's sandbox
+    ///     options can be read, else as a plain text field.
     ///
     /// VERSION-AGNOSTIC BY DESIGN
     ///   • Properties not modeled here are preserved untouched on save (see
@@ -350,7 +349,7 @@ namespace KitsuneCommand.Services
                 },
             };
 
-            // Flag the 3.0 sandbox-governed fields so the editor can hide them on a 3.0
+            // Flag the 3.x sandbox-governed fields so the editor can hide them on a 3.x
             // server (see SandboxGovernedKeys for how this set was derived).
             foreach (var g in groups)
                 foreach (var f in g.Fields)

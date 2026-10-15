@@ -168,7 +168,7 @@ Self-service password change for the logged-in user. If you ever lock yourself o
    ```
 3. Start your dedicated server
 4. Open `http://your-server-ip:8890` in a browser
-5. On first run, check the server console for your auto-generated admin credentials
+5. Sign in as `admin`. There's no default password: the first boot generates one, prints it to the server console and writes it to `FIRST_RUN_PASSWORD.txt` in KC's data folder ([where that is](docs/troubleshooting.md#fresh-install-admin--admin-doesnt-work))
 
 > **Port note:** The web panel runs on port **8890**, not port 8888. Port 8888 is used internally for the API backend, but a lightweight frontend server on port 8890 handles login and proxies API calls to 8888 automatically. This split is needed due to a compatibility issue between 7D2D's Unity/Mono runtime and the OWIN OAuth middleware.
 
@@ -297,7 +297,7 @@ Settings are stored in `<SaveGameDir>/KitsuneCommand/appsettings.json`:
 
 A growing index of prod-only failures, in symptom → cause → fix shape. Lives at [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
-Current entries cover: panel lockout recovery (`kcresetpw`), the Cloudflared + WebSocketSharp host-header gotcha, SkiaSharp Linux native loading, IPv6 vs IPv4 tunnel routing, and frontend deploy hygiene.
+Current entries cover: panel lockout recovery (`kcresetpw`), finding the first-run admin password, the Cloudflared + WebSocketSharp host-header gotcha, SkiaSharp Linux native loading, IPv6 vs IPv4 tunnel routing, and frontend deploy hygiene.
 
 If you fix a gnarly prod bug, the last commit of the fix PR should add an entry.
 

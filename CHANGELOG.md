@@ -12,6 +12,16 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Lockout recovery docs point at the right folder.** The troubleshooting
+  guide said to put `RESET_PASSWORD.txt` in the save-game `KitsuneCommand/`
+  folder, but KC's data folder has lived next to `Saves` since the data dir
+  became world-agnostic. It now gives the real locations (Windows, Linux,
+  custom `UserDataFolder`), says the server has to be running for the reset
+  file to work, and has a new entry for "admin / admin doesn't work" on a
+  fresh install.
+
 ## [2.10.0] - 2026-10-15
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.10.0)
