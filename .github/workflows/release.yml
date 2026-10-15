@@ -103,6 +103,20 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=$tag"         >> $env:GITHUB_OUTPUT
 
+      - name: Check the version files match the tag
+        shell: pwsh
+        run: |
+          # The zip's ModInfo.xml is what 7DTD shows, so a tag pushed without
+          # running tools/bump-version first would ship the wrong version.
+          ./tools/bump-version.ps1 -Check
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          [xml]$mod = Get-Content src/KitsuneCommand/ModInfo.xml
+          $inFiles = $mod.xml.Version.value
+          if ($inFiles -ne '${{ steps.ver.outputs.version }}') {
+              Write-Error "The version files say $inFiles but the tag is ${{ steps.ver.outputs.tag }}. Run tools/bump-version on the release branch, merge, and re-tag."
+              exit 1
+          }
+
       - name: Package the zip
         id: zip
         shell: pwsh
