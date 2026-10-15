@@ -212,6 +212,48 @@ namespace KitsuneCommand.Tests.Services
             Assert.That(_service.NeedsMigrationTo30(), Is.False);
         }
 
+        // --- -configfile (mirrors the game's GameStartupHelper rules) ---
+
+        private static readonly string GameDir = Path.Combine(Path.GetTempPath(), "7d2d-server");
+
+        [Test]
+        public void ConfigFileFromCommandLine_BareNameIsInTheGameFolder()
+        {
+            var args = new[] { "7DaysToDieServer.exe", "-quit", "-batchmode", "-nographics", "-configfile=myserver.xml", "-dedicated" };
+            Assert.That(ServerConfigService.ConfigFileFromCommandLine(args, GameDir),
+                Is.EqualTo(Path.GetFullPath(Path.Combine(GameDir, "myserver.xml"))));
+        }
+
+        [Test]
+        public void ConfigFileFromCommandLine_AddsXmlWhenThereIsNoExtension()
+        {
+            Assert.That(ServerConfigService.ConfigFileFromCommandLine(new[] { "-configfile=myserver" }, GameDir),
+                Is.EqualTo(Path.GetFullPath(Path.Combine(GameDir, "myserver.xml"))));
+        }
+
+        [Test]
+        public void ConfigFileFromCommandLine_UsesAPathAsGiven()
+        {
+            var full = Path.Combine(Path.GetTempPath(), "configs", "pve.xml");
+            Assert.That(ServerConfigService.ConfigFileFromCommandLine(new[] { "-configfile=" + full }, GameDir),
+                Is.EqualTo(Path.GetFullPath(full)));
+        }
+
+        [Test]
+        public void ConfigFileFromCommandLine_TheLastOneWins()
+        {
+            var args = new[] { "-configfile=first.xml", "-configfile=second.xml" };
+            Assert.That(ServerConfigService.ConfigFileFromCommandLine(args, GameDir), Does.EndWith("second.xml"));
+        }
+
+        [Test]
+        public void ConfigFileFromCommandLine_NullWithoutOne()
+        {
+            Assert.That(ServerConfigService.ConfigFileFromCommandLine(new[] { "7DaysToDieServer.exe", "-dedicated" }, GameDir), Is.Null);
+            Assert.That(ServerConfigService.ConfigFileFromCommandLine(new[] { "-configfile=" }, GameDir), Is.Null);
+            Assert.That(ServerConfigService.ConfigFileFromCommandLine(null, GameDir), Is.Null);
+        }
+
         /// <summary>
         /// Testable subclass that bypasses ModEntry/GameIO path resolution.
         /// </summary>
