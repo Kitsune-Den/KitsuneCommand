@@ -8,36 +8,94 @@ import {
   updateDiscoverSettings,
   validateNexusKey,
   clearDiscoverCache,
+  searchSevenDaysMods,
+  getSevenDaysModsMetadata,
   type NexusMod,
   type NexusDiscoverSettings,
+  type SevenDaysMod,
+  type SevenDaysModsMetadata,
 } from '@/api/mods'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
+import SelectButton from 'primevue/selectbutton'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 
+/**
+ * Browse mods on Nexus Mods or 7daystodiemods.com. Both sources map into the
+ * same row shape so the table is shared; each keeps its own sorts and filters.
+ * Rows link out to the mod's page on its site — nothing is downloaded here.
+ */
+type Source = 'nexus' | '7daystodiemods'
+
+interface DiscoverRow {
+  key: string
+  name: string
+  summary: string
+  version: string | null
+  author: string | null
+  authorVerified: boolean
+  likes: number
+  downloads: number
+  pictureUrl: string | null
+  updatedAt: string | null
+  url: string
+  /** Short facts under the summary (server side, game versions). */
+  details: string[]
+  isAdult: boolean
+}
+
+const SOURCE_STORAGE_KEY = 'kc-mod-discover-source'
+
 const { t } = useI18n()
 const toast = useToast()
 
 const loading = ref(false)
-const mods = ref<NexusMod[]>([])
+const rows = ref<DiscoverRow[]>([])
 const totalCount = ref(0)
 const search = ref('')
 const offset = ref(0)
 const pageSize = 20
 const settings = ref<NexusDiscoverSettings | null>(null)
 
-const sortMode = ref('endorsements')
-const sortOptions = computed(() => [
+const source = ref<Source>(readSavedSource())
+const sourceOptions = computed(() => [
+  { label: t('mods.sourceNexus'), value: 'nexus' },
+  { label: t('mods.sourceSevenDaysMods'), value: '7daystodiemods' },
+])
+
+const nexusSortOptions = computed(() => [
   { label: t('mods.trending'), value: 'endorsements' },
   { label: t('mods.latestAdded'), value: 'latest' },
   { label: t('mods.recentlyUpdated'), value: 'updated' },
   { label: t('mods.downloads'), value: 'downloads' },
 ])
+const sevenDaysSortOptions = computed(() => [
+  { label: t('mods.mostDownloaded'), value: 'downloads' },
+  { label: t('mods.mostLiked'), value: 'likes' },
+  { label: t('mods.mostViewed'), value: 'views' },
+  { label: t('mods.latestAdded'), value: 'newest' },
+  { label: t('mods.recentlyUpdated'), value: 'updated' },
+])
+const sortOptions = computed(() => (source.value === 'nexus' ? nexusSortOptions.value : sevenDaysSortOptions.value))
+const sortMode = ref(source.value === 'nexus' ? 'endorsements' : 'downloads')
+
+// 7daystodiemods.com filters (slugs from its /v1/metadata)
+const metadata = ref<SevenDaysModsMetadata | null>(null)
+const category = ref('')
+const gameVersion = ref('')
+const serverSide = ref('')
+const withAny = (label: string, opts: { slug: string; name: string }[] = []) => [
+  { label, value: '' },
+  ...opts.map((o) => ({ label: o.name, value: o.slug })),
+]
+const categoryOptions = computed(() => withAny(t('mods.anyCategory'), metadata.value?.categories))
+const gameVersionOptions = computed(() => withAny(t('mods.anyGameVersion'), metadata.value?.gameVersions))
+const serverSideOptions = computed(() => withAny(t('mods.anyServerSide'), metadata.value?.serverSides))
 
 // Settings dialog
 const settingsVisible = ref(false)
@@ -48,6 +106,14 @@ const savingSettings = ref(false)
 
 // Debounce timer
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+function readSavedSource(): Source {
+  try {
+    return localStorage.getItem(SOURCE_STORAGE_KEY) === '7daystodiemods' ? '7daystodiemods' : 'nexus'
+  } catch {
+    return 'nexus'
+  }
+}
 
 function formatNumber(n: number): string {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
@@ -60,8 +126,44 @@ function formatDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString()
 }
 
-function nexusModUrl(mod: NexusMod): string {
-  return `https://www.nexusmods.com/7daystodie/mods/${mod.modId}`
+function plainText(html: string | null | undefined): string {
+  return (html ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function fromNexus(mod: NexusMod): DiscoverRow {
+  return {
+    key: `nexus-${mod.modId}`,
+    name: mod.name,
+    summary: plainText(mod.summary),
+    version: mod.version || null,
+    author: mod.author || null,
+    authorVerified: false,
+    likes: mod.endorsements,
+    downloads: mod.downloads,
+    pictureUrl: mod.pictureUrl,
+    updatedAt: mod.updatedAt,
+    url: `https://www.nexusmods.com/7daystodie/mods/${mod.modId}`,
+    details: [],
+    isAdult: false,
+  }
+}
+
+function fromSevenDaysMods(mod: SevenDaysMod): DiscoverRow {
+  return {
+    key: `7dtdm-${mod.slug}`,
+    name: mod.title,
+    summary: plainText(mod.summary),
+    version: mod.version,
+    author: mod.author,
+    authorVerified: mod.authorVerified,
+    likes: mod.likes,
+    downloads: mod.downloads,
+    pictureUrl: mod.thumbnailUrl,
+    updatedAt: mod.updatedAt,
+    url: mod.url,
+    details: [mod.serverSideName, mod.gameVersions.join(', ')].filter((d): d is string => !!d),
+    isAdult: mod.isAdult,
+  }
 }
 
 async function loadSettings() {
@@ -72,31 +174,57 @@ async function loadSettings() {
   }
 }
 
+async function loadMetadata() {
+  if (metadata.value) return
+  try {
+    metadata.value = await getSevenDaysModsMetadata()
+  } catch {
+    /* filters just stay at "any" */
+  }
+}
+
 async function loadMods() {
   loading.value = true
   try {
-    const result = await searchDiscoverMods({
-      q: search.value.trim(),
-      sort: sortMode.value,
-      offset: offset.value,
-      count: pageSize,
-    })
-    mods.value = result.mods
-    totalCount.value = result.totalCount
+    if (source.value === 'nexus') {
+      const result = await searchDiscoverMods({
+        q: search.value.trim(),
+        sort: sortMode.value,
+        offset: offset.value,
+        count: pageSize,
+      })
+      rows.value = result.mods.map(fromNexus)
+      totalCount.value = result.totalCount
+    } else {
+      const result = await searchSevenDaysMods({
+        q: search.value.trim(),
+        sort: sortMode.value,
+        page: Math.floor(offset.value / pageSize) + 1,
+        limit: pageSize,
+        category: category.value || undefined,
+        gameVersion: gameVersion.value || undefined,
+        serverSide: serverSide.value || undefined,
+      })
+      rows.value = result.mods.map(fromSevenDaysMods)
+      totalCount.value = result.totalCount
+    }
   } catch (err: any) {
-    const msg = err?.response?.data?.message || t('mods.failedToLoadDiscover')
+    const fallback = source.value === 'nexus' ? t('mods.failedToLoadDiscover') : t('mods.failedToLoadSevenDaysMods')
+    const msg = err?.response?.data?.message || fallback
     toast.add({ severity: 'error', summary: t('common.error'), detail: msg, life: 4000 })
   } finally {
     loading.value = false
   }
 }
 
+function reload() {
+  offset.value = 0
+  loadMods()
+}
+
 function onSearchInput() {
   if (searchTimeout) clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    offset.value = 0
-    loadMods()
-  }, 400)
+  searchTimeout = setTimeout(reload, 400)
 }
 
 function onPage(event: { first: number; rows: number }) {
@@ -158,19 +286,39 @@ async function handleClearCache() {
   }
 }
 
-watch(sortMode, () => {
-  offset.value = 0
-  loadMods()
+watch(source, async (next) => {
+  try {
+    localStorage.setItem(SOURCE_STORAGE_KEY, next)
+  } catch {
+    /* private window: the choice just isn't remembered */
+  }
+  sortMode.value = next === 'nexus' ? 'endorsements' : 'downloads'
+  if (next === '7daystodiemods') await loadMetadata()
+  reload()
 })
 
 onMounted(async () => {
   await loadSettings()
+  if (source.value === '7daystodiemods') await loadMetadata()
   await loadMods()
 })
 </script>
 
 <template>
   <div class="discover-tab">
+    <!-- Source -->
+    <div class="source-bar">
+      <SelectButton
+        v-model="source"
+        :options="sourceOptions"
+        optionLabel="label"
+        optionValue="value"
+        :allowEmpty="false"
+        class="source-select"
+      />
+      <span class="source-hint">{{ source === 'nexus' ? t('mods.sourceNexusHint') : t('mods.sourceSevenDaysModsHint') }}</span>
+    </div>
+
     <!-- Controls bar -->
     <div class="controls-bar">
       <div class="search-bar">
@@ -191,10 +339,18 @@ onMounted(async () => {
           optionLabel="label"
           optionValue="value"
           class="sort-select"
+          @change="reload"
         />
         <Button icon="pi pi-refresh" text rounded :title="t('mods.cacheCleared')" @click="handleClearCache" />
-        <Button icon="pi pi-cog" text rounded :title="t('mods.configure')" @click="openSettings" />
+        <Button v-if="source === 'nexus'" icon="pi pi-cog" text rounded :title="t('mods.configure')" @click="openSettings" />
       </div>
+    </div>
+
+    <!-- 7daystodiemods.com filters -->
+    <div v-if="source === '7daystodiemods'" class="filters-bar">
+      <Select v-model="category" :options="categoryOptions" optionLabel="label" optionValue="value" class="filter-select" @change="reload" />
+      <Select v-model="gameVersion" :options="gameVersionOptions" optionLabel="label" optionValue="value" class="filter-select" @change="reload" />
+      <Select v-model="serverSide" :options="serverSideOptions" optionLabel="label" optionValue="value" class="filter-select" @change="reload" />
     </div>
 
     <!-- Total count -->
@@ -204,13 +360,14 @@ onMounted(async () => {
 
     <!-- Mods table -->
     <DataTable
-      :value="mods"
+      :value="rows"
       :loading="loading"
       lazy
       :paginator="true"
       :rows="pageSize"
       :totalRecords="totalCount"
       :first="offset"
+      dataKey="key"
       @page="onPage"
       stripedRows
       class="discover-table"
@@ -219,31 +376,37 @@ onMounted(async () => {
         <template #body="{ data }">
           <div class="discover-mod-row">
             <img
-              v-if="data.pictureUrl"
+              v-if="data.pictureUrl && !data.isAdult"
               :src="data.pictureUrl"
               :alt="data.name"
               class="mod-thumbnail"
+              loading="lazy"
             />
             <div class="mod-info">
               <div class="mod-name-cell">
                 <span class="mod-name">{{ data.name }}</span>
-                <Tag v-if="data.version" :value="'v' + data.version" severity="info" class="version-tag" />
+                <Tag v-if="data.version" :value="String(data.version).startsWith('v') ? data.version : 'v' + data.version" severity="info" class="version-tag" />
+                <Tag v-if="data.isAdult" value="18+" severity="danger" class="version-tag" />
               </div>
-              <span class="mod-summary">{{ data.summary?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() }}</span>
-              <span class="mod-author">{{ t('mods.author') }}: {{ data.author || '—' }}</span>
+              <span class="mod-summary">{{ data.summary }}</span>
+              <span class="mod-author">
+                {{ t('mods.author') }}: {{ data.author || '—' }}
+                <i v-if="data.authorVerified" class="pi pi-verified verified-icon" :title="t('mods.verifiedAuthor')" />
+              </span>
+              <span v-if="data.details.length" class="mod-details">{{ data.details.join(' · ') }}</span>
             </div>
           </div>
         </template>
       </Column>
-      <Column field="endorsements" :header="t('mods.endorsements')" sortable style="width: 120px">
+      <Column field="likes" :header="source === 'nexus' ? t('mods.endorsements') : t('mods.likes')" style="width: 120px">
         <template #body="{ data }">
           <span class="stat-cell">
-            <i class="pi pi-thumbs-up" />
-            {{ formatNumber(data.endorsements) }}
+            <i :class="source === 'nexus' ? 'pi pi-thumbs-up' : 'pi pi-heart'" />
+            {{ formatNumber(data.likes) }}
           </span>
         </template>
       </Column>
-      <Column field="downloads" :header="t('mods.downloads')" sortable style="width: 120px">
+      <Column field="downloads" :header="t('mods.downloads')" style="width: 120px">
         <template #body="{ data }">
           <span class="stat-cell">
             <i class="pi pi-download" />
@@ -258,9 +421,9 @@ onMounted(async () => {
       </Column>
       <Column :header="t('common.actions')" style="width: 100px">
         <template #body="{ data }">
-          <a :href="nexusModUrl(data)" target="_blank" rel="noopener noreferrer" class="nexus-link">
+          <a :href="data.url" target="_blank" rel="noopener noreferrer" class="nexus-link">
             <Button
-              :label="t('mods.viewOnNexus')"
+              :label="source === 'nexus' ? t('mods.viewOnNexus') : t('mods.viewOnSevenDaysMods')"
               icon="pi pi-external-link"
               text
               size="small"
@@ -464,10 +627,45 @@ onMounted(async () => {
   color: var(--kc-text-secondary);
 }
 
+.source-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.source-hint {
+  font-size: 0.8rem;
+  color: var(--kc-text-secondary);
+}
+
+.filters-bar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  min-width: 170px;
+}
+
+.mod-details {
+  font-size: 0.72rem;
+  color: var(--kc-text-secondary);
+  opacity: 0.85;
+}
+
+.verified-icon {
+  font-size: 0.75rem;
+  color: var(--kc-cyan);
+  margin-left: 0.2rem;
+}
+
 @media (max-width: 768px) {
   .controls-bar { flex-direction: column; align-items: stretch; }
   .controls-right { justify-content: flex-end; }
   .mod-thumbnail { width: 48px; height: 48px; }
   .api-key-row { flex-direction: column; }
+  .filter-select { flex: 1 1 100%; }
 }
 </style>

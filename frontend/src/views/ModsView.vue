@@ -52,6 +52,15 @@ function getUpdateResult(folderName: string): ModUpdateCheckResult | undefined {
   return updateCheckResults.value[folderName]
 }
 
+/** Where an update badge links, and the site its tooltip names. */
+function updateLink(r: ModUpdateCheckResult | undefined): string {
+  return r?.url ?? r?.nexusUrl ?? '#'
+}
+
+function updateSourceName(r: ModUpdateCheckResult | undefined): string {
+  return r?.source === '7daystodiemods' ? t('mods.sourceSevenDaysMods') : t('mods.sourceNexus')
+}
+
 const filteredMods = computed(() => {
   if (!search.value.trim()) return mods.value
   const q = search.value.toLowerCase()
@@ -407,11 +416,12 @@ onMounted(() => {
                          Check for Updates sweep returned an actionable status. -->
                     <a
                       v-if="getUpdateResult(data.folderName)?.status === 'update_available'"
-                      :href="getUpdateResult(data.folderName)?.nexusUrl ?? '#'"
+                      :href="updateLink(getUpdateResult(data.folderName))"
                       target="_blank"
                       rel="noopener"
                       class="update-badge update-badge--available"
                       :title="t('mods.updateAvailableTooltip', {
+                        source: updateSourceName(getUpdateResult(data.folderName)),
                         installed: getUpdateResult(data.folderName)?.installedVersion ?? '?',
                         latest: getUpdateResult(data.folderName)?.latestVersion ?? '?'
                       })"
@@ -421,11 +431,12 @@ onMounted(() => {
                     </a>
                     <a
                       v-else-if="getUpdateResult(data.folderName)?.status === 'version_differs'"
-                      :href="getUpdateResult(data.folderName)?.nexusUrl ?? '#'"
+                      :href="updateLink(getUpdateResult(data.folderName))"
                       target="_blank"
                       rel="noopener"
                       class="update-badge update-badge--differs"
                       :title="t('mods.versionDiffersTooltip', {
+                        source: updateSourceName(getUpdateResult(data.folderName)),
                         installed: getUpdateResult(data.folderName)?.installedVersion ?? '?',
                         latest: getUpdateResult(data.folderName)?.latestVersion ?? '?'
                       })"

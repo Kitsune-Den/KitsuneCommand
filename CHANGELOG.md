@@ -12,6 +12,20 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Added
+
+- **7daystodiemods.com in the mod manager.** The Discover tab has a second
+  source next to Nexus Mods: search the site, sort by most downloaded, liked
+  or viewed, newest or recently updated, and filter by category, game
+  version and server or client side. Rows show likes, downloads, game
+  versions, whether the mod is server-side and verified authors, and link to
+  the mod's page. The choice of source is remembered. "Check for updates"
+  now looks installed mods up on both sites (exact title, or the folder name
+  against the site's slug); when a mod is on both, an available update wins
+  and the badge links to whichever site has it. Read-only, through the
+  site's public API: nothing is downloaded through it, downloads open on
+  the site.
+
 ## [2.9.0] - 2026-10-12
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.9.0)
