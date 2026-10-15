@@ -94,7 +94,6 @@ namespace KitsuneCommand.Tests.Core
         }
 
         [Test]
-        [Ignore("Log.Error() in catch block requires game runtime (netstandard 2.1 for Log class)")]
         public void HandlerException_DoesNotCrashOtherHandlers()
         {
             var received = new List<string>();

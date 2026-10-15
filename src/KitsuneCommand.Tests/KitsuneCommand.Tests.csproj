@@ -33,12 +33,18 @@
     <Reference Include="netstandard" />
   </ItemGroup>
 
+  <!--
+    LogLibrary at runtime is a test-only stand-in with real method bodies, not
+    the stripped refs/LogLibrary.dll, which the runtime refuses to execute.
+    Without it, any KC method containing a Log.* call fails as soon as a test
+    JITs it. See src/LogLibraryTestShim.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\LogLibraryTestShim\LogLibraryTestShim.csproj" />
+  </ItemGroup>
+
   <!-- Game binaries needed at runtime for types referenced by KitsuneCommand -->
   <ItemGroup>
-    <Reference Include="LogLibrary">
-      <HintPath>..\KitsuneCommand\refs\LogLibrary.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>..\KitsuneCommand\refs\Assembly-CSharp.dll</HintPath>
       <Private>true</Private>

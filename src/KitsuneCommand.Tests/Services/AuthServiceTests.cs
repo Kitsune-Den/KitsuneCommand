@@ -127,7 +127,6 @@ namespace KitsuneCommand.Tests.Services
         }
 
         [Test]
-        [Ignore("Log class requires game runtime (netstandard 2.1) — JIT resolves Log.Out even in early-return path")]
         public void EnsureAdminExists_DoesNothing_WhenAccountsExist()
         {
             _mockRepo.Setup(r => r.Count()).Returns(1);
@@ -138,7 +137,6 @@ namespace KitsuneCommand.Tests.Services
         }
 
         [Test]
-        [Ignore("Requires game runtime (Log.Out + GameIO.GetSaveGameDir) — integration test only")]
         public void EnsureAdminExists_CreatesAdmin_WhenNoAccountsExist()
         {
             _mockRepo.Setup(r => r.Count()).Returns(0);

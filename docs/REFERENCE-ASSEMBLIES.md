@@ -107,6 +107,13 @@ Every hit should reference `refs\`. Same for `KitsuneCommand.Tests`, `KitsunePvP
 
 CI build (windows-latest runner) has no access to the real DLLs, so a successful CI build proves the refs/ DLLs are sufficient for compilation.
 
+## Tests and the stripped refs
+
+The test suite (`KitsuneCommand.Tests`, run by `tests.yml` on windows-latest) also builds against `refs/`, but tests *execute* KC code, and the runtime refuses to execute a reference assembly ("Reference assemblies should not be loaded for execution"). Two consequences:
+
+- **`LogLibrary` is swapped for a stand-in at test time.** Nearly every KC method logs, and a method containing a `Log.*` call fails the moment it's JIT-compiled, even if the log line never runs. `src/LogLibraryTestShim` builds an assembly with the same identity (`LogLibrary`, 0.0.0.0) and public surface, with real bodies that write to the test output. Only the test project references it; it never ships in the mod. If a new game version changes `Log`'s public surface and you regenerate `refs/LogLibrary.dll`, mirror the change in the shim.
+- **Everything else from the game still can't run in tests.** Code that actually calls into `Assembly-CSharp` or `UnityEngine` throws `BadImageFormatException` when it's reached. Keep that code behind seams tests can replace (an injected function, an interface, or a `try/catch` the test can rely on), or leave it to integration testing on a real server.
+
 ## What if I want the real DLLs locally?
 
 You can keep them at `src/KitsuneCommand/7dtd-binaries/` for inspection (ILSpy, dotPeek, IDA, your IDE's "Go to Definition" navigation). That directory is in `.gitignore` so it won't accidentally land in a commit. The build doesn't use it — only the regen script does.

@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    TEST-ONLY stand-in for the game's LogLibrary.dll. Referenced by
+    KitsuneCommand.Tests and nothing else; it never ships in the mod.
+
+    refs/LogLibrary.dll is a stripped reference assembly (see
+    docs/REFERENCE-ASSEMBLIES.md): fine to compile against, but the runtime
+    refuses to load it for execution. Any KC method containing a Log.* call
+    then fails the moment a test JITs it, even when the log line never runs.
+    This assembly has the same identity (LogLibrary, 0.0.0.0, no strong
+    name) and the same public surface, with real bodies, so tests can run
+    that code.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>LogLibrary</AssemblyName>
+    <RootNamespace />
+    <AssemblyVersion>0.0.0.0</AssemblyVersion>
+    <FileVersion>0.0.0.0</FileVersion>
+    <OutputType>Library</OutputType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- UnityEngine.LogType appears in the callback delegates. Compile-time only:
+       the type is only loaded if a test actually subscribes to a callback. -->
+  <ItemGroup>
+    <Reference Include="UnityEngine">
+      <HintPath>..\KitsuneCommand\refs\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- UnityEngine forwards LogType here. -->
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\KitsuneCommand\refs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

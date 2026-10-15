@@ -27,3 +27,18 @@ jobs:
 
       - name: Run tests
         run: npm run test:run
+
+  # The C# suite (NUnit, net48). Windows because KC targets .NET Framework
+  # 4.8, which windows-latest ships (release.yml builds the mod there too).
+  # Game assemblies come from the stripped refs in src/KitsuneCommand/refs;
+  # at test time LogLibrary is the src/LogLibraryTestShim stand-in.
+  backend-tests:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v7
+
+      - name: Run tests
+        shell: pwsh
+        run: dotnet test src/KitsuneCommand.Tests/KitsuneCommand.Tests.csproj --configuration Release
