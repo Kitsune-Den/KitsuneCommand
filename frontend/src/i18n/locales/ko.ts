@@ -84,7 +84,7 @@ const ko: Messages = {
     signIn: '로그인',
     errorBothRequired: '사용자 이름과 비밀번호를 모두 입력해 주세요.',
     loginFailed: '로그인에 실패했습니다. 인증 정보를 확인해 주세요.',
-    footer: '모니터링 | 관리 | 지도',
+    footer: "모니터링 {'|'} 관리 {'|'} 지도",
   },
 
   dashboard: {

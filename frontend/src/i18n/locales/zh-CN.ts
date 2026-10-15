@@ -84,7 +84,7 @@ const zhCN: Messages = {
     signIn: '登录',
     errorBothRequired: '请输入用户名和密码。',
     loginFailed: '登录失败，请检查您的凭据。',
-    footer: '监控 | 管理 | 地图',
+    footer: "监控 {'|'} 管理 {'|'} 地图",
   },
 
   dashboard: {

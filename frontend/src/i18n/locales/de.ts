@@ -83,7 +83,7 @@ const de = {
     signIn: 'Anmelden',
     errorBothRequired: 'Bitte geben Sie Benutzername und Passwort ein.',
     loginFailed: 'Anmeldung fehlgeschlagen. Überprüfen Sie Ihre Zugangsdaten.',
-    footer: 'Überwachung | Verwaltung | Karte',
+    footer: "Überwachung {'|'} Verwaltung {'|'} Karte",
   },
 
   dashboard: {

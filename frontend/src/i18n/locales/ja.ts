@@ -84,7 +84,7 @@ const ja: Messages = {
     signIn: 'ログイン',
     errorBothRequired: 'ユーザー名とパスワードを入力してください。',
     loginFailed: 'ログインに失敗しました。認証情報を確認してください。',
-    footer: 'モニタリング | 管理 | マップ',
+    footer: "モニタリング {'|'} 管理 {'|'} マップ",
   },
 
   dashboard: {

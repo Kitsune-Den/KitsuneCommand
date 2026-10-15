@@ -80,7 +80,7 @@ const en = {
     signIn: 'Sign In',
     errorBothRequired: 'Please enter both username and password.',
     loginFailed: 'Login failed. Check your credentials.',
-    footer: 'Monitoring | Management | Map',
+    footer: "Monitoring {'|'} Management {'|'} Map",
   },
 
   dashboard: {

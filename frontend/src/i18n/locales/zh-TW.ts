@@ -84,7 +84,7 @@ const zhTW: Messages = {
     signIn: '登入',
     errorBothRequired: '請輸入使用者名稱和密碼。',
     loginFailed: '登入失敗，請檢查您的帳號密碼。',
-    footer: '監控 | 管理 | 地圖',
+    footer: "監控 {'|'} 管理 {'|'} 地圖",
   },
 
   dashboard: {

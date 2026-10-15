@@ -12,6 +12,14 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Login page footer shows "Monitoring | Management | Map" again.** The
+  `|` separators in `login.footer` were read by vue-i18n as plural-form
+  separators, so the footer only rendered one segment ("MANAGEMENT"). The
+  pipes are now escaped as `{'|'}` in all eight locales, and a test guards
+  against bare pipes in any locale message.
+
 ## [2.9.0] - 2026-10-12
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.9.0)

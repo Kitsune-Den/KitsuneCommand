@@ -83,7 +83,7 @@ const es = {
     signIn: 'Iniciar sesión',
     errorBothRequired: 'Por favor introduzca el nombre de usuario y la contraseña.',
     loginFailed: 'Inicio de sesión fallido. Verifique sus credenciales.',
-    footer: 'Monitorización | Gestión | Mapa',
+    footer: "Monitorización {'|'} Gestión {'|'} Mapa",
   },
 
   dashboard: {

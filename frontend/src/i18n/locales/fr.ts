@@ -83,7 +83,7 @@ const fr = {
     signIn: 'Se connecter',
     errorBothRequired: 'Veuillez saisir le nom d\'utilisateur et le mot de passe.',
     loginFailed: 'Échec de la connexion. Vérifiez vos identifiants.',
-    footer: 'Surveillance | Gestion | Carte',
+    footer: "Surveillance {'|'} Gestion {'|'} Carte",
   },
 
   dashboard: {
