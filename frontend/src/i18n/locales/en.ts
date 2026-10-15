@@ -80,6 +80,11 @@ const en = {
     signIn: 'Sign In',
     errorBothRequired: 'Please enter both username and password.',
     loginFailed: 'Login failed. Check your credentials.',
+    cantSignIn: "Can't sign in?",
+    helpFirstRun: "There's no default password. On its first boot, KitsuneCommand creates the admin account with a random password. It's in two places:",
+    helpConsole: "The server console or log from that first boot. Look for the block marked",
+    helpFile: "in the KitsuneCommand folder next to your server's Saves folder.",
+    helpLockedOut: "Lost it? Set a new one from the game console or telnet (at least 8 characters):",
     footer: 'Monitoring | Management | Map',
   },
 

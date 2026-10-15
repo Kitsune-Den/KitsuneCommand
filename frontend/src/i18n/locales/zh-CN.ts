@@ -84,6 +84,11 @@ const zhCN: Messages = {
     signIn: '登录',
     errorBothRequired: '请输入用户名和密码。',
     loginFailed: '登录失败，请检查您的凭据。',
+    cantSignIn: "无法登录？",
+    helpFirstRun: "没有默认密码。KitsuneCommand 首次启动时会用随机密码创建 admin 账户。可以在两个地方找到它：",
+    helpConsole: "首次启动时的服务器控制台或日志。查找标有以下内容的区块：",
+    helpFile: "（位于服务器 Saves 文件夹旁边的 KitsuneCommand 文件夹中）",
+    helpLockedOut: "忘记了？可以在游戏控制台或 telnet 中设置新密码（至少 8 个字符）：",
     footer: '监控 | 管理 | 地图',
   },
 

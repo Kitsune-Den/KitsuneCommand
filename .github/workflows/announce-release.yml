@@ -1,0 +1,21 @@
+name: Announce release
+# Posts each published release to Kitsune Den on Discord.
+# Shared logic and the list of channel secrets live in
+# Kitsune-Den/.github/.github/workflows/discord-release.yml
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to (re)post, blank for the latest
+        required: false
+
+jobs:
+  announce:
+    uses: Kitsune-Den/.github/.github/workflows/discord-release.yml@main
+    with:
+      tag: ${{ inputs.tag }}
+    secrets:
+      webhook: ${{ secrets.DISCORD_WEBHOOK_KITSUNECOMMAND }}

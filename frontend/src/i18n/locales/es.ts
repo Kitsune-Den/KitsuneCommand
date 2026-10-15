@@ -83,6 +83,11 @@ const es = {
     signIn: 'Iniciar sesión',
     errorBothRequired: 'Por favor introduzca el nombre de usuario y la contraseña.',
     loginFailed: 'Inicio de sesión fallido. Verifique sus credenciales.',
+    cantSignIn: "¿No puede iniciar sesión?",
+    helpFirstRun: "No hay contraseña predeterminada. En su primer arranque, KitsuneCommand crea la cuenta admin con una contraseña aleatoria. La encontrará en dos sitios:",
+    helpConsole: "En la consola o el registro del servidor de ese primer arranque. Busque el bloque marcado con",
+    helpFile: "en la carpeta KitsuneCommand, junto a la carpeta Saves de su servidor.",
+    helpLockedOut: "¿La perdió? Defina una nueva desde la consola del juego o por telnet (mínimo 8 caracteres):",
     footer: 'Monitorización | Gestión | Mapa',
   },
 

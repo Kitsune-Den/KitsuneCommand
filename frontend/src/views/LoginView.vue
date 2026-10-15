@@ -21,6 +21,13 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 
+// "Can't sign in?" help (#110). There's no default password — first boot
+// generates a random one — so a fresh install's operator needs to know where
+// to find it. Static text only: nothing here reveals server paths or whether
+// the install is fresh to an anonymous visitor. Opens itself after a failed
+// sign-in, since that's exactly when someone is stuck.
+const showHelp = ref(false)
+
 // Player-facing modpack download CTA. Fetched anonymously; resolves to null
 // (silently) if no pack is published. We export the URL constant rather than
 // fetching the file via axios — the browser handles the streaming download.
@@ -61,6 +68,7 @@ async function handleLogin() {
   } catch (e: unknown) {
     const err = e as { response?: { data?: { error_description?: string } } }
     error.value = err.response?.data?.error_description || t('login.loginFailed')
+    showHelp.value = true
   } finally {
     loading.value = false
   }
@@ -136,6 +144,27 @@ async function handleLogin() {
           class="w-full login-button"
           icon="pi pi-sign-in"
         />
+
+        <button
+          type="button"
+          class="help-toggle"
+          :aria-expanded="showHelp"
+          aria-controls="login-help"
+          @click="showHelp = !showHelp"
+        >
+          <i :class="showHelp ? 'pi pi-chevron-down' : 'pi pi-question-circle'" />
+          {{ t('login.cantSignIn') }}
+        </button>
+
+        <div v-if="showHelp" id="login-help" class="login-help">
+          <p>{{ t('login.helpFirstRun') }}</p>
+          <ul>
+            <li>{{ t('login.helpConsole') }} <code>FIRST RUN</code></li>
+            <li><code>FIRST_RUN_PASSWORD.txt</code> {{ t('login.helpFile') }}</li>
+          </ul>
+          <p>{{ t('login.helpLockedOut') }}</p>
+          <code class="help-command">kcresetpw admin &lt;new-password&gt;</code>
+        </div>
       </form>
 
       <div class="login-footer">
@@ -242,6 +271,60 @@ async function handleLogin() {
 
 .login-button:hover {
   background: linear-gradient(135deg, var(--kc-cyan), var(--kc-cyan-dark));
+}
+
+.help-toggle {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  color: var(--kc-text-secondary);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.help-toggle:hover,
+.help-toggle:focus-visible {
+  color: var(--kc-cyan);
+}
+
+.login-help {
+  border: 1px solid var(--kc-border);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--kc-text-secondary);
+}
+
+.login-help p {
+  margin: 0 0 0.5rem;
+}
+
+.login-help ul {
+  margin: 0 0 0.75rem;
+  padding-left: 1.2rem;
+}
+
+.login-help li + li {
+  margin-top: 0.35rem;
+}
+
+.login-help code {
+  font-size: 0.8rem;
+  color: var(--kc-text-primary, #fff);
+  overflow-wrap: anywhere;
+}
+
+.help-command {
+  display: block;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .login-footer {

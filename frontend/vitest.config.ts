@@ -3,7 +3,9 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
 export default defineConfig({
-  plugins: [vue()],
+  // Leave absolute asset URLs (e.g. src="/logo.png", served from public/) as
+  // plain strings; turned into imports, they can't resolve under the test runner.
+  plugins: [vue({ template: { transformAssetUrls: { includeAbsolute: false } } })],
   define: {
     __VUE_I18N_FULL_INSTALL__: true,
     __VUE_I18N_LEGACY_API__: false,
