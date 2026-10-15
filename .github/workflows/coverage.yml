@@ -39,12 +39,12 @@ jobs:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
           # Cache npm so `npm ci` reuses the previous run's
           # node_modules tarballs. Saves ~30s on a cold install.
           cache: npm
@@ -61,7 +61,7 @@ jobs:
         run: npx vitest run --coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           # codecov-action interprets `files:` relative to the repo
           # root (GITHUB_WORKSPACE), not the job's working-directory.
