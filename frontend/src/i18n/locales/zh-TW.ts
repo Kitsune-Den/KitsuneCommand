@@ -84,6 +84,11 @@ const zhTW: Messages = {
     signIn: '登入',
     errorBothRequired: '請輸入使用者名稱和密碼。',
     loginFailed: '登入失敗，請檢查您的帳號密碼。',
+    cantSignIn: "無法登入？",
+    helpFirstRun: "沒有預設密碼。KitsuneCommand 首次啟動時會以隨機密碼建立 admin 帳號。可以在兩個地方找到它：",
+    helpConsole: "首次啟動時的伺服器主控台或記錄檔。尋找標有以下內容的區塊：",
+    helpFile: "（位於伺服器 Saves 資料夾旁的 KitsuneCommand 資料夾中）",
+    helpLockedOut: "忘記了？可以在遊戲主控台或 telnet 中設定新密碼（至少 8 個字元）：",
     footer: '監控 | 管理 | 地圖',
   },
 
