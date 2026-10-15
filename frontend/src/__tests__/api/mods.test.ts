@@ -24,6 +24,8 @@ import {
   updateDiscoverSettings,
   validateNexusKey,
   clearDiscoverCache,
+  searchSevenDaysMods,
+  getSevenDaysModsMetadata,
 } from '@/api/mods'
 
 describe('Mods API', () => {
@@ -132,6 +134,27 @@ describe('Mods API', () => {
       mockPost.mockResolvedValue({ data: { message: 'Cleared' } })
       await clearDiscoverCache()
       expect(mockPost).toHaveBeenCalledWith('/api/mods/discover/clear-cache')
+    })
+  })
+
+  describe('searchSevenDaysMods', () => {
+    it('should GET the 7daystodiemods search with params and unwrap data', async () => {
+      const result = { mods: [], totalCount: 0, page: 2, totalPages: 5 }
+      mockGet.mockResolvedValue({ data: { data: result } })
+      const params = { q: 'zombie', sort: 'likes', page: 2, limit: 20, category: 'overhaul' }
+      const response = await searchSevenDaysMods(params)
+      expect(mockGet).toHaveBeenCalledWith('/api/mods/discover/7daystodiemods/search', { params })
+      expect(response).toEqual(result)
+    })
+  })
+
+  describe('getSevenDaysModsMetadata', () => {
+    it('should GET the 7daystodiemods metadata and unwrap data', async () => {
+      const metadata = { categories: [{ slug: 'overhaul', name: 'Overhaul' }], gameVersions: [], serverSides: [] }
+      mockGet.mockResolvedValue({ data: { data: metadata } })
+      const response = await getSevenDaysModsMetadata()
+      expect(mockGet).toHaveBeenCalledWith('/api/mods/discover/7daystodiemods/metadata')
+      expect(response).toEqual(metadata)
     })
   })
 })
