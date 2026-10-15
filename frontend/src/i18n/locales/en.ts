@@ -85,7 +85,7 @@ const en = {
     helpConsole: "The server console or log from that first boot. Look for the block marked",
     helpFile: "in the KitsuneCommand folder next to your server's Saves folder.",
     helpLockedOut: "Lost it? Set a new one from the game console or telnet (at least 8 characters):",
-    footer: 'Monitoring | Management | Map',
+    footer: "Monitoring {'|'} Management {'|'} Map",
   },
 
   dashboard: {

@@ -88,7 +88,7 @@ const es = {
     helpConsole: "En la consola o el registro del servidor de ese primer arranque. Busque el bloque marcado con",
     helpFile: "en la carpeta KitsuneCommand, junto a la carpeta Saves de su servidor.",
     helpLockedOut: "¿La perdió? Defina una nueva desde la consola del juego o por telnet (mínimo 8 caracteres):",
-    footer: 'Monitorización | Gestión | Mapa',
+    footer: "Monitorización {'|'} Gestión {'|'} Mapa",
   },
 
   dashboard: {

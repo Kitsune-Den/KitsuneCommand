@@ -88,7 +88,7 @@ const fr = {
     helpConsole: "Dans la console ou le journal du serveur de ce premier démarrage. Cherchez le bloc marqué",
     helpFile: "dans le dossier KitsuneCommand, à côté du dossier Saves de votre serveur.",
     helpLockedOut: "Perdu ? Définissez-en un nouveau depuis la console du jeu ou via telnet (8 caractères minimum) :",
-    footer: 'Surveillance | Gestion | Carte',
+    footer: "Surveillance {'|'} Gestion {'|'} Carte",
   },
 
   dashboard: {

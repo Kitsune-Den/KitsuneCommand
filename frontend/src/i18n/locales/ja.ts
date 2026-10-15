@@ -89,7 +89,7 @@ const ja: Messages = {
     helpConsole: "初回起動時のサーバーコンソールまたはログ。次の表示があるブロックを探してください：",
     helpFile: "（サーバーの Saves フォルダーの隣にある KitsuneCommand フォルダー内）",
     helpLockedOut: "わからなくなった場合は、ゲームコンソールまたは telnet から新しいパスワードを設定できます（8文字以上）：",
-    footer: 'モニタリング | 管理 | マップ',
+    footer: "モニタリング {'|'} 管理 {'|'} マップ",
   },
 
   dashboard: {

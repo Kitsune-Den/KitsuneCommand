@@ -89,7 +89,7 @@ const zhTW: Messages = {
     helpConsole: "首次啟動時的伺服器主控台或記錄檔。尋找標有以下內容的區塊：",
     helpFile: "（位於伺服器 Saves 資料夾旁的 KitsuneCommand 資料夾中）",
     helpLockedOut: "忘記了？可以在遊戲主控台或 telnet 中設定新密碼（至少 8 個字元）：",
-    footer: '監控 | 管理 | 地圖',
+    footer: "監控 {'|'} 管理 {'|'} 地圖",
   },
 
   dashboard: {

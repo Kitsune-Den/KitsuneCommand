@@ -88,7 +88,7 @@ const de = {
     helpConsole: "In der Serverkonsole bzw. im Log dieses ersten Starts. Suchen Sie nach dem Block mit",
     helpFile: "im KitsuneCommand-Ordner neben dem Saves-Ordner Ihres Servers.",
     helpLockedOut: "Verloren? Setzen Sie in der Spielkonsole oder per Telnet ein neues (mindestens 8 Zeichen):",
-    footer: 'Überwachung | Verwaltung | Karte',
+    footer: "Überwachung {'|'} Verwaltung {'|'} Karte",
   },
 
   dashboard: {
