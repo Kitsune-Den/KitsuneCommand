@@ -25,9 +25,31 @@ the panel to recover the panel.
 Min 8 characters, admin-only. The plaintext is hashed before write
 and is not logged. (PR [#37](https://github.com/AdaInTheLab/KitsuneCommand/pull/37).)
 
-If even the game server won't boot, drop a `RESET_PASSWORD.txt` in the
-save-game `KitsuneCommand/` folder containing the new password — KC will
-verify against it on next login attempt and rotate the hash.
+If you can't reach any console, drop a `RESET_PASSWORD.txt` containing
+the new password into KC's data folder, then sign in with your username
+and that password. KC checks the file when a sign-in fails, re-hashes the
+password and deletes the file. The server has to be running for this.
+
+KC's data folder sits next to the game's `Saves` folder, not inside a world
+save:
+
+- Windows: `%APPDATA%\7DaysToDie\KitsuneCommand\`
+- Linux: `~/.local/share/7DaysToDie/KitsuneCommand/`
+- Or `<UserDataFolder>/KitsuneCommand/` if `UserDataFolder` is set in
+  serverconfig.xml.
+
+---
+
+## "Fresh install: admin / admin doesn't work."
+
+**Cause:** There's no default password. On its first boot KC creates the
+`admin` account with a random one.
+
+**Fix:** It's printed in the server console/log from that first boot (the
+block marked `FIRST RUN`) and written to `FIRST_RUN_PASSWORD.txt` in KC's
+data folder (see above). Lost both? Use `kcresetpw admin <newpassword>`.
+The login page's **Can't sign in?** link says the same since v2.10.0
+([#110](https://github.com/Kitsune-Den/KitsuneCommand/issues/110)).
 
 ---
 
