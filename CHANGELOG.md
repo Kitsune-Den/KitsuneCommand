@@ -12,6 +12,15 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-10-15
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.10.0)
+> · 7daystodiemods.com joins Nexus in the mod manager, for browsing and
+> for "Check for updates". The login page now explains where the
+> first-run admin password lives. Servers started with `-configfile=`
+> get the right file edited. No schema changes, nothing to migrate, and
+> the same build still runs on V2.5 through V3.3.
+
 ### Added
 
 - **7daystodiemods.com in the mod manager.** The Discover tab has a second
@@ -731,7 +740,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.9.0...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.0...HEAD
+[2.10.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.8.2...v2.9.0
 [2.8.2]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.8.1...v2.8.2
 [2.8.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.7.4...v2.8.1
