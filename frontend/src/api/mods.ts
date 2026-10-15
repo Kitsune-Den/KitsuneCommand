@@ -58,6 +58,10 @@ export interface ModUpdateCheckResult {
   status: ModUpdateStatus
   installedVersion: string | null
   latestVersion: string | null
+  /** Where latestVersion came from. */
+  source: 'nexus' | '7daystodiemods' | null
+  /** The matched listing's page on that site. */
+  url: string | null
   nexusModId: number | null
   nexusUrl: string | null
   matchedName: string | null
@@ -124,4 +128,63 @@ export async function validateNexusKey(apiKey: string): Promise<NexusValidationR
 
 export async function clearDiscoverCache(): Promise<void> {
   await apiClient.post('/api/mods/discover/clear-cache')
+}
+
+// --- Mod Discovery (7daystodiemods.com) ---
+
+export interface SevenDaysMod {
+  slug: string
+  title: string
+  summary: string | null
+  version: string | null
+  author: string | null
+  authorVerified: boolean
+  likes: number
+  downloads: number
+  thumbnailUrl: string | null
+  updatedAt: string | null
+  categories: string[]
+  gameVersions: string[]
+  /** 'server-only' | 'client-only' | 'server-and-client' */
+  serverSide: string | null
+  serverSideName: string | null
+  isAdult: boolean
+  url: string
+}
+
+export interface SevenDaysModsSearchResult {
+  mods: SevenDaysMod[]
+  totalCount: number
+  page: number
+  totalPages: number
+}
+
+export interface SevenDaysModsOption {
+  slug: string
+  name: string
+}
+
+export interface SevenDaysModsMetadata {
+  categories: SevenDaysModsOption[]
+  gameVersions: SevenDaysModsOption[]
+  serverSides: SevenDaysModsOption[]
+}
+
+/** Page-based (page 1 is first). sort: newest | updated | likes | downloads | views. */
+export async function searchSevenDaysMods(params: {
+  q?: string
+  sort?: string
+  page?: number
+  limit?: number
+  category?: string
+  gameVersion?: string
+  serverSide?: string
+}): Promise<SevenDaysModsSearchResult> {
+  const res = await apiClient.get('/api/mods/discover/7daystodiemods/search', { params })
+  return res.data.data
+}
+
+export async function getSevenDaysModsMetadata(): Promise<SevenDaysModsMetadata> {
+  const res = await apiClient.get('/api/mods/discover/7daystodiemods/metadata')
+  return res.data.data
 }

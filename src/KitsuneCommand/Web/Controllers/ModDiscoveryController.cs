@@ -12,10 +12,12 @@ namespace KitsuneCommand.Web.Controllers
     public class ModDiscoveryController : ApiController
     {
         private readonly NexusModDiscoveryService _nexusService;
+        private readonly SevenDaysModsService _sevenDaysMods;
 
-        public ModDiscoveryController(NexusModDiscoveryService nexusService)
+        public ModDiscoveryController(NexusModDiscoveryService nexusService, SevenDaysModsService sevenDaysMods)
         {
             _nexusService = nexusService;
+            _sevenDaysMods = sevenDaysMods;
         }
 
         /// <summary>
@@ -37,6 +39,36 @@ namespace KitsuneCommand.Web.Controllers
             {
                 return Ok(ApiResponse.Error(500, $"Failed to search mods: {ex.Message}"));
             }
+        }
+
+        /// <summary>
+        /// Search 7daystodiemods.com (public API, no key). Page-based: page 1 is
+        /// the first page. sort: newest | updated | likes | downloads | views.
+        /// Filters take the slugs from /7daystodiemods/metadata.
+        /// </summary>
+        [HttpGet]
+        [Route("7daystodiemods/search")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult SearchSevenDaysMods(string q = "", string sort = "newest", int page = 1, int limit = 20,
+            string category = null, string gameVersion = null, string serverSide = null)
+        {
+            try
+            {
+                return Ok(ApiResponse.Ok(_sevenDaysMods.Search(q, sort, page, limit, category, gameVersion, serverSide)));
+            }
+            catch (Exception ex)
+            {
+                return Ok(ApiResponse.Error(500, $"Failed to search 7daystodiemods.com: {ex.Message}"));
+            }
+        }
+
+        /// <summary>7daystodiemods.com's categories, game versions and server-side values, for the filters.</summary>
+        [HttpGet]
+        [Route("7daystodiemods/metadata")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult GetSevenDaysModsMetadata()
+        {
+            return Ok(ApiResponse.Ok(_sevenDaysMods.GetMetadata()));
         }
 
         [HttpGet]
@@ -92,6 +124,7 @@ namespace KitsuneCommand.Web.Controllers
         public IHttpActionResult ClearCache()
         {
             _nexusService.ClearCache();
+            _sevenDaysMods.ClearCache();
             return Ok(ApiResponse.Ok("Cache cleared."));
         }
     }

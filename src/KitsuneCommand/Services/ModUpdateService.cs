@@ -5,9 +5,9 @@ using System.Linq;
 namespace KitsuneCommand.Services
 {
     /// <summary>
-    /// Per-mod result of a "check Nexus for updates" sweep. The frontend renders
+    /// Per-mod result of a "check for updates" sweep. The frontend renders
     /// these in the installed-mods table — Status drives the badge color and
-    /// whether a Nexus link is shown.
+    /// Url is where the badge links (the matching Nexus or 7daystodiemods.com page).
     /// </summary>
     public class ModUpdateCheckResult
     {
@@ -19,32 +19,41 @@ namespace KitsuneCommand.Services
 
         public string InstalledVersion { get; set; }
         public string LatestVersion { get; set; }
+        /// <summary>Where LatestVersion came from: "nexus" | "7daystodiemods".</summary>
+        public string Source { get; set; }
+        /// <summary>The matched listing's page.</summary>
+        public string Url { get; set; }
         public int? NexusModId { get; set; }
         public string NexusUrl { get; set; }
         public string MatchedName { get; set; }
     }
 
     /// <summary>
-    /// "Check for updates" backend. Iterates the server's installed mods, queries
-    /// Nexus by exact name for each, compares versions, and returns a status row
-    /// per installed mod. Stateless; no persistence — admin presses the button,
-    /// gets a fresh result set, UI renders the badges.
+    /// "Check for updates" backend. Iterates the server's installed mods, looks
+    /// each one up by exact name on Nexus and on 7daystodiemods.com, compares
+    /// versions, and returns a status row per installed mod. Stateless; no
+    /// persistence — admin presses the button, gets a fresh result set, UI
+    /// renders the badges.
     ///
-    /// Match strategy: case-insensitive exact-name match against the GraphQL
-    /// search results. We deliberately don't fuzzy-match because false positives
-    /// (different mod with a similar name) would be worse than a "no match"
-    /// outcome — the admin would chase the wrong update.
+    /// Match strategy: case-insensitive exact-name match (plus, on
+    /// 7daystodiemods.com, the listing slug against the slugified name). We
+    /// deliberately don't fuzzy-match because false positives (different mod
+    /// with a similar name) would be worse than a "no match" outcome — the admin
+    /// would chase the wrong update. A mod listed on both sites gets whichever
+    /// answer is most useful: an available update wins, then a clear "up to date".
     /// </summary>
     public class ModUpdateService
     {
         private readonly ModManagerService _modManager;
         private readonly NexusModDiscoveryService _nexus;
+        private readonly SevenDaysModsService _sevenDaysMods;
         private const string NexusGameSlug = "7daystodie";
 
-        public ModUpdateService(ModManagerService modManager, NexusModDiscoveryService nexus)
+        public ModUpdateService(ModManagerService modManager, NexusModDiscoveryService nexus, SevenDaysModsService sevenDaysMods)
         {
             _modManager = modManager;
             _nexus = nexus;
+            _sevenDaysMods = sevenDaysMods;
         }
 
         public List<ModUpdateCheckResult> CheckAll()
@@ -73,42 +82,67 @@ namespace KitsuneCommand.Services
                     ? mod.DisplayName
                     : mod.FolderName;
 
-                var match = FindExactMatch(searchName);
-                if (match == null)
-                {
-                    // Try the folder name as a fallback — useful for mods whose
-                    // ModInfo display name diverged from the Nexus listing name.
-                    if (!string.Equals(mod.FolderName, searchName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        match = FindExactMatch(mod.FolderName);
-                    }
-                }
+                // The folder name is the fallback — useful for mods whose ModInfo
+                // display name diverged from the listing name.
+                var tryFolder = !string.Equals(mod.FolderName, searchName, StringComparison.OrdinalIgnoreCase);
 
-                if (match == null)
+                var candidates = new List<ModUpdateCheckResult>();
+
+                var nexusMatch = FindExactMatch(searchName) ?? (tryFolder ? FindExactMatch(mod.FolderName) : null);
+                if (nexusMatch != null)
                 {
-                    results.Add(new ModUpdateCheckResult
+                    candidates.Add(new ModUpdateCheckResult
                     {
                         FolderName = mod.FolderName,
-                        Status = "no_match",
+                        Status = ClassifyVersion(mod.Version, nexusMatch.Version),
                         InstalledVersion = mod.Version,
+                        LatestVersion = nexusMatch.Version,
+                        Source = "nexus",
+                        Url = BuildNexusUrl(nexusMatch.ModId),
+                        NexusModId = nexusMatch.ModId,
+                        NexusUrl = BuildNexusUrl(nexusMatch.ModId),
+                        MatchedName = nexusMatch.Name,
                     });
-                    continue;
                 }
 
-                var status = ClassifyVersion(mod.Version, match.Version);
-                results.Add(new ModUpdateCheckResult
+                var siteMatch = _sevenDaysMods.FindExact(searchName) ?? (tryFolder ? _sevenDaysMods.FindExact(mod.FolderName) : null);
+                if (siteMatch != null)
+                {
+                    candidates.Add(new ModUpdateCheckResult
+                    {
+                        FolderName = mod.FolderName,
+                        Status = ClassifyVersion(mod.Version, siteMatch.Version),
+                        InstalledVersion = mod.Version,
+                        LatestVersion = siteMatch.Version,
+                        Source = "7daystodiemods",
+                        Url = siteMatch.Url,
+                        MatchedName = siteMatch.Title,
+                    });
+                }
+
+                results.Add(PickBest(candidates) ?? new ModUpdateCheckResult
                 {
                     FolderName = mod.FolderName,
-                    Status = status,
+                    Status = "no_match",
                     InstalledVersion = mod.Version,
-                    LatestVersion = match.Version,
-                    NexusModId = match.ModId,
-                    NexusUrl = BuildNexusUrl(match.ModId),
-                    MatchedName = match.Name,
                 });
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// One row from a mod's per-source results: an available update first
+        /// (newest version if both sources have one), then "up to date", then
+        /// "version differs". Null when there's no candidate.
+        /// </summary>
+        public static ModUpdateCheckResult PickBest(IEnumerable<ModUpdateCheckResult> candidates)
+        {
+            int Rank(string status) => status == "update_available" ? 0 : status == "up_to_date" ? 1 : 2;
+            return candidates
+                .OrderBy(c => Rank(c.Status))
+                .ThenByDescending(c => TryParseVersion(c.LatestVersion, out var v) ? v : new Version(0, 0))
+                .FirstOrDefault();
         }
 
         /// <summary>
@@ -133,7 +167,7 @@ namespace KitsuneCommand.Services
         /// so that any difference still surfaces, even for non-numeric
         /// version schemes like "v2-beta".
         /// </summary>
-        private static string ClassifyVersion(string installed, string latest)
+        public static string ClassifyVersion(string installed, string latest)
         {
             if (string.IsNullOrWhiteSpace(installed) || string.IsNullOrWhiteSpace(latest))
                 return "version_differs";

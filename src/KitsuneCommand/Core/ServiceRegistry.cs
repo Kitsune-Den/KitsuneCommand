@@ -42,6 +42,7 @@ namespace KitsuneCommand.Core
             builder.RegisterType<DiscordWebhookService>().AsSelf().SingleInstance();
             builder.RegisterType<DiscordBotService>().AsSelf().SingleInstance();
             builder.RegisterType<NexusModDiscoveryService>().AsSelf().SingleInstance();
+            builder.Register(c => new SevenDaysModsService()).AsSelf().SingleInstance();
 
             // PackRelay publish pipeline. Settings + tracker are both
             // singletons (settings caches the master key in-process;
