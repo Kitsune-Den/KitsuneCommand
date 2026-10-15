@@ -16,7 +16,8 @@ namespace KitsuneCommand.Services
         private string _configPath;
 
         /// <summary>
-        /// Locates the serverconfig.xml file. Searches common locations.
+        /// Locates the server's config file: the one the server was started with
+        /// (-configfile=...), else serverconfig.xml in the usual places.
         /// </summary>
         public virtual string GetConfigPath()
         {
@@ -26,8 +27,16 @@ namespace KitsuneCommand.Services
             // Derive game root from mod path: Mods/KitsuneCommand -> ../../
             var gameDir = Path.GetFullPath(Path.Combine(ModEntry.ModPath, "..", ".."));
 
+            // The file the running server actually read. Without this, a server
+            // launched with -configfile=myserver.xml got serverconfig.xml edited
+            // instead, and the changes never took.
+            string fromCommandLine = null;
+            try { fromCommandLine = ConfigFileFromCommandLine(Environment.GetCommandLineArgs(), GameAppPath() ?? gameDir); }
+            catch { /* no command line to read */ }
+
             var candidates = new List<string>
             {
+                fromCommandLine,
                 Path.Combine(gameDir, "serverconfig.xml"),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "serverconfig.xml"),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "serverconfig.xml"),
@@ -44,7 +53,7 @@ namespace KitsuneCommand.Services
 
             foreach (var path in candidates)
             {
-                if (File.Exists(path))
+                if (path != null && File.Exists(path))
                 {
                     _configPath = Path.GetFullPath(path);
                     return _configPath;
@@ -52,6 +61,35 @@ namespace KitsuneCommand.Services
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// The config file named by -configfile= on the server's command line,
+        /// resolved the way the game resolves it (GameStartupHelper): the last
+        /// -configfile wins, ".xml" is added when the name has no dot, and a bare
+        /// file name is looked up in the game folder; anything with a path
+        /// separator is used as given. Null when there's no -configfile.
+        /// </summary>
+        public static string ConfigFileFromCommandLine(string[] args, string gameDir)
+        {
+            string value = null;
+            foreach (var arg in args ?? new string[0])
+            {
+                if (arg != null && arg.StartsWith("-configfile="))
+                    value = arg.Substring(arg.IndexOf('=') + 1);
+            }
+            if (string.IsNullOrWhiteSpace(value)) return null;
+
+            if (!value.Contains(".")) value += ".xml";
+            if (!value.Contains("/") && !value.Contains("\\")) value = Path.Combine(gameDir, value);
+            return Path.GetFullPath(value);
+        }
+
+        /// <summary>GameIO.GetApplicationPath(): the folder the game resolves a bare -configfile against.</summary>
+        private static string GameAppPath()
+        {
+            try { return GameIO.GetApplicationPath(); }
+            catch { return null; }
         }
 
         /// <summary>

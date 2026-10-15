@@ -12,6 +12,15 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The config editor edits the file the server actually reads.** A server
+  started with `-configfile=something.xml` had `serverconfig.xml` edited
+  instead, so changes never took. KC now reads `-configfile` from the
+  server's own command line, resolved the way the game does (last one wins,
+  `.xml` added when there's no extension, a bare name is in the game
+  folder), and falls back to `serverconfig.xml` as before.
+
 ## [2.9.0] - 2026-10-12
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.9.0)
