@@ -83,6 +83,11 @@ const fr = {
     signIn: 'Se connecter',
     errorBothRequired: 'Veuillez saisir le nom d\'utilisateur et le mot de passe.',
     loginFailed: 'Échec de la connexion. Vérifiez vos identifiants.',
+    cantSignIn: "Impossible de se connecter ?",
+    helpFirstRun: "Il n'y a pas de mot de passe par défaut. Au premier démarrage, KitsuneCommand crée le compte admin avec un mot de passe aléatoire. Il se trouve à deux endroits :",
+    helpConsole: "Dans la console ou le journal du serveur de ce premier démarrage. Cherchez le bloc marqué",
+    helpFile: "dans le dossier KitsuneCommand, à côté du dossier Saves de votre serveur.",
+    helpLockedOut: "Perdu ? Définissez-en un nouveau depuis la console du jeu ou via telnet (8 caractères minimum) :",
     footer: "Surveillance {'|'} Gestion {'|'} Carte",
   },
 

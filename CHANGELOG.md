@@ -12,7 +12,24 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Added
+
+- **"Can't sign in?" help on the login page.** There's no default password
+  (first boot generates a random one), and nothing on the login page said
+  so. A link under Sign In now explains where the first-run password is (the
+  server console, and `FIRST_RUN_PASSWORD.txt` in the KitsuneCommand folder
+  next to `Saves`) and how to set a new one with `kcresetpw`. It opens on
+  its own after a failed sign-in. Static text only: it doesn't reveal server
+  paths or whether the install is fresh. In all 8 languages.
+
 ### Fixed
+
+- **The config editor edits the file the server actually reads.** A server
+  started with `-configfile=something.xml` had `serverconfig.xml` edited
+  instead, so changes never took. KC now reads `-configfile` from the
+  server's own command line, resolved the way the game does (last one wins,
+  `.xml` added when there's no extension, a bare name is in the game
+  folder), and falls back to `serverconfig.xml` as before.
 
 - **Login page footer shows "Monitoring | Management | Map" again.** The
   `|` separators in `login.footer` were read by vue-i18n as plural-form

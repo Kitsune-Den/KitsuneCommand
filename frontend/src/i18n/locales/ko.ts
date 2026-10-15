@@ -84,6 +84,11 @@ const ko: Messages = {
     signIn: '로그인',
     errorBothRequired: '사용자 이름과 비밀번호를 모두 입력해 주세요.',
     loginFailed: '로그인에 실패했습니다. 인증 정보를 확인해 주세요.',
+    cantSignIn: "로그인할 수 없나요?",
+    helpFirstRun: "기본 비밀번호는 없습니다. KitsuneCommand는 처음 실행될 때 무작위 비밀번호로 admin 계정을 만듭니다. 비밀번호는 두 곳에서 확인할 수 있습니다:",
+    helpConsole: "첫 실행 당시의 서버 콘솔 또는 로그. 다음 표시가 있는 블록을 찾으세요:",
+    helpFile: "(서버의 Saves 폴더 옆에 있는 KitsuneCommand 폴더 안)",
+    helpLockedOut: "잊어버렸나요? 게임 콘솔이나 텔넷에서 새 비밀번호를 설정하세요(8자 이상):",
     footer: "모니터링 {'|'} 관리 {'|'} 지도",
   },
 

@@ -84,6 +84,11 @@ const ja: Messages = {
     signIn: 'ログイン',
     errorBothRequired: 'ユーザー名とパスワードを入力してください。',
     loginFailed: 'ログインに失敗しました。認証情報を確認してください。',
+    cantSignIn: "ログインできませんか？",
+    helpFirstRun: "初期パスワードはありません。KitsuneCommand は初回起動時に、ランダムなパスワードで admin アカウントを作成します。パスワードは次の2か所で確認できます：",
+    helpConsole: "初回起動時のサーバーコンソールまたはログ。次の表示があるブロックを探してください：",
+    helpFile: "（サーバーの Saves フォルダーの隣にある KitsuneCommand フォルダー内）",
+    helpLockedOut: "わからなくなった場合は、ゲームコンソールまたは telnet から新しいパスワードを設定できます（8文字以上）：",
     footer: "モニタリング {'|'} 管理 {'|'} マップ",
   },
 

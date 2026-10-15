@@ -83,6 +83,11 @@ const de = {
     signIn: 'Anmelden',
     errorBothRequired: 'Bitte geben Sie Benutzername und Passwort ein.',
     loginFailed: 'Anmeldung fehlgeschlagen. Überprüfen Sie Ihre Zugangsdaten.',
+    cantSignIn: "Anmeldung nicht möglich?",
+    helpFirstRun: "Es gibt kein Standardpasswort. Beim ersten Start legt KitsuneCommand das Admin-Konto mit einem zufälligen Passwort an. Sie finden es an zwei Stellen:",
+    helpConsole: "In der Serverkonsole bzw. im Log dieses ersten Starts. Suchen Sie nach dem Block mit",
+    helpFile: "im KitsuneCommand-Ordner neben dem Saves-Ordner Ihres Servers.",
+    helpLockedOut: "Verloren? Setzen Sie in der Spielkonsole oder per Telnet ein neues (mindestens 8 Zeichen):",
     footer: "Überwachung {'|'} Verwaltung {'|'} Karte",
   },
 
