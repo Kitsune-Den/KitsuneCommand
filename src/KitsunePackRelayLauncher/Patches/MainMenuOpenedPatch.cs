@@ -1,7 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using HarmonyLib;
-using UnityEngine;
 
 namespace KitsunePackRelayLauncher.Patches
 {
@@ -12,17 +12,10 @@ namespace KitsunePackRelayLauncher.Patches
     /// 2026-05-28 spelunk session (see vault runbook
     /// `packrelay-quickjoin-mod-plan.md`).
     ///
-    /// v0.1 (this patch): reads the sentinel file, freshness-checks
-    /// it (60s window), logs what it would do, deletes the file.
-    /// **No actual connect.**
-    ///
-    /// v0.2: after this logs "would auto-connect," fill in the UI
-    /// driving code:
-    ///   1. Locate the <c>XUiC_ServerBrowserDirectConnect</c> window
-    ///      in the live XUi tree.
-    ///   2. Set its <c>txtIp</c> / <c>txtPort</c> field text values.
-    ///   3. Invoke <c>btnDirectConnectConnect</c>'s OnPressed event
-    ///      (the same delegate the actual button click fires).
+    /// Reads the sentinel file, checks it belongs to this launch,
+    /// deletes it, and hands the address to
+    /// <see cref="DirectConnectDriver"/>, which joins through the
+    /// game's own Direct Connect dialog (7DTD 3.x).
     ///
     /// Sentinel file convention (written by the PackRelay launcher
     /// before spawning 7DTD):
@@ -34,9 +27,13 @@ namespace KitsunePackRelayLauncher.Patches
     ///     "writtenAt": "2026-05-28T19:30:00Z"
     ///   }
     ///
-    /// Freshness gate is 60s: an interrupted launch followed by the
-    /// user manually opening the game later shouldn't surprise-join,
-    /// and a sentinel from yesterday shouldn't fire today.
+    /// Freshness gate: the sentinel has to have been written in the
+    /// 60s before this game process started. An interrupted launch
+    /// followed by the user manually opening the game later shouldn't
+    /// surprise-join, and a sentinel from yesterday shouldn't fire
+    /// today. It's measured against process start rather than "now"
+    /// because a big modpack can take well over a minute to reach the
+    /// main menu, which would make every real launch look stale.
     /// </summary>
     [HarmonyPatch(typeof(XUiC_MainMenu), nameof(XUiC_MainMenu.OnOpen))]
     public static class MainMenuOpenedPatch
@@ -52,8 +49,21 @@ namespace KitsunePackRelayLauncher.Patches
 
         private const int FreshnessSeconds = 60;
 
+        /// <summary>
+        /// Slack for a sentinel stamped a moment after the process
+        /// started (the launcher writing it just after spawn) or for
+        /// clock jitter between the launcher and the game.
+        /// </summary>
+        private const int AfterStartSlackSeconds = 10;
+
+        /// <summary>
+        /// Used only if the process start time can't be read: then
+        /// "now" is the anchor, and it has to allow for the boot.
+        /// </summary>
+        private const int FallbackFreshnessSeconds = 300;
+
         [HarmonyPostfix]
-        public static void Postfix()
+        public static void Postfix(XUiC_MainMenu __instance)
         {
             if (_firedThisSession) return;
             _firedThisSession = true;
@@ -88,35 +98,20 @@ namespace KitsunePackRelayLauncher.Patches
                     return;
                 }
 
-                double ageSec = (DateTime.UtcNow - writtenAt.ToUniversalTime()).TotalSeconds;
-                if (ageSec > FreshnessSeconds)
+                // Delete before acting, so nothing below can leave a
+                // sentinel behind to fire on a later launch.
+                TryDelete(sentinelPath);
+
+                if (!IsFromThisLaunch(writtenAt.ToUniversalTime(), out string why))
                 {
-                    Log.Out("[KitsunePackRelayLauncher] Sentinel is stale (" +
-                            ageSec.ToString("F1") + "s old, gate=" + FreshnessSeconds +
-                            "s). Ignoring + deleting so it doesn't fire on a future " +
-                            "manual launch.");
-                    TryDelete(sentinelPath);
+                    Log.Out("[KitsunePackRelayLauncher] Sentinel for " + host + ":" + port +
+                            " isn't from this launch (" + why + "). Ignored and deleted.");
                     return;
                 }
 
-                // STUB: v0.1 logs what it would do, then deletes the
-                // sentinel so the launch sequence is clean for v0.2.
-                Log.Out(
-                    "\n" +
-                    "================================================================\n" +
-                    "[KitsunePackRelayLauncher] v0.1 stub: WOULD auto-connect now.\n" +
-                    "  host:      " + host + "\n" +
-                    "  port:      " + port + "\n" +
-                    "  writtenAt: " + writtenAt.ToString("u") + "\n" +
-                    "  age:       " + ageSec.ToString("F1") + "s\n" +
-                    "\n" +
-                    "  v0.2 will fill in the UI driving here:\n" +
-                    "    1. Find XUiC_ServerBrowserDirectConnect in the XUi tree\n" +
-                    "    2. Set its txtIp + txtPort field text\n" +
-                    "    3. Fire btnDirectConnectConnect.OnPressed\n" +
-                    "================================================================");
-
-                TryDelete(sentinelPath);
+                Log.Out("[KitsunePackRelayLauncher] Sentinel for " + host + ":" + port +
+                        " is from this launch (" + why + "). Joining.");
+                DirectConnectDriver.Start(__instance, host, port);
             }
             catch (Exception ex)
             {
@@ -125,6 +120,41 @@ namespace KitsunePackRelayLauncher.Patches
                 // regardless of what our mod thinks.
                 Log.Warning("[KitsunePackRelayLauncher] Postfix threw: " + ex.Message);
             }
+        }
+
+        /// <summary>
+        /// True when the sentinel was written for the launch that
+        /// started this process: within <see cref="FreshnessSeconds"/>
+        /// before process start, or up to
+        /// <see cref="AfterStartSlackSeconds"/> after it. If the start
+        /// time can't be read, falls back to the sentinel's age against
+        /// now with the looser <see cref="FallbackFreshnessSeconds"/>.
+        /// <paramref name="why"/> says which check ran, for the log.
+        /// </summary>
+        private static bool IsFromThisLaunch(DateTime writtenAtUtc, out string why)
+        {
+            DateTime? startedUtc = null;
+            try
+            {
+                startedUtc = Process.GetCurrentProcess().StartTime.ToUniversalTime();
+            }
+            catch
+            {
+                // Mono on some platforms can't read it; use the fallback.
+            }
+
+            if (startedUtc.HasValue)
+            {
+                double beforeStart = (startedUtc.Value - writtenAtUtc).TotalSeconds;
+                why = "written " + beforeStart.ToString("F1") + "s before the game started, " +
+                      "window " + FreshnessSeconds + "s";
+                return beforeStart <= FreshnessSeconds && beforeStart >= -AfterStartSlackSeconds;
+            }
+
+            double age = (DateTime.UtcNow - writtenAtUtc).TotalSeconds;
+            why = age.ToString("F1") + "s old, process start unknown, window " +
+                  FallbackFreshnessSeconds + "s";
+            return age <= FallbackFreshnessSeconds && age >= -AfterStartSlackSeconds;
         }
 
         /// <summary>

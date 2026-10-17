@@ -13,11 +13,9 @@ namespace KitsunePackRelayLauncher
     /// installed on both clients and the server -- it just no-ops
     /// on the server.
     ///
-    /// v0.1 ships the scaffold + a verified-but-stubbed hook on
-    /// XUiC_MainMenu.OnOpen that reads the sentinel file and logs
-    /// what it would do. v0.2 adds the actual UI-click simulation
-    /// against XUiC_ServerBrowserDirectConnect (Direct Connect
-    /// dialog) -- see the patch class doc for details.
+    /// The hook on XUiC_MainMenu.OnOpen reads the launcher's sentinel
+    /// file and joins through the game's Direct Connect dialog -- see
+    /// MainMenuOpenedPatch and DirectConnectDriver.
     /// </summary>
     public class ModEntry : IModApi
     {
@@ -25,7 +23,7 @@ namespace KitsunePackRelayLauncher
 
         public void InitMod(Mod _modInstance)
         {
-            Log.Out("[KitsunePackRelayLauncher] Initializing v0.1...");
+            Log.Out("[KitsunePackRelayLauncher] Initializing v0.2...");
             try
             {
                 _harmony = new Harmony("net.kitsuneden.packrelaylauncher");
@@ -33,8 +31,7 @@ namespace KitsunePackRelayLauncher
                 Log.Out("[KitsunePackRelayLauncher] Harmony patches applied. " +
                     "When PackRelay launcher writes packrelay-quickjoin.json " +
                     "into the userdatafolder before launching 7DTD, the next " +
-                    "main-menu-ready event will pick it up. v0.1 logs only; " +
-                    "v0.2 will actually drive the Direct Connect dialog.");
+                    "main-menu-ready event joins that server through Direct Connect.");
             }
             catch (Exception ex)
             {
