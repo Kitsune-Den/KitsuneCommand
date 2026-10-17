@@ -12,6 +12,15 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.10.1] - 2026-10-17
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.10.1)
+> · A docs patch. The lockout-recovery guide now sends you to the right
+> folder, and the release process behind it is tighter: one script bumps
+> every version file and CI refuses a tag that doesn't match. The mod
+> itself behaves exactly like 2.10.0, so there's no need to rush the
+> upgrade. No schema changes, nothing to migrate, still V2.5 through V3.3.
+
 ### Fixed
 
 - **Lockout recovery docs point at the right folder.** The troubleshooting
@@ -750,7 +759,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.0...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...HEAD
+[2.10.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.8.2...v2.9.0
 [2.8.2]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.8.1...v2.8.2
