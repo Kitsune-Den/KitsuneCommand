@@ -121,6 +121,8 @@ Discord bot integration in one tab: paste token, toggle bidirectional chat bridg
 
 Self-service password change for the logged-in user. If you ever lock yourself out entirely, the [`kcresetpw`](docs/troubleshooting.md) console command is your escape hatch.
 
+**Sign in through Steam** is opt-in. An admin turns it on under Settings → Users and saves the panel's public address (the address people type to reach it, e.g. `https://panel.example.com`). After that, each user can link their own Steam account here and use the Steam button on the login page. A Steam sign-in only gets you into the account you linked: it never creates accounts or gives out roles, and passwords keep working. The server needs outbound HTTPS to `steamcommunity.com` to check Steam's answer.
+
 <a href="docs/screenshots/settings-account.png" target="_blank" rel="noopener"><img src="docs/screenshots/settings-account.png" alt="Settings — Account" /></a>
 
 ## Tech Stack

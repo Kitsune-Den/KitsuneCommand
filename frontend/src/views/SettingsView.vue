@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { changePassword } from '@/api/auth'
-import { getUsers, createUser, updateUser, resetUserPassword, deleteUser } from '@/api/users'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  changePassword,
+  getSteamAccount, startSteamLink, unlinkSteam,
+  getSteamLoginSettings, updateSteamLoginSettings,
+  type SteamAccountInfo, type SteamLoginSettings,
+} from '@/api/auth'
+import { getUsers, createUser, updateUser, resetUserPassword, deleteUser, unlinkUserSteam } from '@/api/users'
 import {
   getChatCommandSettings, updateChatCommandSettings,
   getPointsSettings, updatePointsSettings,
@@ -74,6 +80,116 @@ async function handleChangePassword() {
   } finally {
     changingPassword.value = false
   }
+}
+
+// ---- Account Tab: Sign in through Steam ----
+const route = useRoute()
+const router = useRouter()
+const steamAccount = ref<SteamAccountInfo | null>(null)
+const steamBusy = ref(false)
+
+async function fetchSteamAccount() {
+  try {
+    steamAccount.value = await getSteamAccount()
+  } catch {
+    steamAccount.value = null
+  }
+}
+
+async function handleLinkSteam() {
+  steamBusy.value = true
+  try {
+    // Leaves the panel for Steam; the callback brings us back to #/settings.
+    window.location.href = await startSteamLink()
+  } catch (err: any) {
+    const detail = err.response?.data?.error_description || t('settings.steamLinkFailed')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 4000 })
+    steamBusy.value = false
+  }
+}
+
+function confirmUnlinkSteam() {
+  confirmDialog.require({
+    message: t('settings.steamUnlinkConfirm'),
+    header: t('settings.steamSignIn'),
+    icon: 'pi pi-exclamation-triangle',
+    accept: async () => {
+      try {
+        await unlinkSteam()
+        toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.steamUnlinked'), life: 3000 })
+        await fetchSteamAccount()
+      } catch {
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.steamUnlinkFailed'), life: 3000 })
+      }
+    },
+  })
+}
+
+// Result of a link round trip, handed back by the server as #/settings?steam_...
+const STEAM_LINK_ERRORS = ['already_linked', 'cancelled', 'expired', 'disabled', 'session_mismatch', 'steam_unreachable', 'invalid']
+
+function consumeSteamLinkResult() {
+  const query = route?.query ?? {}
+  if (query.steam_linked) {
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.steamLinked'), life: 4000 })
+  } else if (typeof query.steam_error === 'string') {
+    const code = STEAM_LINK_ERRORS.includes(query.steam_error) ? query.steam_error : 'invalid'
+    toast.add({ severity: 'error', summary: t('settings.steamSignIn'), detail: t(`settings.steamErrors.${code}`), life: 6000 })
+  } else {
+    return
+  }
+  router?.replace({ query: {} })
+}
+
+// ---- Users Tab: Steam sign-in settings (admin only) ----
+const steamSettings = ref<SteamLoginSettings>({ enabled: false, publicUrl: '' })
+const savingSteamSettings = ref(false)
+
+// The address this page is being viewed at, minus the #/route.
+function currentPanelUrl(): string {
+  return (window.location.origin + window.location.pathname).replace(/\/+$/, '')
+}
+
+async function fetchSteamSettings() {
+  try {
+    const s = await getSteamLoginSettings()
+    steamSettings.value = { enabled: s.enabled, publicUrl: s.publicUrl || currentPanelUrl() }
+  } catch {
+    // Leave the defaults; saving will surface any real problem.
+  }
+}
+
+async function saveSteamSettings() {
+  savingSteamSettings.value = true
+  try {
+    const saved = await updateSteamLoginSettings(steamSettings.value)
+    steamSettings.value = { enabled: saved.enabled, publicUrl: saved.publicUrl || '' }
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.steamSettingsUpdated'), life: 3000 })
+    await fetchSteamAccount()
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 5000 })
+  } finally {
+    savingSteamSettings.value = false
+  }
+}
+
+function confirmUnlinkUserSteam(user: UserResponse) {
+  confirmDialog.require({
+    message: t('settings.steamAdminUnlinkConfirm', { username: user.username }),
+    header: t('settings.steamSignIn'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        await unlinkUserSteam(user.id)
+        toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.steamUnlinked'), life: 3000 })
+        await fetchUsers()
+      } catch {
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.steamUnlinkFailed'), life: 3000 })
+      }
+    },
+  })
 }
 
 // ---- Users Tab (admin only) ----
@@ -811,7 +927,10 @@ async function handleSaveVipPerks() {
 }
 
 onMounted(() => {
+  consumeSteamLinkResult()
+  fetchSteamAccount()
   if (isAdmin.value) {
+    fetchSteamSettings()
     fetchUsers()
     fetchChatCommandSettings()
     fetchPointsSettings()
@@ -876,10 +995,63 @@ onMounted(() => {
               />
             </template>
           </Card>
+
+          <!-- Shown when Steam sign-in is on, or when an old link is still around to remove. -->
+          <Card v-if="steamAccount && (steamAccount.enabled || steamAccount.linked)" class="settings-card steam-card">
+            <template #title>{{ t('settings.steamSignIn') }}</template>
+            <template #content>
+              <template v-if="steamAccount.linked">
+                <p class="steam-status">
+                  <i class="pi pi-check-circle steam-linked-icon" />
+                  {{ t('settings.steamLinkedTo') }} <code>{{ steamAccount.steamId }}</code>
+                </p>
+                <Button
+                  :label="t('settings.steamUnlink')"
+                  icon="pi pi-times"
+                  severity="secondary"
+                  outlined
+                  @click="confirmUnlinkSteam"
+                />
+              </template>
+              <template v-else>
+                <p class="steam-status text-secondary">{{ t('settings.steamNotLinkedHint') }}</p>
+                <Button
+                  :label="t('settings.steamLink')"
+                  icon="pi pi-link"
+                  severity="info"
+                  :loading="steamBusy"
+                  @click="handleLinkSteam"
+                />
+              </template>
+            </template>
+          </Card>
         </TabPanel>
 
         <!-- Users Tab (admin only) -->
         <TabPanel v-if="isAdmin" value="1">
+          <Card class="settings-card steam-settings-card">
+            <template #title>{{ t('settings.steamSignIn') }}</template>
+            <template #content>
+              <div class="toggle-row">
+                <label>{{ t('settings.steamAllow') }}</label>
+                <ToggleSwitch v-model="steamSettings.enabled" />
+              </div>
+              <small class="settings-hint">{{ t('settings.steamAllowHint') }}</small>
+              <div class="form-group steam-url-group">
+                <label class="form-label">{{ t('settings.steamPublicUrl') }}</label>
+                <InputText v-model="steamSettings.publicUrl" class="form-input" placeholder="https://panel.example.com" />
+                <small class="settings-hint">{{ t('settings.steamPublicUrlHint') }}</small>
+              </div>
+              <Button
+                :label="t('common.save')"
+                icon="pi pi-save"
+                severity="info"
+                :loading="savingSteamSettings"
+                @click="saveSteamSettings"
+              />
+            </template>
+          </Card>
+
           <div class="users-toolbar">
             <Button :label="t('settings.createUser')" icon="pi pi-plus" severity="info" @click="openCreateDialog" />
             <Button icon="pi pi-refresh" text severity="secondary" @click="fetchUsers" :loading="loadingUsers" />
@@ -898,6 +1070,12 @@ onMounted(() => {
                 <Tag :value="data.isActive ? t('common.active') : t('common.inactive')" :severity="data.isActive ? 'success' : 'secondary'" />
               </template>
             </Column>
+            <Column :header="t('settings.steamCol')" style="width: 110px">
+              <template #body="{ data }">
+                <Tag v-if="data.steamId" :value="t('settings.steamLinkedTag')" severity="info" :title="data.steamId" />
+                <span v-else class="text-secondary">—</span>
+              </template>
+            </Column>
             <Column field="lastLoginAt" :header="t('settings.lastLoginCol')" style="width: 160px">
               <template #body="{ data }">
                 <span class="text-secondary">{{ data.lastLoginAt || t('common.never') }}</span>
@@ -908,6 +1086,15 @@ onMounted(() => {
                 <div class="action-buttons">
                   <Button icon="pi pi-pencil" text severity="info" size="small" @click="openEditDialog(data)" :title="t('common.edit')" />
                   <Button icon="pi pi-key" text severity="warn" size="small" @click="openResetDialog(data)" :title="t('settings.resetPassword')" />
+                  <Button
+                    v-if="data.steamId"
+                    icon="pi pi-link"
+                    text
+                    severity="secondary"
+                    size="small"
+                    @click="confirmUnlinkUserSteam(data)"
+                    :title="t('settings.steamUnlink')"
+                  />
                   <Button
                     v-if="data.isActive"
                     icon="pi pi-ban"
@@ -1924,6 +2111,31 @@ onMounted(() => {
 
 .form-input {
   width: 100%;
+}
+
+.steam-card {
+  margin-top: 1rem;
+}
+
+.steam-settings-card {
+  margin-bottom: 1.25rem;
+}
+
+.steam-status {
+  margin: 0 0 1rem;
+}
+
+.steam-status code {
+  font-size: 0.85rem;
+}
+
+.steam-linked-icon {
+  color: var(--kc-cyan);
+  margin-right: 0.35rem;
+}
+
+.steam-url-group {
+  margin-top: 1rem;
 }
 
 .users-toolbar {

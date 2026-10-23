@@ -68,6 +68,9 @@ namespace KitsuneCommand.Tests
             // production path is two migrations (008 creates the table, 012 ALTERs
             // in vip_tier); the test DB just creates the final shape directly.
             connection.Execute(Schema012);
+
+            // 013_steam_login.sql — user_accounts.steam_id + its unique index.
+            connection.Execute(Schema013);
         }
 
         /// <summary>
@@ -376,6 +379,13 @@ CREATE TABLE IF NOT EXISTS first_login_grants (
     player_name TEXT,
     granted_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+";
+
+        // Mirrors Config/Migrations/013_steam_login.sql verbatim. Update both
+        // when the schema changes.
+        private const string Schema013 = @"
+ALTER TABLE user_accounts ADD COLUMN steam_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_accounts_steam_id ON user_accounts(steam_id);
 ";
 
         #endregion

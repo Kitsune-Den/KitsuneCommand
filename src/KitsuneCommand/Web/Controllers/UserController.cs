@@ -143,6 +143,23 @@ namespace KitsuneCommand.Web.Controllers
         }
 
         /// <summary>
+        /// Remove a user's Steam link, e.g. when they lose access to that Steam account.
+        /// </summary>
+        [HttpDelete]
+        [Route("{id:int}/steam")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult UnlinkSteam(int id)
+        {
+            var user = _userRepo.GetById(id);
+            if (user == null)
+                return NotFound();
+
+            _userRepo.SetSteamId(id, null);
+            Log.Out($"[KitsuneCommand] Admin unlinked the Steam account from panel user '{user.Username}'.");
+            return Ok(ApiResponse.Ok("Steam account unlinked."));
+        }
+
+        /// <summary>
         /// Soft-delete a user (set is_active = false).
         /// </summary>
         [HttpDelete]
@@ -173,7 +190,8 @@ namespace KitsuneCommand.Web.Controllers
                 Role = user.Role,
                 LastLoginAt = user.LastLoginAt,
                 IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt
+                CreatedAt = user.CreatedAt,
+                SteamId = user.SteamId
             };
         }
     }
