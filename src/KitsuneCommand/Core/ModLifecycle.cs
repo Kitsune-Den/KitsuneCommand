@@ -276,7 +276,8 @@ namespace KitsuneCommand.Core
                 DeadEntityId = killed?.entityId ?? -1,
                 DeadEntityName = (killed as EntityAlive)?.EntityName ?? killed?.ToString(),
                 KillerEntityId = killer?.entityId ?? -1,
-                KillerName = (killer as EntityAlive)?.EntityName ?? killer?.ToString()
+                KillerName = (killer as EntityAlive)?.EntityName ?? killer?.ToString(),
+                DeadEntityType = killed?.entityType.ToString()
             });
         }
 

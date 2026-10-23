@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 namespace KitsuneCommand.Services
 {
     /// <summary>
-    /// Sends ticket notifications to a Discord channel via webhook.
+    /// Sends ticket notifications and suspicion-log alerts to a Discord channel via webhook.
     /// All calls are fire-and-forget on the thread pool.
     /// </summary>
     public class DiscordWebhookService
@@ -95,6 +95,47 @@ namespace KitsuneCommand.Services
             };
 
             SendAsync(webhookUrl, payload);
+        }
+
+        public void SendSuspicionAlert(string webhookUrl, SuspicionEvent evt)
+        {
+            if (string.IsNullOrWhiteSpace(webhookUrl) || evt == null) return;
+
+            var where = evt.PosX.HasValue && evt.PosZ.HasValue
+                ? $"{evt.PosX.Value:F0}, {(evt.PosY ?? 0):F0}, {evt.PosZ.Value:F0}"
+                : "—";
+            var payload = new
+            {
+                embeds = new[]
+                {
+                    new
+                    {
+                        title = $"Suspicion: {evt.Detector} / {evt.Rule}",
+                        description = TruncateMessage(evt.Summary),
+                        color = SeverityColor(evt.Severity),
+                        fields = new[]
+                        {
+                            new { name = "Player", value = evt.PlayerName ?? evt.PlayerId ?? "Unknown", inline = true },
+                            new { name = "Severity", value = evt.Severity ?? "low", inline = true },
+                            new { name = "Position", value = where, inline = true }
+                        },
+                        footer = new { text = "KitsuneCommand Suspicion Log · log-only, review before acting" },
+                        timestamp = DateTime.UtcNow.ToString("o")
+                    }
+                }
+            };
+
+            SendAsync(webhookUrl, payload);
+        }
+
+        private static int SeverityColor(string severity)
+        {
+            switch (severity)
+            {
+                case "high": return 0xef4444; // red
+                case "medium": return 0xf59e0b; // amber
+                default: return 0x6b7280; // gray
+            }
         }
 
         private static void SendAsync(string webhookUrl, object payload)
