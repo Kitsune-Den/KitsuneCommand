@@ -222,7 +222,8 @@ namespace KitsuneCommand.Features
                 ? $"{player.PositionX.ToString("F1", CultureInfo.InvariantCulture)} {player.PositionY.ToString("F1", CultureInfo.InvariantCulture)} {player.PositionZ.ToString("F1", CultureInfo.InvariantCulture)}"
                 : "0 0 0";
 
-            // Execute teleport
+            // Execute teleport (announced first so the suspicion log doesn't flag the jump)
+            _eventBus.Publish(new PlayerTeleportedEvent { EntityId = entityId, Reason = "home" });
             var cmd = $"teleportplayer {entityId} {x.ToString(CultureInfo.InvariantCulture)} {y.ToString(CultureInfo.InvariantCulture)} {z.ToString(CultureInfo.InvariantCulture)}";
             SdtdConsole.Instance.ExecuteSync(cmd, null);
 
@@ -377,7 +378,8 @@ namespace KitsuneCommand.Features
                 ? $"{player.PositionX.ToString("F1", CultureInfo.InvariantCulture)} {player.PositionY.ToString("F1", CultureInfo.InvariantCulture)} {player.PositionZ.ToString("F1", CultureInfo.InvariantCulture)}"
                 : "0 0 0";
 
-            // Execute teleport
+            // Execute teleport (announced first so the suspicion log doesn't flag the jump)
+            _eventBus.Publish(new PlayerTeleportedEvent { EntityId = entityId, Reason = "city" });
             var cmd = $"teleportplayer {entityId} {cx.ToString(CultureInfo.InvariantCulture)} {cy.ToString(CultureInfo.InvariantCulture)} {cz.ToString(CultureInfo.InvariantCulture)}";
             SdtdConsole.Instance.ExecuteSync(cmd, null);
 
