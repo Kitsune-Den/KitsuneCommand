@@ -13,7 +13,7 @@ namespace KitsuneCommand.Web.Controllers
     ///   PUT    /api/restart/settings    — overwrite schedule + ladder       (admin)
     ///   POST   /api/restart/now         — kick off a countdown right now    (admin)
     ///
-    /// Same shape as TraderProtectionController / VoteRewardsController:
+    /// Same shape as VoteRewardsController:
     /// pull the feature instance from the FeatureManager so the controller
     /// stays a thin façade over a singleton service.
     /// </summary>
