@@ -3,6 +3,7 @@
 // (value "1"). Other tabs' data sources are mocked only so onMounted doesn't throw.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { defineComponent, h, inject, provide } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 
@@ -14,6 +15,8 @@ const mockUpdateSteamSettings = vi.fn()
 const mockToastAdd = vi.fn()
 const mockReplace = vi.fn()
 const mockConfirmRequire = vi.fn()
+const mockGetUsers = vi.fn()
+const mockUnlinkUserSteam = vi.fn()
 let routeQuery: Record<string, string> = {}
 
 vi.mock('@/api/auth', () => ({
@@ -31,8 +34,8 @@ vi.mock('vue-router', () => ({
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: mockToastAdd }) }))
 vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: mockConfirmRequire }) }))
 vi.mock('@/api/users', () => ({
-  getUsers: () => Promise.resolve([]), createUser: vi.fn(), updateUser: vi.fn(),
-  resetUserPassword: vi.fn(), deleteUser: vi.fn(), unlinkUserSteam: vi.fn(),
+  getUsers: () => mockGetUsers(), createUser: vi.fn(), updateUser: vi.fn(),
+  resetUserPassword: vi.fn(), deleteUser: vi.fn(), unlinkUserSteam: (id: number) => mockUnlinkUserSteam(id),
 }))
 vi.mock('@/api/settings', () => ({
   getChatCommandSettings: () => Promise.resolve({}), updateChatCommandSettings: vi.fn(),
@@ -65,6 +68,30 @@ import SettingsView from '@/views/SettingsView.vue'
 
 const slotStub = (name: string) => ({ name, template: '<div><slot /></div>' })
 
+// A DataTable that renders its Column children once per row, handing each
+// Column's #body slot that row — enough to reach the per-user action buttons.
+const RowScope = defineComponent({
+  props: { row: { type: Object, required: true } },
+  setup(props, { slots }) {
+    provide('row', props.row)
+    return () => h('div', { class: 'row' }, slots.default?.())
+  },
+})
+const DataTableStub = defineComponent({
+  name: 'DataTable',
+  props: { value: { type: Array, default: () => [] } },
+  setup(props, { slots }) {
+    return () => h('div', (props.value as object[]).map((row) => h(RowScope, { row }, () => slots.default?.())))
+  },
+})
+const ColumnStub = defineComponent({
+  name: 'Column',
+  setup(_, { slots }) {
+    const row = inject('row', null)
+    return () => (row && slots.body ? h('div', slots.body({ data: row })) : null)
+  },
+})
+
 function mountView(panel: '0' | '1') {
   return mount(SettingsView, {
     global: {
@@ -79,7 +106,9 @@ function mountView(panel: '0' | '1') {
         Button: { name: 'Button', props: ['label', 'icon'], template: '<button :data-icon="icon">{{ label }}</button>' },
         InputText: { name: 'InputText', props: ['modelValue'], template: '<input class="text" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' },
         ToggleSwitch: { name: 'ToggleSwitch', props: ['modelValue'], template: '<input type="checkbox" class="toggle" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />' },
-        Select: true, Message: true, InputNumber: true, DataTable: true, Column: true, Tag: true, Dialog: true,
+        DataTable: DataTableStub,
+        Column: ColumnStub,
+        Select: true, Message: true, InputNumber: true, Tag: true, Dialog: true,
       },
     },
   })
@@ -101,6 +130,8 @@ describe('SettingsView — Steam sign-in', () => {
     mockToastAdd.mockReset()
     mockReplace.mockReset()
     mockConfirmRequire.mockReset()
+    mockGetUsers.mockReset().mockResolvedValue([])
+    mockUnlinkUserSteam.mockReset().mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -150,6 +181,61 @@ describe('SettingsView — Steam sign-in', () => {
       expect(byLabel(wrapper, 'settings.steamUnlink')).toBeTruthy()
     })
 
+    it("shows the server's reason when linking can't start", async () => {
+      mockStartSteamLink.mockRejectedValue({ response: { data: { error_description: 'Steam sign-in is not enabled.' } } })
+      const wrapper = mountView('0')
+      await flushPromises()
+      await byLabel(wrapper, 'settings.steamLink')!.trigger('click')
+      await flushPromises()
+
+      expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error', detail: 'Steam sign-in is not enabled.' }))
+    })
+
+    it('falls back to a generic message when linking fails without a reason', async () => {
+      mockStartSteamLink.mockRejectedValue(new Error('network'))
+      const wrapper = mountView('0')
+      await flushPromises()
+      await byLabel(wrapper, 'settings.steamLink')!.trigger('click')
+      await flushPromises()
+
+      expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ detail: 'settings.steamLinkFailed' }))
+    })
+
+    it('reports a failed unlink', async () => {
+      mockGetSteamAccount.mockResolvedValue({ enabled: true, linked: true, steamId: '76561197960287930' })
+      mockUnlinkSteam.mockRejectedValue(new Error('500'))
+      const wrapper = mountView('0')
+      await flushPromises()
+      await byLabel(wrapper, 'settings.steamUnlink')!.trigger('click')
+      await mockConfirmRequire.mock.calls[0][0].accept()
+
+      expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error', detail: 'settings.steamUnlinkFailed' }))
+    })
+
+    it('hides the card when the account lookup fails', async () => {
+      mockGetSteamAccount.mockRejectedValue(new Error('401'))
+      const wrapper = mountView('0')
+      await flushPromises()
+      expect(wrapper.text()).not.toContain('settings.steamSignIn')
+    })
+
+    it('confirms a successful link round trip', async () => {
+      routeQuery = { steam_linked: '1' }
+      mountView('0')
+      await flushPromises()
+
+      expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success', detail: 'settings.steamLinked' }))
+      expect(mockReplace).toHaveBeenCalledWith({ query: {} })
+    })
+
+    it('maps an unknown steam_error to the generic message', async () => {
+      routeQuery = { steam_error: 'something_new' }
+      mountView('0')
+      await flushPromises()
+
+      expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ detail: 'settings.steamErrors.invalid' }))
+    })
+
     it('reports the result of a link round trip, then clears it from the URL', async () => {
       routeQuery = { steam_error: 'already_linked' }
       mountView('0')
@@ -183,6 +269,57 @@ describe('SettingsView — Steam sign-in', () => {
 
       expect(mockUpdateSteamSettings).toHaveBeenCalledWith({ enabled: true, publicUrl: 'https://panel.example.com' })
       expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }))
+    })
+
+    it('keeps the defaults when the settings fail to load', async () => {
+      mockGetSteamSettings.mockRejectedValue(new Error('403'))
+      const wrapper = mountView('1')
+      await flushPromises()
+
+      expect((wrapper.find('input.text').element as HTMLInputElement).value).toBe('')
+    })
+
+    it('falls back to a generic message when saving fails without a reason', async () => {
+      mockUpdateSteamSettings.mockRejectedValue(new Error('network'))
+      const wrapper = mountView('1')
+      await flushPromises()
+      await byLabel(wrapper, 'common.save')!.trigger('click')
+      await flushPromises()
+
+      expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ detail: 'settings.failedToSaveSettings' }))
+    })
+
+    it("lets an admin remove another user's Steam link", async () => {
+      mockGetUsers.mockResolvedValue([
+        { id: 7, username: 'mod1', displayName: 'Mod', role: 'moderator', lastLoginAt: null, isActive: true, createdAt: '', steamId: '76561197960287930' },
+        { id: 8, username: 'viewer1', displayName: 'V', role: 'viewer', lastLoginAt: null, isActive: true, createdAt: '', steamId: null },
+      ])
+      const wrapper = mountView('1')
+      await flushPromises()
+
+      const unlinkButtons = wrapper.findAll('button[data-icon="pi pi-link"]')
+      expect(unlinkButtons).toHaveLength(1)
+
+      await unlinkButtons[0].trigger('click')
+      await mockConfirmRequire.mock.calls[0][0].accept()
+      await flushPromises()
+
+      expect(mockUnlinkUserSteam).toHaveBeenCalledWith(7)
+      expect(mockGetUsers).toHaveBeenCalledTimes(2)
+    })
+
+    it("reports a failed admin unlink", async () => {
+      mockGetUsers.mockResolvedValue([
+        { id: 7, username: 'mod1', displayName: 'Mod', role: 'moderator', lastLoginAt: null, isActive: true, createdAt: '', steamId: '76561197960287930' },
+      ])
+      mockUnlinkUserSteam.mockRejectedValue(new Error('500'))
+      const wrapper = mountView('1')
+      await flushPromises()
+
+      await wrapper.find('button[data-icon="pi pi-link"]').trigger('click')
+      await mockConfirmRequire.mock.calls[0][0].accept()
+
+      expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error', detail: 'settings.steamUnlinkFailed' }))
     })
 
     it("shows the server's reason when saving is refused", async () => {
