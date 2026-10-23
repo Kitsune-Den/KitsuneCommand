@@ -25,6 +25,8 @@ namespace KitsuneCommand.Core
             builder.RegisterType<ModEventBus>().As<IModEventBus>().AsSelf().SingleInstance();
             builder.RegisterType<ConfigManager>().AsSelf().SingleInstance();
             builder.RegisterType<AuthService>().AsSelf().SingleInstance();
+            // Singleton: holds the in-flight Steam sign-in states and one-time codes.
+            builder.RegisterType<SteamLoginService>().AsSelf().SingleInstance();
             builder.RegisterType<LivePlayerManager>().AsSelf().SingleInstance();
             builder.RegisterType<MapTileRenderer>().AsSelf().SingleInstance();
             builder.RegisterType<ChatPersistenceService>().AsSelf().SingleInstance();

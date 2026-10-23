@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as apiLogin, type TokenResponse } from '@/api/auth'
+import { login as apiLogin, exchangeSteamCode, type TokenResponse } from '@/api/auth'
 
 const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
 
@@ -34,6 +34,12 @@ export const useAuthStore = defineStore('auth', () => {
     setTokens(response)
   }
 
+  // Finishes "Sign in through Steam": trades the one-time code from the redirect.
+  async function loginWithSteamCode(code: string) {
+    const response = await exchangeSteamCode(code)
+    setTokens(response)
+  }
+
   function logout() {
     accessToken.value = null
     refreshToken.value = null
@@ -56,6 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
     role,
     isAuthenticated,
     login,
+    loginWithSteamCode,
     logout,
     setTokens,
   }

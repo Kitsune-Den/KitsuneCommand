@@ -30,6 +30,15 @@ namespace KitsuneCommand.Data.Repositories
             );
         }
 
+        public UserAccount GetBySteamId(string steamId)
+        {
+            using var conn = _db.CreateConnection();
+            return conn.QueryFirstOrDefault<UserAccount>(
+                "SELECT * FROM user_accounts WHERE steam_id = @SteamId AND is_active = 1",
+                new { SteamId = steamId }
+            );
+        }
+
         public IEnumerable<UserAccount> GetAll()
         {
             using var conn = _db.CreateConnection();
@@ -73,6 +82,19 @@ namespace KitsuneCommand.Data.Repositories
             conn.Execute(
                 "UPDATE user_accounts SET password_hash = @PasswordHash WHERE id = @Id",
                 new { Id = id, PasswordHash = passwordHash }
+            );
+        }
+
+        /// <summary>
+        /// Links (or, with null, unlinks) a SteamID64. Throws on the unique index
+        /// if that SteamID is already linked to another account.
+        /// </summary>
+        public void SetSteamId(int id, string steamId)
+        {
+            using var conn = _db.CreateConnection();
+            conn.Execute(
+                "UPDATE user_accounts SET steam_id = @SteamId WHERE id = @Id",
+                new { Id = id, SteamId = steamId }
             );
         }
 

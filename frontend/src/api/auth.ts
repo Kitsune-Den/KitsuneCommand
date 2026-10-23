@@ -58,3 +58,69 @@ export async function getCurrentUser(): Promise<UserInfo> {
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   await apiClient.post('/api/auth/change-password', { currentPassword, newPassword })
 }
+
+// ---- Sign in through Steam ----
+// The redirecting steps (/api/auth/steam/login, /link, /callback, /exchange) are
+// served by the login listener itself; the rest are ordinary OWIN endpoints.
+
+export const steamLoginUrl = '/api/auth/steam/login'
+
+export async function getSteamLoginEnabled(): Promise<boolean> {
+  try {
+    const response = await apiClient.get('/api/auth/steam/status')
+    return !!response.data.data?.enabled
+  } catch {
+    return false
+  }
+}
+
+export async function exchangeSteamCode(code: string): Promise<TokenResponse> {
+  const response = await fetch('/api/auth/steam/exchange', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+
+  if (!response.ok) {
+    const err = await response.json()
+    throw { response: { data: err, status: response.status } }
+  }
+
+  return response.json()
+}
+
+export interface SteamAccountInfo {
+  enabled: boolean
+  linked: boolean
+  steamId?: string
+}
+
+export async function getSteamAccount(): Promise<SteamAccountInfo> {
+  const response = await apiClient.get('/api/auth/steam/account')
+  return response.data.data
+}
+
+/** Returns the Steam URL to send the browser to; the server pins the attempt in a cookie. */
+export async function startSteamLink(): Promise<string> {
+  const response = await apiClient.post('/api/auth/steam/link')
+  return response.data.url
+}
+
+export async function unlinkSteam(): Promise<void> {
+  await apiClient.post('/api/auth/steam/unlink')
+}
+
+export interface SteamLoginSettings {
+  enabled: boolean
+  publicUrl: string | null
+}
+
+export async function getSteamLoginSettings(): Promise<SteamLoginSettings> {
+  const response = await apiClient.get('/api/auth/steam/settings')
+  return response.data.data
+}
+
+export async function updateSteamLoginSettings(settings: SteamLoginSettings): Promise<SteamLoginSettings> {
+  const response = await apiClient.put('/api/auth/steam/settings', settings)
+  return response.data.data
+}

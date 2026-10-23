@@ -4,8 +4,10 @@ import { useAuthStore } from '@/stores/auth'
 
 // Mock the API module
 const mockLogin = vi.fn()
+const mockExchangeSteamCode = vi.fn()
 vi.mock('@/api/auth', () => ({
   login: (...args: any[]) => mockLogin(...args),
+  exchangeSteamCode: (...args: any[]) => mockExchangeSteamCode(...args),
 }))
 
 describe('Auth Store', () => {
@@ -140,5 +142,32 @@ describe('Auth Store', () => {
 
     expect(auth.isAuthenticated).toBe(true)
     expect(auth.refreshToken).toBeNull()
+  })
+
+  it('loginWithSteamCode should trade the code and store the session', async () => {
+    mockExchangeSteamCode.mockResolvedValue({
+      access_token: 'steam-token',
+      token_type: 'bearer',
+      expires_in: 86400,
+      username: 'mod1',
+      display_name: 'Mod One',
+      role: 'moderator',
+    })
+    const auth = useAuthStore()
+
+    await auth.loginWithSteamCode('one-time-code')
+
+    expect(mockExchangeSteamCode).toHaveBeenCalledWith('one-time-code')
+    expect(auth.isAuthenticated).toBe(true)
+    expect(auth.username).toBe('mod1')
+    expect(localStorage.getItem('kc_access_token')).toBe('steam-token')
+  })
+
+  it('loginWithSteamCode should leave the store signed out when the code is refused', async () => {
+    mockExchangeSteamCode.mockRejectedValue({ response: { status: 400 } })
+    const auth = useAuthStore()
+
+    await expect(auth.loginWithSteamCode('stale')).rejects.toBeTruthy()
+    expect(auth.isAuthenticated).toBe(false)
   })
 })
