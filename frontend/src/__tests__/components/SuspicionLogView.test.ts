@@ -274,6 +274,114 @@ describe('SuspicionLogView', () => {
     expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }))
   })
 
+  it('refetches from the first page when a filter changes', async () => {
+    const wrapper = await mountView()
+    const [detector, severity, status] = wrapper.findAllComponents({ name: 'Select' })
+
+    detector.vm.$emit('update:modelValue', 'movement')
+    severity.vm.$emit('update:modelValue', 'high')
+    status.vm.$emit('update:modelValue', null)
+    await flushPromises()
+
+    expect(mockGetEvents).toHaveBeenLastCalledWith({
+      pageIndex: 0, pageSize: 50, detector: 'movement', severity: 'high', reviewed: undefined, search: undefined,
+    })
+  })
+
+  it('asks for reviewed entries only when that status is picked', async () => {
+    const wrapper = await mountView()
+    wrapper.findAllComponents({ name: 'Select' })[2].vm.$emit('update:modelValue', 'reviewed')
+    await flushPromises()
+    expect(mockGetEvents).toHaveBeenLastCalledWith(expect.objectContaining({ reviewed: true }))
+  })
+
+  it('debounces the search box', async () => {
+    vi.useFakeTimers()
+    try {
+      const wrapper = await mountView()
+      const input = wrapper.find('input')
+      await input.setValue('a')
+      await input.setValue('  ada  ')
+      expect(mockGetEvents).toHaveBeenCalledTimes(1)
+
+      vi.advanceTimersByTime(400)
+      await flushPromises()
+      expect(mockGetEvents).toHaveBeenCalledTimes(2)
+      expect(mockGetEvents).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'ada', pageIndex: 0 }))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('pages through the log', async () => {
+    const wrapper = await mountView()
+    wrapper.findComponent({ name: 'DataTable' }).vm.$emit('page', { first: 50, rows: 25 })
+    await flushPromises()
+    expect(mockGetEvents).toHaveBeenLastCalledWith(expect.objectContaining({ pageIndex: 2, pageSize: 25 }))
+  })
+
+  it('shows a dash when the position is unknown', async () => {
+    const wrapper = await mountView([evt({ posX: null, posZ: null, posY: null })])
+    expect(wrapper.find('.position-text').exists()).toBe(false)
+    expect(wrapper.find('.empty-text').text()).toBe('—')
+  })
+
+  it('reports a failed review and keeps the list as it was', async () => {
+    mockReview.mockRejectedValue(new Error('nope'))
+    const wrapper = await mountView()
+    await wrapper.find('[data-test="review"]').trigger('click')
+    await flushPromises()
+
+    expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error', detail: 'suspicion.failedToUpdate' }))
+    expect(mockGetEvents).toHaveBeenCalledTimes(1)
+  })
+
+  it('reopens from the details dialog and shows who reviewed it', async () => {
+    const wrapper = await mountView([
+      evt({ id: 9, reviewed: true, reviewedBy: 'mod1', reviewedAt: '2026-10-23 13:00:00', reviewNote: 'legit trade' }),
+    ])
+    await wrapper.find('[data-test="details"]').trigger('click')
+
+    const dialog = wrapper.find('[data-test="details-dialog"]')
+    expect(dialog.text()).toContain('mod1')
+    expect(dialog.find('.review-note').text()).toBe('legit trade')
+    expect(dialog.find('textarea').exists()).toBe(false)
+
+    const reopen = wrapper.findAll('.dialog button').find((b) => b.text() === 'suspicion.reopen')!
+    await reopen.trigger('click')
+    await flushPromises()
+    expect(mockReview).toHaveBeenCalledWith([9], false, undefined)
+  })
+
+  it('closes the details dialog without reviewing', async () => {
+    const wrapper = await mountView()
+    await wrapper.find('[data-test="details"]').trigger('click')
+    const close = wrapper.findAll('.dialog button').find((b) => b.text() === 'common.close')!
+    await close.trigger('click')
+
+    expect(wrapper.find('[data-test="details-dialog"]').exists()).toBe(false)
+    expect(mockReview).not.toHaveBeenCalled()
+  })
+
+  it('reports settings that fail to load or save', async () => {
+    mockGetSettings.mockRejectedValueOnce(new Error('down'))
+    const wrapper = await mountView()
+    await wrapper.find('[data-test="tab-settings"]').trigger('click')
+    await flushPromises()
+    expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ detail: 'suspicion.failedToLoadSettings' }))
+    expect(wrapper.find('[data-test="settings"]').exists()).toBe(false)
+
+    // Back to the log and in again retries the load.
+    mockGetSettings.mockResolvedValue(settingsFixture())
+    mockUpdateSettings.mockRejectedValue(new Error('locked'))
+    await wrapper.find('[data-test="tab-log"]').trigger('click')
+    await wrapper.find('[data-test="tab-settings"]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-test="save-settings"]').trigger('click')
+    await flushPromises()
+    expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ detail: 'suspicion.failedToSaveSettings' }))
+  })
+
   it('every settings label and hint the form uses exists in English', () => {
     const sections: Record<string, string[]> = {
       inventory: ['title', 'subtitle', 'scanIntervalSeconds', 'flagDevItems', 'flagHiddenItems', 'flagOverQuality',

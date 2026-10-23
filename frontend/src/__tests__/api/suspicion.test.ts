@@ -44,6 +44,11 @@ describe('Suspicion API', () => {
     await expect(getSuspicionEvents()).rejects.toThrow('db locked')
   })
 
+  it('names the code when the error carries no message', async () => {
+    mockGet.mockResolvedValue({ data: { code: 404 } })
+    await expect(getSuspicionSettings()).rejects.toThrow('Request failed (404)')
+  })
+
   it('posts review changes and returns the updated count', async () => {
     mockPost.mockResolvedValue({ data: { code: 200, data: { updated: 2 } } })
 
