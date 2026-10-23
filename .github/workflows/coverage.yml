@@ -1,14 +1,16 @@
 # Coverage uploads to Codecov on every push to main and every PR.
 #
-# Frontend coverage is the only one wired today — vitest produces an
-# lcov report from the existing `npm run test:coverage` (which is just
-# `vitest run --coverage`). Backend coverage would need coverlet on
-# top of dotnet test; not done here because the green-up commit that
-# fixed the test suite is fresh and we want a stable baseline before
-# turning on coverage gates.
+# Two uploads, one per Codecov flag:
+#   - frontend: vitest writes an lcov report (`vitest run --coverage`).
+#   - backend:  the C# suite runs with Microsoft's code-coverage
+#     collector. It ships inside Microsoft.NET.Test.Sdk, so there's no
+#     extra package, and it works on .NET Framework 4.8 as-is.
+#     src/KitsuneCommand.Tests/coverage.runsettings limits it to
+#     KitsuneCommand.dll + KitsuneCommand.Abstractions.dll and asks for
+#     Cobertura output. No coverage gates yet: this is the baseline.
 #
 # Tests are also run separately by tests.yml on the same triggers.
-# Both workflows exercise the same vitest run; the duplication is
+# Both workflows exercise the same test runs; the duplication is
 # intentional — tests.yml fails fast on a broken build (PR feedback
 # loop), coverage.yml has codecov-action's longer warmup. If/when
 # tests.yml gets retired, this is the workflow to fold its checks
@@ -69,6 +71,11 @@ jobs:
           # is frontend/coverage/lcov.info from the repo root.
           files: ./frontend/coverage/lcov.info
           flags: frontend
+          # Upload only the file named above. Without this the uploader
+          # also searches the repo for anything named like a coverage
+          # report, which picks up src/KitsuneCommand.Tests/coverage.runsettings
+          # and attaches it to this flag.
+          disable_search: true
           # Token-aware: present for private repos / forks that need
           # an explicit secret; ignored for public-repo tokenless
           # tier. Adding the line costs nothing and unblocks the
@@ -77,5 +84,43 @@ jobs:
           # Fail the workflow when coverage upload errors out so a
           # broken codecov badge doesn't sit green-on-paper while
           # actually surfacing stale data.
+          fail_ci_if_error: true
+          verbose: true
+
+  backend:
+    name: Backend (NUnit)
+    # Windows for the same reason as tests.yml's backend-tests: KC targets
+    # .NET Framework 4.8, which windows-latest ships.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run tests with coverage
+        shell: pwsh
+        # The run settings pick the format (Cobertura) and the modules to
+        # measure. The collector writes into coverage/<guid>/<machine>.cobertura.xml,
+        # so copy it to a fixed path for the upload, and fail loudly if it's missing.
+        run: |
+          dotnet test src/KitsuneCommand.Tests/KitsuneCommand.Tests.csproj `
+            --configuration Release `
+            --collect "Code Coverage" `
+            --settings src/KitsuneCommand.Tests/coverage.runsettings `
+            --results-directory coverage
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $report = Get-ChildItem coverage -Recurse -Filter *.cobertura.xml | Select-Object -First 1
+          if (-not $report) { Write-Error "No Cobertura report was produced."; exit 1 }
+          Copy-Item $report.FullName coverage/backend.cobertura.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./coverage/backend.cobertura.xml
+          flags: backend
+          # Same as the frontend upload: only the file above. The search
+          # otherwise also sends coverage.runsettings and the uploader's
+          # own codecov.exe.SHA256SUM.sig.
+          disable_search: true
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
           verbose: true
