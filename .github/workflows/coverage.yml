@@ -71,6 +71,11 @@ jobs:
           # is frontend/coverage/lcov.info from the repo root.
           files: ./frontend/coverage/lcov.info
           flags: frontend
+          # Upload only the file named above. Without this the uploader
+          # also searches the repo for anything named like a coverage
+          # report, which picks up src/KitsuneCommand.Tests/coverage.runsettings
+          # and attaches it to this flag.
+          disable_search: true
           # Token-aware: present for private repos / forks that need
           # an explicit secret; ignored for public-repo tokenless
           # tier. Adding the line costs nothing and unblocks the
@@ -112,6 +117,10 @@ jobs:
         with:
           files: ./coverage/backend.cobertura.xml
           flags: backend
+          # Same as the frontend upload: only the file above. The search
+          # otherwise also sends coverage.runsettings and the uploader's
+          # own codecov.exe.SHA256SUM.sig.
+          disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
           verbose: true
