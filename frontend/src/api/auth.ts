@@ -11,7 +11,7 @@ export interface TokenResponse {
 }
 
 export async function login(username: string, password: string): Promise<TokenResponse> {
-  // Login hits the standalone listener on port 8890 (OWIN/Mono compat). When the page
+  // Login hits the standalone panel listener (WebPanelPort, default 8890; OWIN/Mono compat). When the page
   // is served from that listener directly (dev: http://host:8890/), a relative path
   // naturally targets the same host+port. When the page is served from a reverse proxy
   // (prod: https://panel.example.com → CF Tunnel → http://localhost:8890), same-origin

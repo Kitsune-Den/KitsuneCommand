@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Web.Http;
 using KitsuneCommand.Core;
+using KitsuneCommand.GameIntegration;
 using KitsuneCommand.Services;
 using KitsuneCommand.Web.Auth;
 using KitsuneCommand.Web.Models;
@@ -36,19 +37,19 @@ namespace KitsuneCommand.Web.Controllers
         {
             var world = GameManager.Instance?.World;
             var gameManager = GameManager.Instance;
-            var serverVisibility = GamePrefs.GetInt(EnumGamePrefs.ServerVisibility);
+            var serverVisibility = GamePrefs.GetInt(GameCompat.Pref(nameof(EnumGamePrefs.ServerVisibility)));
 
             var info = new
             {
-                serverName = GamePrefs.GetString(EnumGamePrefs.ServerName),
-                serverPort = GamePrefs.GetInt(EnumGamePrefs.ServerPort),
-                maxPlayers = GamePrefs.GetInt(EnumGamePrefs.ServerMaxPlayerCount),
-                gameWorld = GamePrefs.GetString(EnumGamePrefs.GameWorld),
-                gameName = GamePrefs.GetString(EnumGamePrefs.GameName),
-                gameMode = GamePrefs.GetString(EnumGamePrefs.GameMode),
-                difficulty = GamePrefs.GetInt(EnumGamePrefs.GameDifficulty),
-                dayNightLength = GamePrefs.GetInt(EnumGamePrefs.DayNightLength),
-                bloodMoonFrequency = GamePrefs.GetInt(EnumGamePrefs.BloodMoonFrequency),
+                serverName = GamePrefs.GetString(GameCompat.Pref(nameof(EnumGamePrefs.ServerName))),
+                serverPort = GamePrefs.GetInt(GameCompat.Pref(nameof(EnumGamePrefs.ServerPort))),
+                maxPlayers = GamePrefs.GetInt(GameCompat.Pref(nameof(EnumGamePrefs.ServerMaxPlayerCount))),
+                gameWorld = GamePrefs.GetString(GameCompat.Pref(nameof(EnumGamePrefs.GameWorld))),
+                gameName = GamePrefs.GetString(GameCompat.Pref(nameof(EnumGamePrefs.GameName))),
+                gameMode = GamePrefs.GetString(GameCompat.Pref(nameof(EnumGamePrefs.GameMode))),
+                difficulty = GamePrefs.GetInt(GameCompat.Pref(nameof(EnumGamePrefs.GameDifficulty))),
+                dayNightLength = GamePrefs.GetInt(GameCompat.Pref(nameof(EnumGamePrefs.DayNightLength))),
+                bloodMoonFrequency = GamePrefs.GetInt(GameCompat.Pref(nameof(EnumGamePrefs.BloodMoonFrequency))),
                 currentDay = world != null ? GameUtils.WorldTimeToDays(world.worldTime) : 0,
                 currentTime = world != null ? GameUtils.WorldTimeToString(world.worldTime) : "N/A",
                 onlinePlayers = gameManager?.World?.Players?.Count ?? 0,

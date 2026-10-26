@@ -70,8 +70,8 @@
 
   <!-- Graphics (map tile rendering) -->
   <ItemGroup>
-    <PackageReference Include="SkiaSharp" Version="2.80.4" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.80.4" />
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.9" />
   </ItemGroup>
 
   <!-- WebSocket -->
@@ -180,8 +180,10 @@
       Without these files on disk the preload silently no-ops; the first call
       into Skia (MapTileRenderer) then throws
       `Unable to load library 'libSkiaSharp'` from SkiaSharp.SKData's static
-      constructor. Sourced from the SkiaSharp 2.80.4 + SkiaSharp.NativeAssets.
-      Linux.NoDependencies 2.80.4 NuGet packages.
+      constructor. Sourced from the SkiaSharp.NativeAssets.Win32 2.88.9 and
+      SkiaSharp.NativeAssets.Linux.NoDependencies 2.88.9 NuGet packages
+      (runtimes/{win,linux}-x64/native/). Refresh both whenever the SkiaSharp
+      PackageReference version changes: the managed and native halves must match.
     -->
     <None Include="x64\libSkiaSharp.dll" Link="x64\libSkiaSharp.dll" CopyToOutputDirectory="PreserveNewest" />
     <None Include="x64\libSkiaSharp.so" Link="x64\libSkiaSharp.so" CopyToOutputDirectory="PreserveNewest" />

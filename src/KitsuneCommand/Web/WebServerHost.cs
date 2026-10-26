@@ -16,6 +16,7 @@ namespace KitsuneCommand.Web
         private readonly IContainer _container;
         private IDisposable _webApp;
         private HttpListener _loginListener;
+        private string _proxyBaseUrl;
         private Thread _loginThread;
         private volatile bool _running;
 
@@ -39,10 +40,15 @@ namespace KitsuneCommand.Web
                 throw;
             }
 
-            // Start a standalone login listener on port+1
+            // Start the standalone frontend + login listener on WebPanelPort
             try
             {
-                var loginPort = 8890;
+                _proxyBaseUrl = WebPorts.ProxyBaseUrl(_settings.WebUrl);
+                var loginPort = _settings.WebPanelPort;
+                var apiPort = WebPorts.PortFromUrl(_settings.WebUrl);
+                if (loginPort == apiPort || loginPort == _settings.WebSocketPort)
+                    Log.Warning($"[KitsuneCommand] WebPanelPort {loginPort} is the same as the API port ({apiPort}) or WebSocketPort ({_settings.WebSocketPort}); give each its own port.");
+
                 _loginListener = new HttpListener();
                 _loginListener.Prefixes.Add($"http://*:{loginPort}/");
                 _loginListener.Start();
@@ -105,7 +111,7 @@ namespace KitsuneCommand.Web
                 if (path.StartsWith("/api/auth/steam/") && TryHandleSteam(ctx, path.TrimEnd('/')))
                     return;
 
-                // Proxy API calls to port 8888
+                // Proxy API calls to the OWIN API on WebUrl's port
                 if (path.StartsWith("/api/") || path == "/token")
                 {
                     ProxyToOwin(ctx);
@@ -148,7 +154,10 @@ namespace KitsuneCommand.Web
             var ext = Path.GetExtension(filePath).ToLowerInvariant();
             ctx.Response.ContentType = GetMimeType(ext);
 
-            var bytes = File.ReadAllBytes(filePath);
+            var bytes = Path.GetFileName(filePath).Equals("index.html", StringComparison.OrdinalIgnoreCase)
+                ? System.Text.Encoding.UTF8.GetBytes(WebPorts.InjectPortMeta(
+                    File.ReadAllText(filePath), _settings.WebPanelPort, _settings.WebSocketPort))
+                : File.ReadAllBytes(filePath);
             ctx.Response.ContentLength64 = bytes.Length;
             ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
             ctx.Response.Close();
@@ -158,7 +167,7 @@ namespace KitsuneCommand.Web
         {
             try
             {
-                var targetUrl = $"http://127.0.0.1:8888{ctx.Request.Url.PathAndQuery}";
+                var targetUrl = _proxyBaseUrl + ctx.Request.Url.PathAndQuery;
                 var webReq = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(targetUrl);
                 webReq.Method = ctx.Request.HttpMethod;
                 webReq.ContentType = ctx.Request.ContentType;

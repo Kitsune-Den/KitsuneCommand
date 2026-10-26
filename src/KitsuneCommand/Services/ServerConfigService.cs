@@ -24,8 +24,7 @@ namespace KitsuneCommand.Services
             if (_configPath != null && File.Exists(_configPath))
                 return _configPath;
 
-            // Derive game root from mod path: Mods/KitsuneCommand -> ../../
-            var gameDir = Path.GetFullPath(Path.Combine(ModEntry.ModPath, "..", ".."));
+            var gameDir = GameIntegration.GamePaths.InstallDir;
 
             // The file the running server actually read. Without this, a server
             // launched with -configfile=myserver.xml got serverconfig.xml edited
@@ -197,7 +196,7 @@ namespace KitsuneCommand.Services
         public List<string> GetAvailableWorlds()
         {
             var worlds = new List<string> { "Navezgane" };
-            var gameDir = Path.GetFullPath(Path.Combine(ModEntry.ModPath, "..", ".."));
+            var gameDir = GameIntegration.GamePaths.InstallDir;
 
             try
             {

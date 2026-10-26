@@ -384,6 +384,8 @@ namespace KitsuneCommand.Services
         /// ships without BlockDamagePlayer/LootAbundance), so those two moved in here.
         /// (3.3's new SandboxOverridesFromXml is a modlet XML hook for presets/overrides,
         /// not a serverconfig path — it doesn't affect this set.)
+        /// 3.4 (V 3.4.0 b6 experimental, 2026-10) — re-derived: same 27-key name intersection,
+        /// same two overwrite links, and the serverconfig.xml template is unchanged from 3.3.
         ///
         /// Note the non-obvious SURVIVORS that stay in serverconfig and are deliberately NOT
         /// listed: GameDifficulty, EnemyDifficulty, MaxSpawnedZombies, MaxSpawnedAnimals,

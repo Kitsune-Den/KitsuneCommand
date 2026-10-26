@@ -5,9 +5,8 @@ CONFIGURATION="${1:-Release}"
 OUTPUT_DIR="${2:-./dist}"
 MOD_NAME="KitsuneCommand"
 MOD_DIR="$OUTPUT_DIR/$MOD_NAME"
-NUGET_CACHE="$HOME/.nuget/packages"
 
-echo "=== KitsuneCommand Build Script (Linux) ==="
+echo "=== KitsuneCommand Build Script ==="
 
 # Clean
 if [ -d "$OUTPUT_DIR" ]; then
@@ -45,36 +44,26 @@ cp "$SRC_DIR/System.Data.SQLite.dll.config" "$MOD_DIR/"
 cp "$SRC_DIR/SkiaSharp.dll.config" "$MOD_DIR/"
 cp "$SRC_DIR/ModInfo.xml" "$MOD_DIR/"
 
-# Linux native libraries
+# Native libraries
+# Ship the committed natives for BOTH platforms, the same set tools/build.ps1
+# ships by default, so one zip runs on Windows and Linux. The mod folder is
+# often built on Linux and dropped onto a Windows server (and vice versa);
+# a dist missing libSkiaSharp.dll is what crashed MapTileRenderer on Windows.
+#   libSkiaSharp.dll / libSkiaSharp.so: map renderer + item icons
+#   sqlite3.dll: Windows only. On Linux, System.Data.SQLite is built with
+#     SQLITE_STANDARD and Mono maps "sqlite3" to the system libsqlite3.so.0.
 echo ""
-echo "  [Linux native libraries]"
-
-# libSkiaSharp.so
-SKIA_LINUX=""
-for path in \
-    "$NUGET_CACHE/skiasharp.nativeassets.linux.nodependencies/2.80.4/runtimes/linux-x64/native/libSkiaSharp.so" \
-    "$NUGET_CACHE/skiasharp.nativeassets.linux.nodependencies/2.80.2/runtimes/linux-x64/native/libSkiaSharp.so"; do
-    if [ -f "$path" ]; then
-        SKIA_LINUX="$path"
-        break
+echo "  [Native libraries]"
+mkdir -p "$MOD_DIR/x64"
+for native in libSkiaSharp.dll libSkiaSharp.so sqlite3.dll; do
+    if [ ! -f "$SRC_DIR/x64/$native" ]; then
+        echo "    ERROR: $SRC_DIR/x64/$native is missing. It's committed to the repo;"
+        echo "           restore it (git checkout -- $SRC_DIR/x64) and rebuild."
+        exit 1
     fi
+    cp "$SRC_DIR/x64/$native" "$MOD_DIR/x64/"
+    echo "    Copied $native to x64/"
 done
-
-if [ -n "$SKIA_LINUX" ]; then
-    # Ship libSkiaSharp.so in the same x64/ folder as the Windows natives.
-    # Different extensions, same folder. Matches SkiaSharp's default path lookup
-    # on BOTH platforms so we don't have to fight its LibraryLoader.
-    mkdir -p "$MOD_DIR/x64"
-    cp "$SKIA_LINUX" "$MOD_DIR/x64/"
-    echo "    Copied libSkiaSharp.so to x64/"
-else
-    echo "    WARNING: libSkiaSharp.so not found. Run 'dotnet restore' first."
-fi
-
-# SQLite: no native library needed for Linux!
-# System.Data.SQLite is built with SQLITE_STANDARD, so it P/Invokes "sqlite3".
-# Mono's global config maps sqlite3 -> libsqlite3.so.0 (system package).
-echo "    SQLite: uses system libsqlite3 (no native library to ship)"
 
 # System.ComponentModel.DataAnnotations (required by System.Web.Http, not in Unity/Mono)
 # Try Mono GAC first, then .NET reference assemblies
