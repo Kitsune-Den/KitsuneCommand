@@ -12,6 +12,17 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.11.1] - 2026-10-26
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.11.1)
+> · A fix for every 3.3+ server. The dashboard has been calling these
+> servers "Hidden" whatever their visibility, and logging
+> `GetInt: InvalidCastException ServerEnabled` on each refresh. KC now looks
+> game settings up by name, so a game update that reorders them can't mix
+> them up again, and the compatibility check catches this kind of shift
+> before a release. No schema changes, nothing to migrate, still V2.5
+> through V3.4.
+
 ### Fixed
 
 - **Dashboard showed every 3.3+ server as "Hidden", and logged
@@ -857,7 +868,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.0...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.1...HEAD
+[2.11.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.9.0...v2.10.0
