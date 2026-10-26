@@ -60,9 +60,7 @@ namespace KitsuneCommand.Features
 
                 foreach (var msg in undelivered)
                 {
-                    var reply = $"[Ticket] {msg.SenderName ?? "Admin"}: {msg.Message}";
-                    var safeReply = reply.Replace("\"", "'");
-                    SdtdConsole.Instance.ExecuteSync($"pm {e.EntityId} \"{safeReply}\"", null);
+                    GameIntegration.GameChat.Whisper(e.EntityId, $"[Ticket] {msg.SenderName ?? "Admin"}: {msg.Message}");
                 }
 
                 _ticketRepo.MarkMessagesDelivered(undelivered.Select(m => m.Id));

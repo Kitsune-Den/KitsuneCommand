@@ -188,8 +188,8 @@ namespace KitsuneCommand.Features
 
             if (!string.IsNullOrWhiteSpace(Settings.FirstLoginMessage) && !string.IsNullOrEmpty(e.PlayerName))
             {
-                var msg = Settings.FirstLoginMessage.Replace("{player}", e.PlayerName).Replace("\"", "'");
-                ExecuteConsoleCommand($"pm \"{e.PlayerName}\" \"{msg}\"");
+                var msg = Settings.FirstLoginMessage.Replace("{player}", e.PlayerName);
+                GameIntegration.GameChat.Whisper(e.EntityId, msg);
             }
 
             Log.Out($"[KitsuneCommand] VipPerks: delivered first-login pack '{template.Name}' "

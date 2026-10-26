@@ -138,11 +138,11 @@ namespace KitsuneCommand.Web.Controllers
                 {
                     try
                     {
-                        var reply = $"[Ticket #{id}] {adminName}: {request.Message}";
-                        var safeReply = reply.Replace("\"", "'");
-                        SdtdConsole.Instance.ExecuteSync($"pm {onlinePlayer.EntityId} \"{safeReply}\"", null);
-                        _ticketRepo.MarkMessagesDelivered(new[] { msgId });
-                        message.Delivered = 1;
+                        if (GameIntegration.GameChat.Whisper(onlinePlayer.EntityId, $"[Ticket #{id}] {adminName}: {request.Message}"))
+                        {
+                            _ticketRepo.MarkMessagesDelivered(new[] { msgId });
+                            message.Delivered = 1;
+                        }
                     }
                     catch (Exception ex)
                     {

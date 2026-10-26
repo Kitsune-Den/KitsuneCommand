@@ -185,6 +185,9 @@ namespace KitsuneCommand.Web.Controllers
             var items = _goodsRepo.GetItemsForGoods(id).ToList();
             var commands = _goodsRepo.GetCommandsForGoods(id).ToList();
 
+            var itemError = GameIntegration.GameItems.UnknownItemsError(items.Select(i => i.ItemName));
+            if (itemError != null) return BadRequest(itemError);
+
             // 2. Find buyer's entity ID (they must be online)
             var onlinePlayers = _playerManager.GetAllOnline();
             var buyer = onlinePlayers.FirstOrDefault(p =>
