@@ -10,5 +10,7 @@ namespace KitsuneCommand.Data.Entities
         public string Role { get; set; } = "admin";
         public string LastLoginAt { get; set; }
         public bool IsActive { get; set; } = true;
+        /// <summary>Linked SteamID64 for "Sign in through Steam"; null when not linked.</summary>
+        public string SteamId { get; set; }
     }
 }

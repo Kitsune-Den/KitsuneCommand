@@ -106,6 +106,11 @@ namespace KitsuneCommand.Web
                     return;
                 }
 
+                // Sign in through Steam. Handled here rather than in OWIN because these
+                // routes redirect and set a cookie, and ProxyToOwin forwards neither.
+                if (path.StartsWith("/api/auth/steam/") && TryHandleSteam(ctx, path.TrimEnd('/')))
+                    return;
+
                 // Proxy API calls to the OWIN API on WebUrl's port
                 if (path.StartsWith("/api/") || path == "/token")
                 {
@@ -274,22 +279,7 @@ namespace KitsuneCommand.Web
                 }
 
                 userRepo.UpdateLastLogin(username);
-
-                var expiresIn = TimeSpan.FromMinutes(_settings.AccessTokenExpireMinutes);
-                var token = TokenValidator.CreateToken(
-                    account.Username, account.Role,
-                    account.Id.ToString(), account.DisplayName ?? account.Username,
-                    expiresIn);
-
-                WriteJson(ctx, 200, new
-                {
-                    access_token = token,
-                    token_type = "bearer",
-                    expires_in = (int)expiresIn.TotalSeconds,
-                    username = account.Username,
-                    role = account.Role,
-                    display_name = account.DisplayName ?? account.Username
-                });
+                WriteTokenResponse(ctx, account);
             }
             catch (Exception ex)
             {
@@ -297,6 +287,147 @@ namespace KitsuneCommand.Web
                 try { WriteJson(ctx, 500, new { error = "server_error", error_description = ex.Message }); }
                 catch { }
             }
+        }
+
+        private void WriteTokenResponse(HttpListenerContext ctx, Data.Entities.UserAccount account)
+        {
+            var expiresIn = TimeSpan.FromMinutes(_settings.AccessTokenExpireMinutes);
+            var token = TokenValidator.CreateToken(
+                account.Username, account.Role,
+                account.Id.ToString(), account.DisplayName ?? account.Username,
+                expiresIn);
+
+            WriteJson(ctx, 200, new
+            {
+                access_token = token,
+                token_type = "bearer",
+                expires_in = (int)expiresIn.TotalSeconds,
+                username = account.Username,
+                role = account.Role,
+                display_name = account.DisplayName ?? account.Username
+            });
+        }
+
+        /// <summary>
+        /// The SteamLoginService routes that can't go through OWIN. Returns false for any
+        /// other /api/auth/steam/* path (status, account, unlink, settings) so it falls
+        /// through to the OWIN proxy.
+        /// </summary>
+        private bool TryHandleSteam(HttpListenerContext ctx, string path)
+        {
+            var method = ctx.Request.HttpMethod;
+            if (path == "/api/auth/steam/login" && method == "GET")
+            {
+                HandleSteamStart(ctx, steam => steam.BeginLogin(), redirect: true);
+                return true;
+            }
+            if (path == "/api/auth/steam/link" && method == "POST")
+            {
+                HandleSteamLinkStart(ctx);
+                return true;
+            }
+            if (path == "/api/auth/steam/callback" && method == "GET")
+            {
+                HandleSteamCallback(ctx);
+                return true;
+            }
+            if (path == "/api/auth/steam/exchange" && method == "POST")
+            {
+                HandleSteamExchange(ctx);
+                return true;
+            }
+            return false;
+        }
+
+        private void HandleSteamStart(HttpListenerContext ctx, Func<SteamLoginService, SteamAuthStart> begin, bool redirect)
+        {
+            ctx.Response.Headers["Cache-Control"] = "no-store";
+            var steam = _container.Resolve<SteamLoginService>();
+            var start = begin(steam);
+
+            if (start == null)
+            {
+                if (redirect)
+                    Redirect(ctx, (steam.GetSettings().PublicUrl ?? "") + "/#/login?steam_error=disabled");
+                else
+                    WriteJson(ctx, 400, new { error = "steam_disabled", error_description = "Steam sign-in is not enabled." });
+                return;
+            }
+
+            // Pins the round trip to this browser; the callback checks it. No Path, so it
+            // defaults to /api/auth/steam as the browser sees it, sub-path proxies included.
+            ctx.Response.AppendHeader("Set-Cookie",
+                $"{SteamLoginService.StateCookieName}={start.State}; Max-Age={(int)SteamLoginService.StateLifetime.TotalSeconds}; HttpOnly; SameSite=Lax"
+                + (start.SecureCookie ? "; Secure" : ""));
+
+            if (redirect)
+                Redirect(ctx, start.RedirectUrl);
+            else
+                WriteJson(ctx, 200, new { url = start.RedirectUrl });
+        }
+
+        private void HandleSteamLinkStart(HttpListenerContext ctx)
+        {
+            ctx.Response.ContentType = "application/json";
+            var header = ctx.Request.Headers["Authorization"] ?? "";
+            var token = header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header.Substring(7).Trim() : null;
+
+            var account = TokenValidator.ValidateToken(token, out var username, out _)
+                ? _container.Resolve<Data.Repositories.IUserAccountRepository>().GetByUsername(username)
+                : null;
+            if (account == null)
+            {
+                WriteJson(ctx, 401, new { error = "unauthorized", error_description = "Sign in first." });
+                return;
+            }
+
+            HandleSteamStart(ctx, steam => steam.BeginLink(account.Id), redirect: false);
+        }
+
+        private void HandleSteamCallback(HttpListenerContext ctx)
+        {
+            ctx.Response.Headers["Cache-Control"] = "no-store";
+            var steam = _container.Resolve<SteamLoginService>();
+
+            var rawUrl = ctx.Request.RawUrl ?? "";
+            var q = rawUrl.IndexOf('?');
+            var query = SteamLoginService.ParseQuery(q < 0 ? "" : rawUrl.Substring(q + 1));
+            var cookie = ctx.Request.Cookies[SteamLoginService.StateCookieName]?.Value;
+
+            var next = steam.HandleCallback(query, cookie);
+
+            ctx.Response.AppendHeader("Set-Cookie", $"{SteamLoginService.StateCookieName}=; Max-Age=0; HttpOnly; SameSite=Lax");
+            Redirect(ctx, next);
+        }
+
+        private void HandleSteamExchange(HttpListenerContext ctx)
+        {
+            ctx.Response.ContentType = "application/json";
+            ctx.Response.Headers["Cache-Control"] = "no-store";
+
+            string body;
+            using (var reader = new System.IO.StreamReader(ctx.Request.InputStream))
+                body = reader.ReadToEnd();
+
+            string code = null;
+            try { code = JsonConvert.DeserializeObject<SteamExchangePayload>(body)?.code; }
+            catch (JsonException) { }
+
+            var account = _container.Resolve<SteamLoginService>().RedeemCode(code);
+            if (account == null)
+            {
+                WriteJson(ctx, 400, new { error = "invalid_grant", error_description = "Steam sign-in expired. Try again." });
+                return;
+            }
+
+            WriteTokenResponse(ctx, account);
+        }
+
+        private static void Redirect(HttpListenerContext ctx, string url)
+        {
+            ctx.Response.StatusCode = 302;
+            ctx.Response.RedirectLocation = url;
+            ctx.Response.Close();
         }
 
         private static string GetMimeType(string ext)
@@ -322,6 +453,11 @@ namespace KitsuneCommand.Web
             var json = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(data));
             ctx.Response.OutputStream.Write(json, 0, json.Length);
             ctx.Response.Close();
+        }
+
+        private class SteamExchangePayload
+        {
+            public string code { get; set; }
         }
 
         private class LoginPayload
