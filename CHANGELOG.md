@@ -12,6 +12,18 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.11.0] - 2026-10-26
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.11.0)
+> · 7 Days to Die 3.4 support and a security fix. KC runs on 3.4 as is,
+> and one build still covers V2.5 through V3.4. SkiaSharp moves to 2.88.9
+> for the libwebp heap overflow (CVE-2023-4863), which the map renderer and
+> item icons could reach through a crafted image in a mod. The web panel's
+> ports can finally be changed: `WebPanelPort` works and API calls follow
+> `WebUrl`, so two servers on one host can both run KC. Live updates also
+> connect behind a reverse proxy on a non-standard port. No schema changes,
+> nothing to migrate, and existing installs keep ports 8888/8889/8890.
+
 ### Changed
 
 - **Checked against 7 Days to Die 3.4 (V 3.4.0 b6, experimental).** No code
@@ -816,7 +828,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.0...HEAD
+[2.11.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.8.2...v2.9.0
