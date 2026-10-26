@@ -40,6 +40,15 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ### Fixed
 
+- **Map and item icons work when KC is in the user-data `Mods` folder.**
+  7D2D also loads mods from the user-data folder (for example
+  `%APPDATA%\7DaysToDie\Mods`), but KC assumed the game was two folders
+  above its own. Installed there, the map said the world wasn't found and
+  item icons were missing. The config editor's world list only showed
+  Navezgane, and the editor and server-update feature looked for
+  `serverconfig.xml` and `kitsune-update.conf` in the wrong place. KC now asks
+  the game for its install folder. Installs in the game's own `Mods` folder
+  behave exactly as before.
 - **`tools/build.sh` ships every native library.** It only shipped
   `libSkiaSharp.so`, pulled from the NuGet cache, and only warned when it
   couldn't find it. A mod folder built with it and installed on Windows had
