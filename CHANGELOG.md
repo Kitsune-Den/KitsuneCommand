@@ -21,8 +21,10 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 > item icons could reach through a crafted image in a mod. The web panel's
 > ports can finally be changed: `WebPanelPort` works and API calls follow
 > `WebUrl`, so two servers on one host can both run KC. Live updates also
-> connect behind a reverse proxy on a non-standard port. No schema changes,
-> nothing to migrate, and existing installs keep ports 8888/8889/8890.
+> connect behind a reverse proxy on a non-standard port, and the map and
+> item icons work when KC is installed in the user-data `Mods` folder. No
+> schema changes, nothing to migrate, and existing installs keep ports
+> 8888/8889/8890.
 
 ### Changed
 
