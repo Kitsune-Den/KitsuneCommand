@@ -271,7 +271,7 @@ namespace KitsuneCommand.Services
         {
             try
             {
-                var worldName = GamePrefs.GetString(EnumGamePrefs.GameWorld);
+                var worldName = GamePrefs.GetString(GameIntegration.GameCompat.Pref(nameof(EnumGamePrefs.GameWorld)));
                 if (string.IsNullOrEmpty(worldName))
                     return null;
 

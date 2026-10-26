@@ -62,7 +62,7 @@ namespace KitsuneCommand.Features
         {
             if (!Settings.Enabled) return;
 
-            var bmFrequency = GameStats.GetInt(EnumGameStats.BloodMoonDay);
+            var bmFrequency = GameStats.GetInt(GameIntegration.GameCompat.Stat(nameof(EnumGameStats.BloodMoonDay)));
             if (bmFrequency <= 0) return;
 
             // Calculate the next blood moon day
