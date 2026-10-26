@@ -27,6 +27,17 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   names. Not covered: anything that needs a connected player (inventory,
   Give Item, chat commands).
 
+### Security
+
+- **SkiaSharp 2.80.4 → 2.88.9** for CVE-2023-4863
+  ([GHSA-j7hp-h8jx-5ppr](https://github.com/advisories/GHSA-j7hp-h8jx-5ppr)),
+  the libwebp heap overflow. SkiaSharp fixed it in 2.88.6. KC decodes images
+  from the game folder and installed mods (map tiles, item icons), and
+  SkiaSharp sniffs the format itself, so a mod shipping a crafted WebP could
+  reach it. The committed Windows and Linux `libSkiaSharp` natives are
+  refreshed to match. The Linux library needs the same glibc (2.17+) and
+  system libraries as before, so nothing changes on the host.
+
 ### Fixed
 
 - **The web panel's ports can actually be changed.** The frontend/login
