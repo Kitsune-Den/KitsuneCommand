@@ -133,45 +133,54 @@ namespace KitsuneCommand.Core
             ModEntry.IsGameStartDone = true;
             Log.Out("[KitsuneCommand] Game start complete. All systems active.");
 
+            // Each step runs on its own: one that throws (an overhaul's items, icons or
+            // map data KC doesn't expect) used to abort the rest, and chat commands,
+            // wired up last, then silently did nothing.
+
             // Initialize player tracking
-            var playerManager = _container.Resolve<LivePlayerManager>();
-            playerManager.Initialize();
+            InitStep("player tracking", () => _container.Resolve<LivePlayerManager>().Initialize());
 
             // Initialize map tile renderer
-            var mapRenderer = _container.Resolve<MapTileRenderer>();
-            mapRenderer.Initialize();
+            InitStep("map renderer", () => _container.Resolve<MapTileRenderer>().Initialize());
 
             // Initialize chat persistence
-            var chatPersistence = _container.Resolve<ChatPersistenceService>();
-            chatPersistence.Initialize();
+            InitStep("chat persistence", () => _container.Resolve<ChatPersistenceService>().Initialize());
 
             // Initialize feature modules
-            var featureManager = _container.Resolve<FeatureManager>();
-            featureManager.InitializeAll();
+            InitStep("features", () => _container.Resolve<FeatureManager>().InitializeAll());
 
             // Initialize game item catalog (reads all ItemClass entries)
-            var itemCatalog = _container.Resolve<GameItemCatalog>();
-            itemCatalog.Initialize();
+            InitStep("item catalog", () => _container.Resolve<GameItemCatalog>().Initialize());
 
             // Initialize item icon service (serves icon PNGs from Data/ItemIcons)
-            var iconService = _container.Resolve<ItemIconService>();
-            iconService.Initialize();
+            InitStep("item icons", () => _container.Resolve<ItemIconService>().Initialize());
 
             // Initialize Steam/EOS registration tracker (subscribes to log events)
-            var steamTracker = _container.Resolve<SteamRegistrationTracker>();
-            steamTracker.Initialize();
+            InitStep("Steam/EOS tracker", () => _container.Resolve<SteamRegistrationTracker>().Initialize());
 
             // Initialize backup service (loads settings and starts scheduler if enabled)
-            var backupService = _container.Resolve<BackupService>();
-            backupService.Initialize();
+            InitStep("backups", () => _container.Resolve<BackupService>().Initialize());
 
             // Resolve chat command feature for direct command dispatch
-            _chatCommandFeature = _container.Resolve<ChatCommandFeature>();
+            InitStep("chat commands", () => _chatCommandFeature = _container.Resolve<ChatCommandFeature>());
 
             // Resolve player metadata repo for chat name colors
-            _metadataRepo = _container.Resolve<IPlayerMetadataRepository>();
+            InitStep("chat name colors", () => _metadataRepo = _container.Resolve<IPlayerMetadataRepository>());
 
             _eventBus.Publish(new GameStartDoneEvent());
+        }
+
+        private static void InitStep(string name, Action init)
+        {
+            try
+            {
+                init();
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[KitsuneCommand] Startup step '{name}' failed; the rest of KC keeps running: {ex.Message}");
+                Log.Exception(ex);
+            }
         }
 
         private void OnGameShutdown(ref ModEvents.SGameShutdownData _data)

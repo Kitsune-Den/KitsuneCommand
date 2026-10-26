@@ -366,8 +366,8 @@ namespace KitsuneCommand.Core
                     var fullDisplayName = GameCompat.Localize(itemName);
                     try
                     {
-                        SdtdConsole.Instance.ExecuteSync(
-                            $"pm \"{ep.EntityName}\" \"[FF6600]An admin tried to give you {count}x {fullDisplayName}, but your inventory is full![-]\"", null);
+                        GameChat.Whisper(entityId,
+                            $"[FF6600]An admin tried to give you {count}x {fullDisplayName}, but your inventory is full![-]");
                     }
                     catch { }
 
@@ -391,7 +391,7 @@ namespace KitsuneCommand.Core
                 try
                 {
                     var msg = $"An admin sent you {count}x {displayName} — check your feet!";
-                    SdtdConsole.Instance.ExecuteSync($"pm \"{ep.EntityName}\" \"[00FF00]{msg}[-]\"", null);
+                    GameChat.Whisper(entityId, $"[00FF00]{msg}[-]");
                 }
                 catch { /* Non-critical */ }
 

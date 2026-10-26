@@ -42,7 +42,7 @@ namespace KitsuneCommand.Features
 
         protected override void OnEnable()
         {
-            var serverDir = Path.GetFullPath(Path.Combine(ModEntry.ModPath, "..", ".."));
+            var serverDir = GameIntegration.GamePaths.InstallDir;
             _confPath = Path.Combine(serverDir, "kitsune-update.conf");
             _serverConfigBakPath = Path.Combine(serverDir, "serverconfig.xml.bak");
 

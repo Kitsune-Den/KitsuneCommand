@@ -21,6 +21,11 @@ namespace KitsuneCommand.GameIntegration
     ///           ItemStack.itemValue/count and ItemValue.type/Quality/UseTimes
     ///           became properties. ItemClass gained MaxCount (stack size after
     ///           the server's stack multiplier) and a static MaxQualityTier.
+    ///   - V3.3: EnumGamePrefs grew from 286 to 317 members, so every member from
+    ///           #168 on moved. KC's IL holds the V2.5 number, not the name, so
+    ///           GamePrefs.GetInt(EnumGamePrefs.ServerVisibility) read ServerEnabled
+    ///           (a bool) on 3.3+. Nothing fails to bind; it reads the wrong pref.
+    ///           Name game prefs and stats through Pref/Stat below.
     ///
     /// Every accessor here is bound once, by name, to whatever the running game
     /// has, and compiled to a delegate so the hot paths (block changes) don't pay
@@ -76,6 +81,27 @@ namespace KitsuneCommand.GameIntegration
 
         /// <summary>ItemClass.MaxQualityTier on builds that have it; 0 where it doesn't exist or isn't set yet.</summary>
         public static int GetMaxQualityTier() => _maxQualityTier.Value();
+
+        /// <summary>
+        /// A game pref as the running game numbers it. Pass the name with nameof
+        /// (<c>Pref(nameof(EnumGamePrefs.ServerVisibility))</c>) so it's still
+        /// compiler-checked; writing <c>EnumGamePrefs.X</c> directly ships V2.5's
+        /// number, which names a different pref on later builds.
+        /// </summary>
+        public static EnumGamePrefs Pref(string name) => ByName<EnumGamePrefs>(name);
+
+        /// <summary>A game stat as the running game numbers it. See <see cref="Pref"/>.</summary>
+        public static EnumGameStats Stat(string name) => ByName<EnumGameStats>(name);
+
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Type, string), object> _enumByName =
+            new System.Collections.Concurrent.ConcurrentDictionary<(Type, string), object>();
+
+        // typeof(T) is the running game's enum, so Enum.Parse returns its number for the name.
+        private static T ByName<T>(string name) where T : struct =>
+            (T)_enumByName.GetOrAdd((typeof(T), name), key =>
+                Enum.IsDefined(key.Item1, key.Item2)
+                    ? Enum.Parse(key.Item1, key.Item2)
+                    : throw new MissingMemberException(key.Item1.Name, key.Item2));
 
         // --- binders ---
 

@@ -219,6 +219,9 @@ namespace KitsuneCommand.Web.Controllers
             var items = _giftRepo.GetItemsForGift(id).ToList();
             var commands = _giftRepo.GetCommandsForGift(id).ToList();
 
+            var itemError = GameIntegration.GameItems.UnknownItemsError(items.Select(i => i.ItemName));
+            if (itemError != null) return BadRequest(itemError);
+
             // 5. Execute item gives
             var deliveryLog = new List<string>();
             foreach (var item in items)

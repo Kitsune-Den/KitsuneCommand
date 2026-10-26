@@ -130,6 +130,33 @@ jobs:
           "zipPath=$zipPath" >> $env:GITHUB_OUTPUT
           "zipName=$zipName" >> $env:GITHUB_OUTPUT
 
+      - name: Check the zip ships every native library
+        shell: pwsh
+        run: |
+          # A zip missing libSkiaSharp.dll loads fine and then crashes the map
+          # renderer on the first Windows server that installs it (kanban #195).
+          # Read the zip itself, not dist/, so packaging can't drop a file
+          # after this check passes.
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $expected = @('libSkiaSharp.dll', 'libSkiaSharp.so', 'sqlite3.dll')
+          $zip = [System.IO.Compression.ZipFile]::OpenRead('${{ steps.zip.outputs.zipPath }}')
+          try {
+              $natives = @($zip.Entries |
+                  ForEach-Object { $_.FullName -replace '\\', '/' } |
+                  Where-Object { $_ -match '^KitsuneCommand/x64/[^/]+$' } |
+                  ForEach-Object { $_.Substring('KitsuneCommand/x64/'.Length) } |
+                  Sort-Object)
+          } finally { $zip.Dispose() }
+          Write-Host "x64/ in the zip: $($natives -join ', ')"
+          $diff = Compare-Object $expected $natives
+          if ($diff) {
+              $missing = @($diff | Where-Object SideIndicator -eq '<=' | ForEach-Object InputObject)
+              $extra   = @($diff | Where-Object SideIndicator -eq '=>' | ForEach-Object InputObject)
+              if ($missing) { Write-Error "Missing from KitsuneCommand/x64/: $($missing -join ', ')" }
+              if ($extra)   { Write-Error "Unexpected in KitsuneCommand/x64/: $($extra -join ', ')" }
+              exit 1
+          }
+
       - name: Sign + checksum
         shell: pwsh
         env:
