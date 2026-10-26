@@ -263,22 +263,33 @@ cd src/KitsuneCommand.Tests
 dotnet test
 ```
 
-62 tests covering:
-- **Repository integration tests** — PointsRepository, UserAccountRepository, SettingsRepository (real SQLite)
-- **Service unit tests** — AuthService, ServerConfigService, PasswordHasher (with Moq)
-- **Core tests** — ModEventBus pub/sub, thread safety
+Covers:
+- **Repository integration tests** — points, user accounts, settings, player metadata, VIP gifts, first-login grants (real SQLite)
+- **Service unit tests** — auth, server config, graceful restart, mod sources, PackRelay (with Moq)
+- **Core tests** — ModEventBus pub/sub and thread safety, OS restart strategy
+
+With coverage, as CI reports it to Codecov (writes a Cobertura file under `coverage/`):
+
+```bash
+dotnet test src/KitsuneCommand.Tests/KitsuneCommand.Tests.csproj --collect "Code Coverage" --settings src/KitsuneCommand.Tests/coverage.runsettings --results-directory coverage
+```
 
 ### Frontend (Vitest)
 
 ```bash
 cd frontend
-npm run test:run    # Single run
-npm run test        # Watch mode
+npm run test:run        # Single run
+npm run test            # Watch mode
+npm run test:coverage   # With coverage (lcov under frontend/coverage/)
 ```
 
-21 tests covering:
-- **Pinia store tests** — Auth (login/logout/localStorage), Economy (points updates)
-- **API client tests** — Backups API response unwrapping and error handling
+Covers:
+- **Pinia store tests** — auth, chat, economy, players, server
+- **API client tests** — response unwrapping and error handling
+- **Component tests** — login help, Settings tabs, mods manager, sandbox editor, player dialogs
+- **Locale checks** — every locale renders without vue-i18n pipe surprises
+
+Codecov gets two flags, `frontend` and `backend`, from [`coverage.yml`](.github/workflows/coverage.yml).
 
 ## Configuration
 
