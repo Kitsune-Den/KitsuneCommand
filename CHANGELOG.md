@@ -12,8 +12,29 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.11.1] - 2026-10-26
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.11.1)
+> · Bug fixes for 3.3+ servers and for overhaul installs. The dashboard has
+> been calling every 3.3+ server "Hidden" whatever its visibility, and
+> logging `GetInt: InvalidCastException ServerEnabled` on each refresh. KC
+> now looks game settings up by name, so a game update that reorders them
+> can't mix them up again, and the compatibility check catches this kind of
+> shift before a release. On servers without TFP_CommandExtensions (Undead
+> Legacy, for one), chat commands now answer again. Shop buys, CD keys and
+> VIP gifts no longer take points or report success for an item the game
+> doesn't have. No schema changes, nothing to migrate, still V2.5 through V3.4.
+
 ### Fixed
 
+- **Dashboard showed every 3.3+ server as "Hidden", and logged
+  `GetInt: InvalidCastException ServerEnabled` on each refresh.** KC compiles
+  against V2.5, and C# bakes enum members in as numbers: `ServerVisibility`
+  is #168 there. 3.3 added members to `EnumGamePrefs` ahead of it, so #168
+  became `ServerEnabled` (a true/false pref). Reading it as a number failed,
+  the dashboard got 0 and showed "Hidden" whatever the server's real
+  visibility. KC now looks every game pref and stat up by name against the
+  running game, so later shifts can't do this again.
 - **Chat-command replies, ticket answers and delivery notices went nowhere on
   servers without TFP_CommandExtensions.** KC sent them with `pm`, which isn't
   a game command: it comes from the TFP_CommandExtensions mod in the server's
@@ -30,15 +51,6 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   steps in a row and wired up chat commands last, so an exception anywhere
   earlier (item catalog, icons, map, backups) left them silently dead. Each
   step now runs on its own and logs its own error.
-
-- **Dashboard showed every 3.3+ server as "Hidden", and logged
-  `GetInt: InvalidCastException ServerEnabled` on each refresh.** KC compiles
-  against V2.5, and C# bakes enum members in as numbers: `ServerVisibility`
-  is #168 there. 3.3 added members to `EnumGamePrefs` ahead of it, so #168
-  became `ServerEnabled` (a true/false pref). Reading it as a number failed,
-  the dashboard got 0 and showed "Hidden" whatever the server's real
-  visibility. KC now looks every game pref and stat up by name against the
-  running game, so later shifts can't do this again.
 
 ### Added
 
@@ -874,7 +886,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.0...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.1...HEAD
+[2.11.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.9.0...v2.10.0
