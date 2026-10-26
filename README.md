@@ -42,6 +42,7 @@ KitsuneCommand is a source-available mod for 7 Days to Die dedicated servers tha
 - **Player Management** — View online/offline players, inventories, skills, kick/ban
 - **Chat System** — View and search chat history, send messages
 - **Colored Chat** — Custom name colors and chat formatting per player
+- **Suspicion Log** — Log-only cheat signals (inventory, movement, progression, kill rate) for admins to review, with optional Discord alerts. It never kicks or bans on its own
 
 ### Economy & Rewards
 - **Points & Store** — In-game economy with sign-in rewards and a configurable shop

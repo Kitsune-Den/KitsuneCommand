@@ -19,7 +19,8 @@ namespace KitsuneCommand.GameIntegration
     ///           BlockChangeInfo.pos became blockValueRef (a block OR a prop).
     ///   - V3.3: Bag/Inventory.GetSlots() are gone (both sit on an ItemStackGrid);
     ///           ItemStack.itemValue/count and ItemValue.type/Quality/UseTimes
-    ///           became properties.
+    ///           became properties. ItemClass gained MaxCount (stack size after
+    ///           the server's stack multiplier) and a static MaxQualityTier.
     ///   - V3.3: EnumGamePrefs grew from 286 to 317 members, so every member from
     ///           #168 on moved. KC's IL holds the V2.5 number, not the name, so
     ///           GamePrefs.GetInt(EnumGamePrefs.ServerVisibility) read ServerEnabled
@@ -45,6 +46,8 @@ namespace KitsuneCommand.GameIntegration
         private static readonly Lazy<Func<Inventory, ItemStack[]>> _inventorySlots = Bind(SlotsReader<Inventory>);
         private static readonly Lazy<Func<string, string>> _localize = Bind(BuildLocalize);
         private static readonly Lazy<Func<BlockChangeInfo, World, Vector3i>> _blockChangePos = Bind(BuildBlockChangePos);
+        private static readonly Lazy<Func<ItemClass, int>> _stackLimit = Bind(BuildStackLimit);
+        private static readonly Lazy<Func<int>> _maxQualityTier = Bind(BuildMaxQualityTier);
 
         public static ItemValue GetItemValue(ItemStack stack) => _stackItemValue.Value(stack);
         public static int GetCount(ItemStack stack) => _stackCount.Value(stack);
@@ -68,6 +71,16 @@ namespace KitsuneCommand.GameIntegration
         /// the same way the game's own BlockValueRef.ToBlockPos does.
         /// </summary>
         public static Vector3i GetBlockPos(BlockChangeInfo change, World world) => _blockChangePos.Value(change, world);
+
+        /// <summary>
+        /// The largest legal stack of this item: ItemClass.MaxCount where the game
+        /// has it (V3.3, which applies the server's stack-size multiplier), else
+        /// Stacknumber.
+        /// </summary>
+        public static int GetStackLimit(ItemClass itemClass) => _stackLimit.Value(itemClass);
+
+        /// <summary>ItemClass.MaxQualityTier on builds that have it; 0 where it doesn't exist or isn't set yet.</summary>
+        public static int GetMaxQualityTier() => _maxQualityTier.Value();
 
         /// <summary>
         /// A game pref as the running game numbers it. Pass the name with nameof
@@ -163,6 +176,21 @@ namespace KitsuneCommand.GameIntegration
             var args = new List<Expression> { key };
             args.AddRange(get.Params.Skip(1).Select(p => (Expression)Expression.Constant(p.DefaultValue, p.ParameterType)));
             return Expression.Lambda<Func<string, string>>(Expression.Call(get.Method, args), key).Compile();
+        }
+
+        private static Func<ItemClass, int> BuildStackLimit()
+        {
+            var maxCount = typeof(ItemClass).GetProperty("MaxCount", InstancePublic);
+            if (maxCount != null && maxCount.PropertyType == typeof(int))
+                return Getter<ItemClass, int>("MaxCount");
+            return ic => ic.Stacknumber.Value;
+        }
+
+        private static Func<int> BuildMaxQualityTier()
+        {
+            var field = typeof(ItemClass).GetField("MaxQualityTier", BindingFlags.Static | BindingFlags.Public);
+            if (field == null || field.FieldType != typeof(int)) return () => 0;
+            return Expression.Lambda<Func<int>>(Expression.Field(null, field)).Compile();
         }
 
         /// <summary>

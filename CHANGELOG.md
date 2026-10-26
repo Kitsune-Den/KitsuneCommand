@@ -12,6 +12,44 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Added
+
+- **Suspicion log.** A new admin-only page records server-side signs of
+  cheating for review: things a modified client can't hide from the server.
+  It only records. Nothing on it kicks, bans or touches a player. Four
+  detectors, each with its own on/off switch and thresholds under the page's
+  Detectors tab:
+  - *Inventory*, scanned every minute: admin and test items (`CreativeMode`
+    Dev/Test), quality over the game's cap, stacks over the stack limit
+    (3.3's stack multiplier included), and one item's count jumping between
+    scans. Items the creative menu merely hides (`None`) are off by default,
+    because vanilla hides hundreds of lootable items that way (schematics,
+    quest notes, trophies) and modded items that extend them inherit it. An
+    allow-list (with `prefix*`) covers the rest, seeded with the three Dev
+    blocks players can pick up in POIs.
+  - *Movement*, from the existing 3-second position sweep: sustained on-foot
+    speed, single-sample jumps, and hanging well above the highest block
+    without falling. Vehicles are excluded, and so are spawns, respawns,
+    KC's home/city/admin teleports, and console `teleportplayer`/`tele`.
+  - *Progression*: levels gained too fast, and unspent skill points that the
+    levels gained don't explain, checked on each sweep and whenever the
+    client saves player data.
+  - *Kill rate*: zombie kills per minute over a ceiling (60 by default), high
+    severity at twice the ceiling.
+
+  Entries can be filtered by player, detector, severity and status, opened
+  for details, and marked reviewed with a note. Optional Discord alerts go
+  through the existing webhook service, at most one per player per detector
+  every 30 minutes, from medium severity up by default. Admins (permission
+  level 0) and listed player IDs are skipped; entries are kept for 90 days.
+  In all 8 languages. Migration `014_suspicion_log.sql` adds the
+  `suspicion_events` table.
+
+- **Plugin API: `PlayerTeleportedEvent` and `EntityKilledEvent.DeadEntityType`.**
+  Publish `PlayerTeleportedEvent` before moving a player from a plugin and the
+  suspicion log won't record the move. `DeadEntityType` is the dead entity's
+  type name (`Zombie`, `Animal`, `Player`, ...).
+
 ## [2.11.1] - 2026-10-26
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.11.1)

@@ -1,4 +1,5 @@
 using KitsuneCommand.Abstractions.Models;
+using KitsuneCommand.Features.Suspicion;
 using KitsuneCommand.Web.Models;
 using KitsuneCommand.GameIntegration;
 
@@ -190,11 +191,13 @@ namespace KitsuneCommand.Core
 
             try
             {
+                var samples = new List<PlayerSample>();
                 var updates = RunOnMainThread(() =>
                 {
                     var result = new List<PlayerPositionData>();
                     var world = GameManager.Instance?.World;
                     if (world?.Players == null) return result;
+                    var now = DateTime.UtcNow;
 
                     foreach (var kvp in world.Players.dict)
                     {
@@ -209,6 +212,8 @@ namespace KitsuneCommand.Core
                             Y = pos.y,
                             Z = pos.z
                         });
+                        // The suspicion log's extra reads must never cost the map its positions.
+                        try { samples.Add(BuildSample(ep, world, now)); } catch { /* skip this player's sample */ }
 
                         // Update cached positions
                         if (_players.TryGetValue(ep.entityId, out var cached))
@@ -226,6 +231,7 @@ namespace KitsuneCommand.Core
                 if (updates != null && updates.Count > 0)
                 {
                     _eventBus.Publish(new PlayersPositionUpdateEvent { Players = updates });
+                    _eventBus.Publish(new PlayerSamplesEvent { Samples = samples });
                 }
             }
             catch (Exception ex)
@@ -234,7 +240,41 @@ namespace KitsuneCommand.Core
             }
         }
 
+        /// <summary>
+        /// One player's position, vehicle and progression state, read on the main
+        /// thread (inline when already on it, e.g. from a SavePlayerData handler).
+        /// </summary>
+        public PlayerSample GetPlayerSample(int entityId)
+        {
+            return RunOnMainThread(() =>
+            {
+                var ep = GetEntityPlayer(entityId);
+                var world = GameManager.Instance?.World;
+                return ep == null || world == null ? null : BuildSample(ep, world, DateTime.UtcNow);
+            }, timeoutMs: 2000);
+        }
+
         // --- Helpers ---
+
+        private static PlayerSample BuildSample(EntityPlayer ep, World world, DateTime now)
+        {
+            var pos = ep.GetPosition();
+            // GetHeight is the top block of the column; 0 means the chunk isn't loaded.
+            var ground = world.GetHeight((int)Math.Floor(pos.x), (int)Math.Floor(pos.z));
+            var progression = ep.Progression;
+            return new PlayerSample
+            {
+                EntityId = ep.entityId,
+                At = now,
+                X = pos.x,
+                Y = pos.y,
+                Z = pos.z,
+                Attached = ep.AttachedToEntity != null,
+                GroundHeight = ground > 0 ? ground : (double?)null,
+                Level = progression?.Level,
+                SkillPoints = progression?.SkillPoints
+            };
+        }
 
         private void ScanExistingPlayers()
         {

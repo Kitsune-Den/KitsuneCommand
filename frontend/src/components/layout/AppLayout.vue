@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { usePermissions } from '@/composables/usePermissions'
 import { useServerStore } from '@/stores/server'
 import { useAppWebSocket } from '@/composables/useAppWebSocket'
 import { useI18n } from 'vue-i18n'
@@ -12,6 +13,7 @@ import Select from 'primevue/select'
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const { isAdmin } = usePermissions()
 const server = useServerStore()
 const appWs = useAppWebSocket()
 const { t, locale } = useI18n()
@@ -24,6 +26,7 @@ const navItems = computed(() => [
   { label: t('nav.map'), icon: 'pi pi-map', route: '/map' },
   { label: t('nav.chat'), icon: 'pi pi-comments', route: '/chat' },
   { label: t('nav.tickets'), icon: 'pi pi-ticket', route: '/tickets' },
+  ...(isAdmin.value ? [{ label: t('nav.suspicionLog'), icon: 'pi pi-shield', route: '/suspicion' }] : []),
   { label: t('nav.teleport'), icon: 'pi pi-compass', route: '/teleport/cities' },
   { label: t('nav.vipGifts'), icon: 'pi pi-gift', route: '/vipgifts' },
   { label: t('nav.schedules'), icon: 'pi pi-clock', route: '/schedules' },
