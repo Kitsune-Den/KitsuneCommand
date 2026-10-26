@@ -29,6 +29,14 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ### Fixed
 
+- **`tools/build.sh` ships every native library.** It only shipped
+  `libSkiaSharp.so`, pulled from the NuGet cache, and only warned when it
+  couldn't find it. A mod folder built with it and installed on Windows had
+  no `libSkiaSharp.dll`, so the map renderer crashed. It now ships the same
+  committed `x64/` natives as `build.ps1` (`libSkiaSharp.dll`,
+  `libSkiaSharp.so`, `sqlite3.dll`) and fails the build if one is missing.
+  The release workflow also opens the finished zip and refuses to publish
+  unless `x64/` holds exactly those three.
 - **The web panel's ports can actually be changed.** The frontend/login
   listener always bound 8890 and always forwarded API calls to 8888, no
   matter what `WebUrl` said. Moving the API port broke every panel request,
