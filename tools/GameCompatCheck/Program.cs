@@ -38,6 +38,7 @@ var mods = args.Length > 1
         .Select(m => Path.Combine(repo, "src", m, "bin", "Release", m + ".dll"))
         .ToArray();
 
+var refsModules = new Dictionary<string, ModuleDefinition>();
 var resolver = new DefaultAssemblyResolver();
 resolver.AddSearchDirectory(managed);
 var harmonyDir = Path.Combine(install, "Mods", "0_TFP_Harmony");
@@ -99,12 +100,89 @@ foreach (var path in mods)
     foreach (var patch in patches)
         unresolved += CheckHarmonyPatch(patch);
     if (patches.Count > 0) Console.WriteLine($"  {patches.Count} Harmony patch(es) checked");
+
+    unresolved += CheckEnumDrift(module, path);
 }
 
 Console.WriteLine(unresolved == 0
-    ? "OK: every game reference resolves and every Harmony patch binds."
-    : $"{unresolved} game reference(s) or Harmony patch(es) don't bind on this version.");
+    ? "OK: every game reference resolves, every Harmony patch binds, and no game enum KC uses has shifted."
+    : $"{unresolved} game reference(s), Harmony patch(es) or enum member(s) don't line up on this version.");
 return unresolved == 0 ? 0 : 1;
+
+// C# compiles an enum member to its number, so the shipped DLL says "pref #168",
+// not "ServerVisibility". When a later game build inserts members, that number
+// names a different member (V2.5's ServerVisibility, #168, is ServerEnabled on
+// 3.3+) and the mod silently reads or writes the wrong thing. Nothing fails to
+// bind, so the checks above can't see it. Compare each game enum the mod
+// references against the reference assemblies it compiled with, and report the
+// shifted members its source actually uses. Uses inside nameof(...) compile to
+// a string, so those are the safe way to name one and aren't counted.
+int CheckEnumDrift(ModuleDefinition module, string dllPath)
+{
+    var modName = Path.GetFileNameWithoutExtension(dllPath);
+    var srcDir = Path.Combine(repo, "src", modName);
+    var sources = Directory.Exists(srcDir)
+        ? Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
+            // Comments compile to nothing, so drop them ("//" after whitespace, so
+            // "http://..." in a string survives).
+            .Select(f => (Path: f, Lines: File.ReadAllLines(f)
+                .Select(l => System.Text.RegularExpressions.Regex.Replace(l, @"(^|\s)//.*$", "")).ToArray()))
+            .ToList()
+        : null;
+
+    int drifted = 0, enumsChecked = 0;
+    var seenEnums = new HashSet<string>();
+    foreach (var type in module.GetTypeReferences())
+    {
+        if (!IsGame(type) || !seenEnums.Add(type.FullName)) continue;
+        var target = SafeResolve(type);
+        if (target == null || !target.IsEnum) continue;
+        var compiled = RefsType(type);
+        if (compiled == null) continue;
+        enumsChecked++;
+
+        var targetValues = EnumValues(target);
+        var byValue = targetValues.GroupBy(kv => kv.Value).ToDictionary(g => g.Key, g => g.First().Key);
+        var usage = new System.Text.RegularExpressions.Regex(
+            @"(?<!nameof\(\s*)\b" + System.Text.RegularExpressions.Regex.Escape(type.Name) + @"\.([A-Za-z_][A-Za-z0-9_]*)\b");
+
+        foreach (var (name, value) in EnumValues(compiled))
+        {
+            bool same = targetValues.TryGetValue(name, out var now) && Equals(now, value);
+            if (same) continue;
+
+            var uses = sources == null ? null : sources
+                .SelectMany(src => src.Lines.Select((line, i) => (src.Path, Line: i + 1, Text: line)))
+                .Where(l => usage.Matches(l.Text).Any(m => m.Groups[1].Value == name))
+                .ToList();
+            if (uses != null && uses.Count == 0) continue;
+
+            var meaning = byValue.TryGetValue(value, out var other) ? other : "nothing";
+            var change = targetValues.ContainsKey(name) ? $"is {now} here, and {value} now means {meaning}" : $"is gone here, and {value} now means {meaning}";
+            var where = uses == null ? "(source not found; may be unused)"
+                : $"used at {Path.GetRelativePath(repo, uses[0].Path)}:{uses[0].Line}" + (uses.Count > 1 ? $" (+{uses.Count - 1} more)" : "");
+            Console.WriteLine($"  enum drift     {type.Name}.{name}: compiled as {value}, {change}; {where}");
+            drifted++;
+        }
+    }
+    if (enumsChecked > 0) Console.WriteLine($"  {enumsChecked} game enum(s) compared against the reference assemblies");
+    return drifted;
+}
+
+Dictionary<string, object> EnumValues(TypeDefinition e) =>
+    e.Fields.Where(f => f.IsStatic && f.HasConstant).ToDictionary(f => f.Name, f => f.Constant);
+
+// The same type in the reference assemblies the mods compile against.
+TypeDefinition RefsType(TypeReference type)
+{
+    var scope = type.Scope as AssemblyNameReference;
+    var refsDll = scope == null ? null : Path.Combine(repo, "src", "KitsuneCommand", "refs", scope.Name + ".dll");
+    if (refsDll == null || !File.Exists(refsDll)) return null;
+    if (!refsModules.TryGetValue(refsDll, out var refsModule))
+        refsModules[refsDll] = refsModule = ModuleDefinition.ReadModule(refsDll);
+    return refsModule.GetType(type.FullName);
+}
 
 // Harmony patches name their target by string and inject arguments by
 // parameter name, so neither shows up as a member reference above. Resolve

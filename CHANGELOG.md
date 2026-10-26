@@ -12,6 +12,24 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Dashboard showed every 3.3+ server as "Hidden", and logged
+  `GetInt: InvalidCastException ServerEnabled` on each refresh.** KC compiles
+  against V2.5, and C# bakes enum members in as numbers: `ServerVisibility`
+  is #168 there. 3.3 added members to `EnumGamePrefs` ahead of it, so #168
+  became `ServerEnabled` (a true/false pref). Reading it as a number failed,
+  the dashboard got 0 and showed "Hidden" whatever the server's real
+  visibility. KC now looks every game pref and stat up by name against the
+  running game, so later shifts can't do this again.
+
+### Added
+
+- `tools/GameCompatCheck` now catches shifted enum members. It compares every
+  game enum the mods reference against the V2.5 reference assemblies and lists
+  the shifted members the source uses. It found exactly this bug on 3.3 and
+  3.4, and nothing else.
+
 ## [2.11.0] - 2026-10-26
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.11.0)
