@@ -12,6 +12,21 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Shop buys, CD keys and VIP gifts took points but delivered nothing on
+  some servers.** KC handed out items by running the `give` console command,
+  which comes from the TFP_CommandExtensions mod, not the game, and it never
+  checked what `give` printed. On a server without that mod, or with a copy
+  built for a different game version, every delivery failed while points were
+  taken and the panel said "Successfully purchased". KC now drops the items at
+  the player's feet itself. Points are taken, keys counted as redeemed and
+  gifts marked claimed only after the items are on the ground; if a drop fails
+  the panel or chat says why and nothing is charged. Deliveries also stay on
+  the ground for 10 minutes instead of the game's 60 seconds, and the player
+  gets a whisper telling them where to look. Commands attached to a store item
+  still run through the console as before.
+
 ## [2.11.1] - 2026-10-26
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.11.1)

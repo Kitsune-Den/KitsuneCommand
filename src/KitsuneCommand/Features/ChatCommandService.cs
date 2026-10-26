@@ -493,15 +493,17 @@ namespace KitsuneCommand.Features
                 return;
             }
 
+            // Drop the items, then charge: a delivery that fails costs nothing
+            var dropError = GameIntegration.GameItems.DropForPlayer(entityId, items);
+            if (dropError != null)
+            {
+                Log.Warning($"[KitsuneCommand] /buy '{goods.Name}' for {playerName} not delivered: {dropError}");
+                Reply(entityId, $"'{goods.Name}' couldn't be delivered: {dropError} You were not charged.");
+                return;
+            }
+
             // Deduct points
             var newBalance = _pointsRepo.AdjustPoints(playerId, -goods.Price);
-
-            // Give items
-            foreach (var item in items)
-            {
-                var cmd = $"give {entityId} {item.ItemName} {item.Count} {item.Quality}";
-                SdtdConsole.Instance.ExecuteSync(cmd, null);
-            }
 
             // Execute commands
             var commands = _goodsRepo.GetCommandsForGoods(goods.Id).ToList();
@@ -534,7 +536,7 @@ namespace KitsuneCommand.Features
                 Reason = $"Purchased {goods.Name}"
             });
 
-            // give drops the items on the ground in front of the player, not into their bag
+            // The items are on the ground at the player's feet, not in their bag
             var pickup = items.Count > 0 ? " Your items were dropped at your feet." : "";
             Reply(entityId, $"Purchased '{goods.Name}' for {goods.Price} pts. Balance: {newBalance}.{pickup}");
         }
@@ -563,11 +565,12 @@ namespace KitsuneCommand.Features
                     continue;
                 }
 
-                // Give items
-                foreach (var item in items)
+                var dropError = GameIntegration.GameItems.DropForPlayer(entityId, items);
+                if (dropError != null)
                 {
-                    var cmd = $"give {entityId} {item.ItemName} {item.Count} {item.Quality}";
-                    SdtdConsole.Instance.ExecuteSync(cmd, null);
+                    Log.Warning($"[KitsuneCommand] VIP gift '{gift.Name}' for {playerName} not delivered: {dropError}");
+                    Reply(entityId, $"VIP gift '{gift.Name}' couldn't be delivered: {dropError} It's still waiting for you.");
+                    continue;
                 }
 
                 // Execute commands
@@ -584,7 +587,7 @@ namespace KitsuneCommand.Features
                 // Mark as claimed
                 _vipGiftRepo.MarkAsClaimed(gift.Id);
                 claimed++;
-                Reply(entityId, $"Claimed VIP gift: {gift.Name}");
+                Reply(entityId, $"Claimed VIP gift: {gift.Name}{(items.Count > 0 ? " (dropped at your feet)" : "")}");
             }
 
             if (claimed > 1)
