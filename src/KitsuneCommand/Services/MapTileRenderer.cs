@@ -277,10 +277,8 @@ namespace KitsuneCommand.Services
 
                 Log.Out($"[KitsuneCommand] MapTileRenderer: Looking for world '{worldName}'");
 
-                // Use the game's install path (AppModManager.GamePath or derive from ModEntry.ModPath)
-                // Assembly.GetExecutingAssembly().Location returns empty on Mono/Unity,
-                // so we use the mod path and navigate up to the game root.
-                var gameDir = Path.GetFullPath(Path.Combine(Core.ModEntry.ModPath, "..", ".."));
+                // The game's install folder, not the mod's: KC may be in the user-data Mods/.
+                var gameDir = GameIntegration.GamePaths.InstallDir;
 
                 Log.Out($"[KitsuneCommand] MapTileRenderer: Game directory: {gameDir}");
 

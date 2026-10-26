@@ -27,9 +27,8 @@ namespace KitsuneCommand.Services
         {
             try
             {
-                // Navigate from Mods/KitsuneCommand/ up to game root
-                var gameDir = Path.GetFullPath(
-                    Path.Combine(Core.ModEntry.ModPath, "..", ".."));
+                // The game's install folder, not the mod's: KC may be in the user-data Mods/.
+                var gameDir = GameIntegration.GamePaths.InstallDir;
                 var iconsPath = Path.Combine(gameDir, "Data", "ItemIcons");
 
                 if (Directory.Exists(iconsPath))
