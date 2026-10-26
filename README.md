@@ -170,7 +170,7 @@ Self-service password change for the logged-in user. If you ever lock yourself o
 4. Open `http://your-server-ip:8890` in a browser
 5. Sign in as `admin`. There's no default password: the first boot generates one, prints it to the server console and writes it to `FIRST_RUN_PASSWORD.txt` in KC's data folder ([where that is](docs/troubleshooting.md#fresh-install-admin--admin-doesnt-work))
 
-> **Port note:** The web panel runs on port **8890**, not port 8888. Port 8888 is used internally for the API backend, but a lightweight frontend server on port 8890 handles login and proxies API calls to 8888 automatically. This split is needed due to a compatibility issue between 7D2D's Unity/Mono runtime and the OWIN OAuth middleware.
+> **Port note:** The web panel runs on port **8890**, not port 8888. Port 8888 is used internally for the API backend, but a lightweight frontend server on port 8890 handles login and proxies API calls to 8888 automatically. All three ports can be changed; see [Configuration](#configuration). This split is needed due to a compatibility issue between 7D2D's Unity/Mono runtime and the OWIN OAuth middleware.
 
 > **Linux note:** The same release ZIP works on both Windows and Linux. The mod auto-detects the platform and loads the correct native libraries. On Linux, SQLite uses the system's `libsqlite3` via Mono DLL mapping.
 
@@ -286,9 +286,11 @@ Settings are stored in `<SaveGameDir>/KitsuneCommand/appsettings.json`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `WebUrl` | `http://*:8888` | Internal API bind address (do not change; access the panel on port **8890**) |
-| `WebPanelPort` | `8890` | Frontend/login port — this is what you open in your browser |
+| `WebUrl` | `http://*:8888` | Internal API bind address. The panel forwards API calls to this port, so you can move it; you still open the panel on `WebPanelPort` |
+| `WebPanelPort` | `8890` | Frontend/login port — this is what you open in your browser or point a reverse proxy at |
 | `WebSocketPort` | `8889` | WebSocket server port |
+
+The three ports must all differ. To run two servers on one host, give the second one its own set (e.g. `http://*:9888`, `9890`, `9889`) and restart it.
 | `DatabasePath` | `KitsuneCommand.db` | SQLite database location |
 | `AccessTokenExpireMinutes` | `1440` | Auth token lifetime (24h) |
 | `EnableCors` | `false` | Enable for frontend dev with Vite |

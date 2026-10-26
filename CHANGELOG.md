@@ -27,6 +27,21 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   names. Not covered: anything that needs a connected player (inventory,
   Give Item, chat commands).
 
+### Fixed
+
+- **The web panel's ports can actually be changed.** The frontend/login
+  listener always bound 8890 and always forwarded API calls to 8888, no
+  matter what `WebUrl` said. Moving the API port broke every panel request,
+  and two servers on one host couldn't both run KC. The README documented a
+  `WebPanelPort` setting that didn't exist; it does now (default 8890). The
+  listener forwards to whatever port `WebUrl` names and tells the page which
+  WebSocket port to use. Existing installs keep 8888/8889/8890; nothing to
+  change unless you want different ports.
+- **Live updates behind a reverse proxy on a non-standard port.** The
+  panel's WebSocket dropped the page's port (`https://host:8443` connected
+  to `wss://host/...`), so live chat, logs and player updates never
+  arrived. It now stays on the page's own origin.
+
 ### Added
 
 - `tools/GameCompatCheck` now checks Harmony patches too. It resolves each
