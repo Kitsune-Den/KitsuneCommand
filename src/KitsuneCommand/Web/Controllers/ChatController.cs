@@ -67,20 +67,16 @@ namespace KitsuneCommand.Web.Controllers
 
             var displayName = identity?.FindFirst("display_name")?.Value ?? "Server";
 
-            // Build the console command
-            string cmd;
-            if (string.IsNullOrWhiteSpace(request.TargetPlayer))
+            if (!string.IsNullOrWhiteSpace(request.TargetPlayer))
             {
-                // Global message: say "[WebAdmin] message"
-                cmd = $"say \"[{displayName}] {EscapeQuotes(request.Message)}\"";
-            }
-            else
-            {
-                // Private message: pm "player" "[WebAdmin] message"
-                cmd = $"pm \"{EscapeQuotes(request.TargetPlayer)}\" \"[{displayName}] {EscapeQuotes(request.Message)}\"";
+                // Private message straight to the player (no dependency on the "pm" command)
+                if (!GameIntegration.GameChat.Whisper(request.TargetPlayer, $"[{displayName}] {request.Message}"))
+                    return BadRequest($"Player '{request.TargetPlayer}' is not online.");
+                return Ok(ApiResponse.Ok(new { output = $"Message sent to {request.TargetPlayer}." }));
             }
 
-            var output = ExecuteConsoleCommand(cmd);
+            // Global message: say "[WebAdmin] message"
+            var output = ExecuteConsoleCommand($"say \"[{displayName}] {EscapeQuotes(request.Message)}\"");
             return Ok(ApiResponse.Ok(new { output }));
         }
 

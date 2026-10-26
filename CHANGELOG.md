@@ -25,6 +25,23 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ### Fixed
 
+- **Chat-command replies, ticket answers and delivery notices went nowhere on
+  servers without TFP_CommandExtensions.** KC sent them with `pm`, which isn't
+  a game command: it comes from the TFP_CommandExtensions mod in the server's
+  `Mods/` folder. Overhaul installs (Undead Legacy, for one) can leave it out,
+  and then `/shop`, `/sethome` and the rest looked like they did nothing. KC
+  now sends the whisper itself through game API that's the same from V2.5 to V3.4.
+- **Shop purchases took points and said "success" when the item didn't exist.**
+  `give` answers "Item not found." for a name the game doesn't have, and KC
+  ignored that. Store buys, `/buy`, CD keys and VIP gift claims now check every
+  item name first and refuse, naming the bad ones, before charging or marking
+  anything claimed. `/buy` now also tells the player the items were dropped at
+  their feet, since `give` puts them on the ground, not in the bag.
+- **One failing startup step switched off chat commands.** Startup ran its
+  steps in a row and wired up chat commands last, so an exception anywhere
+  earlier (item catalog, icons, map, backups) left them silently dead. Each
+  step now runs on its own and logs its own error.
+
 - **Dashboard showed every 3.3+ server as "Hidden", and logged
   `GetInt: InvalidCastException ServerEnabled` on each refresh.** KC compiles
   against V2.5, and C# bakes enum members in as numbers: `ServerVisibility`

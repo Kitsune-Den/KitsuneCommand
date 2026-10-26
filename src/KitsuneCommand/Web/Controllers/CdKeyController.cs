@@ -210,6 +210,9 @@ namespace KitsuneCommand.Web.Controllers
             var items = _cdKeyRepo.GetItemsForKey(id).ToList();
             var commands = _cdKeyRepo.GetCommandsForKey(id).ToList();
 
+            var itemError = GameIntegration.GameItems.UnknownItemsError(items.Select(i => i.ItemName));
+            if (itemError != null) return BadRequest(itemError);
+
             // 7. Execute item gives
             var deliveryLog = new List<string>();
             foreach (var item in items)

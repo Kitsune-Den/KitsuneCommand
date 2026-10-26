@@ -484,11 +484,19 @@ namespace KitsuneCommand.Features
                 return;
             }
 
+            var items = _goodsRepo.GetItemsForGoods(goods.Id).ToList();
+            var unknown = GameIntegration.GameItems.Unknown(items.Select(i => i.ItemName));
+            if (unknown.Count > 0)
+            {
+                Log.Warning($"[KitsuneCommand] /buy '{goods.Name}' refused: no item named {string.Join(", ", unknown)}.");
+                Reply(entityId, $"'{goods.Name}' can't be delivered right now (the shop entry is misconfigured). You were not charged. Please tell an admin.");
+                return;
+            }
+
             // Deduct points
             var newBalance = _pointsRepo.AdjustPoints(playerId, -goods.Price);
 
             // Give items
-            var items = _goodsRepo.GetItemsForGoods(goods.Id).ToList();
             foreach (var item in items)
             {
                 var cmd = $"give {entityId} {item.ItemName} {item.Count} {item.Quality}";
@@ -526,7 +534,9 @@ namespace KitsuneCommand.Features
                 Reason = $"Purchased {goods.Name}"
             });
 
-            Reply(entityId, $"Purchased '{goods.Name}' for {goods.Price} pts. Balance: {newBalance}");
+            // give drops the items on the ground in front of the player, not into their bag
+            var pickup = items.Count > 0 ? " Your items were dropped at your feet." : "";
+            Reply(entityId, $"Purchased '{goods.Name}' for {goods.Price} pts. Balance: {newBalance}.{pickup}");
         }
 
         // ─── VIP Commands ───────────────────────────────────────────────
@@ -543,8 +553,17 @@ namespace KitsuneCommand.Features
             var claimed = 0;
             foreach (var gift in gifts)
             {
-                // Give items
                 var items = _vipGiftRepo.GetItemsForGift(gift.Id).ToList();
+                var unknown = GameIntegration.GameItems.Unknown(items.Select(i => i.ItemName));
+                if (unknown.Count > 0)
+                {
+                    // Left unclaimed so it can be claimed once an admin fixes the item names.
+                    Log.Warning($"[KitsuneCommand] VIP gift '{gift.Name}' not delivered: no item named {string.Join(", ", unknown)}.");
+                    Reply(entityId, $"VIP gift '{gift.Name}' can't be delivered right now (misconfigured). It's still waiting for you. Please tell an admin.");
+                    continue;
+                }
+
+                // Give items
                 foreach (var item in items)
                 {
                     var cmd = $"give {entityId} {item.ItemName} {item.Count} {item.Quality}";
@@ -895,15 +914,13 @@ namespace KitsuneCommand.Features
         // ─── Helpers ───────────────────────────────────────────────────
 
         /// <summary>
-        /// Sends a private message to the player via the game console.
+        /// Sends a private message to the player.
         /// </summary>
         private void Reply(int entityId, string message)
         {
             try
             {
-                // Escape double quotes in the message
-                var safeMessage = message.Replace("\"", "'");
-                SdtdConsole.Instance.ExecuteSync($"pm {entityId} \"{safeMessage}\"", null);
+                GameIntegration.GameChat.Whisper(entityId, message);
             }
             catch (Exception ex)
             {
