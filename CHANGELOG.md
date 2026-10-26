@@ -12,6 +12,29 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Changed
+
+- **Checked against 7 Days to Die 3.4 (V 3.4.0 b6, experimental).** No code
+  changes were needed: the same build still runs on V2.5 through V3.4.
+  Every game reference in all five mod DLLs resolves on 3.4, and all 23
+  Harmony patches still bind, parameter names included. The members KC
+  reads by reflection (`GameCompat`, the Sandbox table,
+  `NetPackageSetBlock.blockChanges`) are all present. The Sandbox-governed
+  serverconfig keys and the serverconfig.xml template are unchanged from 3.3.
+  Booted on a local 3.4 dedicated server, KC loads, migrates, starts every
+  feature and serves the panel. The Sandbox editor reads all 165 options,
+  8 categories and 17 presets, and the item catalog loads with localized
+  names. Not covered: anything that needs a connected player (inventory,
+  Give Item, chat commands).
+
+### Added
+
+- `tools/GameCompatCheck` now checks Harmony patches too. It resolves each
+  `[HarmonyPatch]` target the way `PatchAll` does and flags a missing
+  method, an ambiguous overload, or a Prefix/Postfix parameter that no
+  longer matches the target's (Harmony injects by name, so a renamed game
+  parameter breaks a patch without a compile error).
+
 ## [2.10.1] - 2026-10-17
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.10.1)
