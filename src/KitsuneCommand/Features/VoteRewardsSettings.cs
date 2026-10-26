@@ -66,7 +66,7 @@ namespace KitsuneCommand.Features
 
     /// <summary>
     /// Top-level settings for the VoteRewards feature. Persisted as a JSON blob
-    /// in the `settings` table under key "VoteRewards" (same pattern as TraderProtection).
+    /// in the `settings` table under key "VoteRewards" (same pattern as the other features).
     /// </summary>
     public class VoteRewardsSettings
     {

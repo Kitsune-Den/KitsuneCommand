@@ -12,6 +12,21 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Removed
+
+- **Trader Zone Toggle (`ktrader`) and the KitsuneTraderUnlock client mod.**
+  7D2D 3.x covers this with the world's own `TraderProtection` sandbox
+  option (Default, Claimable or NotClaimable). The game's own trader-area
+  checks read it, so you set it in the Sandbox editor instead
+  of toggling it at runtime. Gone with it: the `ktrader` console command,
+  the `/api/trader/*` endpoints, the Harmony patches on the trader-area
+  checks, and the `KitsuneTraderUnlock` project. Two things to know:
+  KC no longer rejects trader-area block changes on the server, so trader
+  compounds rely on the game's client-side check alone, as in vanilla.
+  And V2.5 has no `TraderProtection` option, so V2.5 servers lose the
+  ability to unlock trader areas for cleanup. The old `TraderProtection`
+  row in the settings table is left alone and is now unused.
+
 ## [2.11.1] - 2026-10-26
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.11.1)
