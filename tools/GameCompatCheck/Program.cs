@@ -38,6 +38,7 @@ var mods = args.Length > 1
         .Select(m => Path.Combine(repo, "src", m, "bin", "Release", m + ".dll"))
         .ToArray();
 
+var refsModules = new Dictionary<string, ModuleDefinition>();
 var resolver = new DefaultAssemblyResolver();
 resolver.AddSearchDirectory(managed);
 var harmonyDir = Path.Combine(install, "Mods", "0_TFP_Harmony");
@@ -94,7 +95,198 @@ foreach (var path in mods)
         };
         if (!ok) { Console.WriteLine($"  missing member {member.FullName}"); unresolved++; }
     }
+
+    var patches = module.GetTypes().Where(t => t.CustomAttributes.Any(a => a.AttributeType.Name == "HarmonyPatch")).ToList();
+    foreach (var patch in patches)
+        unresolved += CheckHarmonyPatch(patch);
+    if (patches.Count > 0) Console.WriteLine($"  {patches.Count} Harmony patch(es) checked");
+
+    unresolved += CheckEnumDrift(module, path);
 }
 
-Console.WriteLine(unresolved == 0 ? "OK: every game reference resolves." : $"{unresolved} game reference(s) don't resolve on this version.");
+Console.WriteLine(unresolved == 0
+    ? "OK: every game reference resolves, every Harmony patch binds, and no game enum KC uses has shifted."
+    : $"{unresolved} game reference(s), Harmony patch(es) or enum member(s) don't line up on this version.");
 return unresolved == 0 ? 0 : 1;
+
+// C# compiles an enum member to its number, so the shipped DLL says "pref #168",
+// not "ServerVisibility". When a later game build inserts members, that number
+// names a different member (V2.5's ServerVisibility, #168, is ServerEnabled on
+// 3.3+) and the mod silently reads or writes the wrong thing. Nothing fails to
+// bind, so the checks above can't see it. Compare each game enum the mod
+// references against the reference assemblies it compiled with, and report the
+// shifted members its source actually uses. Uses inside nameof(...) compile to
+// a string, so those are the safe way to name one and aren't counted.
+int CheckEnumDrift(ModuleDefinition module, string dllPath)
+{
+    var modName = Path.GetFileNameWithoutExtension(dllPath);
+    var srcDir = Path.Combine(repo, "src", modName);
+    var sources = Directory.Exists(srcDir)
+        ? Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
+            // Comments compile to nothing, so drop them ("//" after whitespace, so
+            // "http://..." in a string survives).
+            .Select(f => (Path: f, Lines: File.ReadAllLines(f)
+                .Select(l => System.Text.RegularExpressions.Regex.Replace(l, @"(^|\s)//.*$", "")).ToArray()))
+            .ToList()
+        : null;
+
+    int drifted = 0, enumsChecked = 0;
+    var seenEnums = new HashSet<string>();
+    foreach (var type in module.GetTypeReferences())
+    {
+        if (!IsGame(type) || !seenEnums.Add(type.FullName)) continue;
+        var target = SafeResolve(type);
+        if (target == null || !target.IsEnum) continue;
+        var compiled = RefsType(type);
+        if (compiled == null) continue;
+        enumsChecked++;
+
+        var targetValues = EnumValues(target);
+        var byValue = targetValues.GroupBy(kv => kv.Value).ToDictionary(g => g.Key, g => g.First().Key);
+        var usage = new System.Text.RegularExpressions.Regex(
+            @"(?<!nameof\(\s*)\b" + System.Text.RegularExpressions.Regex.Escape(type.Name) + @"\.([A-Za-z_][A-Za-z0-9_]*)\b");
+
+        foreach (var (name, value) in EnumValues(compiled))
+        {
+            bool same = targetValues.TryGetValue(name, out var now) && Equals(now, value);
+            if (same) continue;
+
+            var uses = sources == null ? null : sources
+                .SelectMany(src => src.Lines.Select((line, i) => (src.Path, Line: i + 1, Text: line)))
+                .Where(l => usage.Matches(l.Text).Any(m => m.Groups[1].Value == name))
+                .ToList();
+            if (uses != null && uses.Count == 0) continue;
+
+            var meaning = byValue.TryGetValue(value, out var other) ? other : "nothing";
+            var change = targetValues.ContainsKey(name) ? $"is {now} here, and {value} now means {meaning}" : $"is gone here, and {value} now means {meaning}";
+            var where = uses == null ? "(source not found; may be unused)"
+                : $"used at {Path.GetRelativePath(repo, uses[0].Path)}:{uses[0].Line}" + (uses.Count > 1 ? $" (+{uses.Count - 1} more)" : "");
+            Console.WriteLine($"  enum drift     {type.Name}.{name}: compiled as {value}, {change}; {where}");
+            drifted++;
+        }
+    }
+    if (enumsChecked > 0) Console.WriteLine($"  {enumsChecked} game enum(s) compared against the reference assemblies");
+    return drifted;
+}
+
+Dictionary<string, object> EnumValues(TypeDefinition e) =>
+    e.Fields.Where(f => f.IsStatic && f.HasConstant).ToDictionary(f => f.Name, f => f.Constant);
+
+// The same type in the reference assemblies the mods compile against.
+TypeDefinition RefsType(TypeReference type)
+{
+    var scope = type.Scope as AssemblyNameReference;
+    var refsDll = scope == null ? null : Path.Combine(repo, "src", "KitsuneCommand", "refs", scope.Name + ".dll");
+    if (refsDll == null || !File.Exists(refsDll)) return null;
+    if (!refsModules.TryGetValue(refsDll, out var refsModule))
+        refsModules[refsDll] = refsModule = ModuleDefinition.ReadModule(refsDll);
+    return refsModule.GetType(type.FullName);
+}
+
+// Harmony patches name their target by string and inject arguments by
+// parameter name, so neither shows up as a member reference above. Resolve
+// each [HarmonyPatch] class's target the way PatchAll does (declaring type,
+// name, optional argument types) and check every Prefix/Postfix parameter
+// still names something the target has.
+int CheckHarmonyPatch(TypeDefinition patch)
+{
+    var attrs = patch.CustomAttributes.Where(a => a.AttributeType.Name == "HarmonyPatch").ToList();
+
+    TypeReference declaring = null;
+    string name = null;
+    TypeReference[] argTypes = null;
+    foreach (var arg in attrs.SelectMany(a => a.ConstructorArguments))
+    {
+        if (arg.Value is TypeReference t && declaring == null) declaring = t;
+        else if (arg.Value is string s) name = s;
+        else if (arg.Value is CustomAttributeArgument[] arr)
+            argTypes = arr.Select(x => (TypeReference)x.Value).ToArray();
+        else if (arg.Value is TypeReference extra)
+            argTypes = (argTypes ?? Array.Empty<TypeReference>()).Append(extra).ToArray();
+    }
+
+    var label = $"{patch.FullName} -> {declaring?.Name}.{name}";
+    if (patch.Methods.Any(m => m.Name == "TargetMethod"))
+    {
+        Console.WriteLine($"  patch          {label}: picks its target in code, not checked");
+        return 0;
+    }
+    if (declaring == null || name == null)
+    {
+        Console.WriteLine($"  patch          {label}: couldn't read the target from its attributes");
+        return 1;
+    }
+
+    TypeDefinition target;
+    try { target = declaring.Resolve(); } catch (AssemblyResolutionException) { target = null; }
+    if (target == null)
+    {
+        Console.WriteLine($"  missing patch  {label}: type not found");
+        return 1;
+    }
+
+    // AccessTools.Method walks up the base types until a name (and signature) matches.
+    var candidates = new List<MethodDefinition>();
+    for (var t = target; t != null && candidates.Count == 0; t = SafeResolve(t.BaseType))
+        candidates.AddRange(t.Methods.Where(m => m.Name == name && (argTypes == null || SameArgs(m, argTypes))));
+    if (candidates.Count != 1)
+    {
+        var why = candidates.Count == 0 ? "no matching method" : $"{candidates.Count} overloads match, Harmony can't pick";
+        Console.WriteLine($"  missing patch  {label}: {why}");
+        return 1;
+    }
+
+    var original = candidates[0];
+    int bad = 0;
+    var hooks = patch.Methods.Where(m =>
+        m.Name is "Prefix" or "Postfix" or "Finalizer" ||
+        m.CustomAttributes.Any(a => a.AttributeType.Name is "HarmonyPrefix" or "HarmonyPostfix" or "HarmonyFinalizer"));
+    foreach (var hook in hooks)
+    {
+        foreach (var p in hook.Parameters)
+        {
+            var problem = InjectionProblem(p, original);
+            if (problem == null) continue;
+            Console.WriteLine($"  bad patch      {label}: {hook.Name}({p.Name}) {problem}");
+            bad++;
+        }
+    }
+    return bad;
+}
+
+string InjectionProblem(ParameterDefinition p, MethodDefinition original)
+{
+    var n = p.Name;
+    if (n is "__instance" or "__state" or "__args" or "__originalMethod" or "__runOriginal" or "__exception") return null;
+    if (n == "__result")
+        return SameType(p.ParameterType, original.ReturnType) ? null : $"is {Plain(p.ParameterType)}, original returns {original.ReturnType.FullName}";
+    if (n.StartsWith("___"))
+    {
+        var field = n.Substring(3);
+        for (var t = original.DeclaringType; t != null; t = SafeResolve(t.BaseType))
+            if (t.Fields.Any(f => f.Name == field)) return null;
+        return $"field {field} not found on {original.DeclaringType.Name}";
+    }
+    if (n.StartsWith("__") && int.TryParse(n.Substring(2), out var index))
+        return index < original.Parameters.Count ? null : $"original has only {original.Parameters.Count} parameter(s)";
+
+    var match = original.Parameters.FirstOrDefault(op => op.Name == n);
+    if (match == null)
+        return $"no parameter of that name (original has: {string.Join(", ", original.Parameters.Select(op => op.Name))})";
+    return SameType(p.ParameterType, match.ParameterType) ? null : $"is {Plain(p.ParameterType)}, original's is {Plain(match.ParameterType)}";
+}
+
+bool SameArgs(MethodDefinition m, TypeReference[] argTypes) =>
+    m.Parameters.Count == argTypes.Length &&
+    m.Parameters.Select(p => p.ParameterType.FullName).SequenceEqual(argTypes.Select(a => a.FullName));
+
+// Harmony lets a patch take a by-ref parameter by value and vice versa.
+bool SameType(TypeReference a, TypeReference b) => Plain(a) == Plain(b);
+
+string Plain(TypeReference t) => (t is ByReferenceType r ? r.ElementType : t).FullName;
+
+TypeDefinition SafeResolve(TypeReference t)
+{
+    try { return t?.Resolve(); } catch (AssemblyResolutionException) { return null; }
+}

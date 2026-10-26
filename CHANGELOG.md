@@ -27,6 +27,133 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   ability to unlock trader areas for cleanup. The old `TraderProtection`
   row in the settings table is left alone and is now unused.
 
+## [2.11.1] - 2026-10-26
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.11.1)
+> · Bug fixes for 3.3+ servers and for overhaul installs. The dashboard has
+> been calling every 3.3+ server "Hidden" whatever its visibility, and
+> logging `GetInt: InvalidCastException ServerEnabled` on each refresh. KC
+> now looks game settings up by name, so a game update that reorders them
+> can't mix them up again, and the compatibility check catches this kind of
+> shift before a release. On servers without TFP_CommandExtensions (Undead
+> Legacy, for one), chat commands now answer again. Shop buys, CD keys and
+> VIP gifts no longer take points or report success for an item the game
+> doesn't have. No schema changes, nothing to migrate, still V2.5 through V3.4.
+
+### Fixed
+
+- **Dashboard showed every 3.3+ server as "Hidden", and logged
+  `GetInt: InvalidCastException ServerEnabled` on each refresh.** KC compiles
+  against V2.5, and C# bakes enum members in as numbers: `ServerVisibility`
+  is #168 there. 3.3 added members to `EnumGamePrefs` ahead of it, so #168
+  became `ServerEnabled` (a true/false pref). Reading it as a number failed,
+  the dashboard got 0 and showed "Hidden" whatever the server's real
+  visibility. KC now looks every game pref and stat up by name against the
+  running game, so later shifts can't do this again.
+- **Chat-command replies, ticket answers and delivery notices went nowhere on
+  servers without TFP_CommandExtensions.** KC sent them with `pm`, which isn't
+  a game command: it comes from the TFP_CommandExtensions mod in the server's
+  `Mods/` folder. Overhaul installs (Undead Legacy, for one) can leave it out,
+  and then `/shop`, `/sethome` and the rest looked like they did nothing. KC
+  now sends the whisper itself through game API that's the same from V2.5 to V3.4.
+- **Shop purchases took points and said "success" when the item didn't exist.**
+  `give` answers "Item not found." for a name the game doesn't have, and KC
+  ignored that. Store buys, `/buy`, CD keys and VIP gift claims now check every
+  item name first and refuse, naming the bad ones, before charging or marking
+  anything claimed. `/buy` now also tells the player the items were dropped at
+  their feet, since `give` puts them on the ground, not in the bag.
+- **One failing startup step switched off chat commands.** Startup ran its
+  steps in a row and wired up chat commands last, so an exception anywhere
+  earlier (item catalog, icons, map, backups) left them silently dead. Each
+  step now runs on its own and logs its own error.
+
+### Added
+
+- `tools/GameCompatCheck` now catches shifted enum members. It compares every
+  game enum the mods reference against the V2.5 reference assemblies and lists
+  the shifted members the source uses. It found exactly this bug on 3.3 and
+  3.4, and nothing else.
+
+## [2.11.0] - 2026-10-26
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.11.0)
+> · 7 Days to Die 3.4 support and a security fix. KC runs on 3.4 as is,
+> and one build still covers V2.5 through V3.4. SkiaSharp moves to 2.88.9
+> for the libwebp heap overflow (CVE-2023-4863), which the map renderer and
+> item icons could reach through a crafted image in a mod. The web panel's
+> ports can finally be changed: `WebPanelPort` works and API calls follow
+> `WebUrl`, so two servers on one host can both run KC. Live updates also
+> connect behind a reverse proxy on a non-standard port, and the map and
+> item icons work when KC is installed in the user-data `Mods` folder. No
+> schema changes, nothing to migrate, and existing installs keep ports
+> 8888/8889/8890.
+
+### Changed
+
+- **Checked against 7 Days to Die 3.4 (V 3.4.0 b6, experimental).** No code
+  changes were needed: the same build still runs on V2.5 through V3.4.
+  Every game reference in all five mod DLLs resolves on 3.4, and all 23
+  Harmony patches still bind, parameter names included. The members KC
+  reads by reflection (`GameCompat`, the Sandbox table,
+  `NetPackageSetBlock.blockChanges`) are all present. The Sandbox-governed
+  serverconfig keys and the serverconfig.xml template are unchanged from 3.3.
+  Booted on a local 3.4 dedicated server, KC loads, migrates, starts every
+  feature and serves the panel. The Sandbox editor reads all 165 options,
+  8 categories and 17 presets, and the item catalog loads with localized
+  names. Not covered: anything that needs a connected player (inventory,
+  Give Item, chat commands).
+
+### Security
+
+- **SkiaSharp 2.80.4 → 2.88.9** for CVE-2023-4863
+  ([GHSA-j7hp-h8jx-5ppr](https://github.com/advisories/GHSA-j7hp-h8jx-5ppr)),
+  the libwebp heap overflow. SkiaSharp fixed it in 2.88.6. KC decodes images
+  from the game folder and installed mods (map tiles, item icons), and
+  SkiaSharp sniffs the format itself, so a mod shipping a crafted WebP could
+  reach it. The committed Windows and Linux `libSkiaSharp` natives are
+  refreshed to match. The Linux library needs the same glibc (2.17+) and
+  system libraries as before, so nothing changes on the host.
+
+### Fixed
+
+- **Map and item icons work when KC is in the user-data `Mods` folder.**
+  7D2D also loads mods from the user-data folder (for example
+  `%APPDATA%\7DaysToDie\Mods`), but KC assumed the game was two folders
+  above its own. Installed there, the map said the world wasn't found and
+  item icons were missing. The config editor's world list only showed
+  Navezgane, and the editor and server-update feature looked for
+  `serverconfig.xml` and `kitsune-update.conf` in the wrong place. KC now asks
+  the game for its install folder. Installs in the game's own `Mods` folder
+  behave exactly as before.
+- **`tools/build.sh` ships every native library.** It only shipped
+  `libSkiaSharp.so`, pulled from the NuGet cache, and only warned when it
+  couldn't find it. A mod folder built with it and installed on Windows had
+  no `libSkiaSharp.dll`, so the map renderer crashed. It now ships the same
+  committed `x64/` natives as `build.ps1` (`libSkiaSharp.dll`,
+  `libSkiaSharp.so`, `sqlite3.dll`) and fails the build if one is missing.
+  The release workflow also opens the finished zip and refuses to publish
+  unless `x64/` holds exactly those three.
+- **The web panel's ports can actually be changed.** The frontend/login
+  listener always bound 8890 and always forwarded API calls to 8888, no
+  matter what `WebUrl` said. Moving the API port broke every panel request,
+  and two servers on one host couldn't both run KC. The README documented a
+  `WebPanelPort` setting that didn't exist; it does now (default 8890). The
+  listener forwards to whatever port `WebUrl` names and tells the page which
+  WebSocket port to use. Existing installs keep 8888/8889/8890; nothing to
+  change unless you want different ports.
+- **Live updates behind a reverse proxy on a non-standard port.** The
+  panel's WebSocket dropped the page's port (`https://host:8443` connected
+  to `wss://host/...`), so live chat, logs and player updates never
+  arrived. It now stays on the page's own origin.
+
+### Added
+
+- `tools/GameCompatCheck` now checks Harmony patches too. It resolves each
+  `[HarmonyPatch]` target the way `PatchAll` does and flags a missing
+  method, an ambiguous overload, or a Prefix/Postfix parameter that no
+  longer matches the target's (Harmony injects by name, so a renamed game
+  parameter breaks a patch without a compile error).
+
 ## [2.10.1] - 2026-10-17
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.10.1)
@@ -774,7 +901,9 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.1...HEAD
+[2.11.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.0...v2.11.1
+[2.11.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.8.2...v2.9.0

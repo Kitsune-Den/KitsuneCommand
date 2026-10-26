@@ -71,8 +71,7 @@ if ($Platform -eq "windows" -or $Platform -eq "both") {
     # silent Write-Warning here let exactly that escape into the v2.8.0 release.
     $skiaWinPaths = @(
         "src/$modName/x64/libSkiaSharp.dll",
-        "$nugetCache/skiasharp.nativeassets.win32/3.116.1/runtimes/win-x64/native/libSkiaSharp.dll",
-        "$nugetCache/skiasharp.nativeassets.win32/2.80.4/runtimes/win-x64/native/libSkiaSharp.dll",
+        "$nugetCache/skiasharp.nativeassets.win32/2.88.9/runtimes/win-x64/native/libSkiaSharp.dll",
         "$binDir/libSkiaSharp.dll"
     )
     $skiaWin = $skiaWinPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
@@ -109,8 +108,7 @@ if ($Platform -eq "linux" -or $Platform -eq "both") {
     # first (same rationale as the Windows native), NuGet cache as dev fallback.
     $skiaLinuxPaths = @(
         "src/$modName/x64/libSkiaSharp.so",
-        "$nugetCache/skiasharp.nativeassets.linux.nodependencies/2.80.4/runtimes/linux-x64/native/libSkiaSharp.so",
-        "$nugetCache/skiasharp.nativeassets.linux.nodependencies/2.80.2/runtimes/linux-x64/native/libSkiaSharp.so"
+        "$nugetCache/skiasharp.nativeassets.linux.nodependencies/2.88.9/runtimes/linux-x64/native/libSkiaSharp.so"
     )
     $skiaLinux = $skiaLinuxPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
     if ($skiaLinux) {

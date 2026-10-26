@@ -16,7 +16,7 @@
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-PolyForm--NC--1.0.0-orange" alt="License: PolyForm Noncommercial 1.0.0" /></a>
   <a href="docs/RELEASES.md#verifying-a-release"><img src="https://img.shields.io/badge/releases-signed%20since%20v2.7.2-blue" alt="Signed releases since v2.7.2 (minisign + sha256)" /></a>
   <a href="https://github.com/Kitsune-Den/KitsuneCommand/pulls"><img src="https://img.shields.io/github/issues-pr/Kitsune-Den/KitsuneCommand" alt="PRs" /></a>
-  <img src="https://img.shields.io/badge/7D2D-V2.5%E2%80%93V3.3-orange" alt="7 Days to Die V2.5 to V3.3" />
+  <img src="https://img.shields.io/badge/7D2D-V2.5%E2%80%93V3.4-orange" alt="7 Days to Die V2.5 to V3.4" />
   <img src="https://img.shields.io/badge/.NET_4.8-C%23_11-purple" alt=".NET 4.8" />
   <img src="https://img.shields.io/badge/Vue_3-TypeScript-blue" alt="Vue 3" />
 </p>
@@ -138,7 +138,7 @@ Self-service password change for the logged-in user. If you ever lock yourself o
 
 ## Requirements
 
-- 7 Days to Die Dedicated Server (V2.5 through V3.3)
+- 7 Days to Die Dedicated Server (V2.5 through V3.4)
 - **Windows**: .NET Framework 4.8 runtime (included with Windows)
 - **Linux**: Mono runtime (included with 7D2D server), `libsqlite3-0` (usually pre-installed)
 - For building from source: .NET SDK 8.0+ and Node.js 18+
@@ -169,7 +169,7 @@ Self-service password change for the logged-in user. If you ever lock yourself o
 4. Open `http://your-server-ip:8890` in a browser
 5. Sign in as `admin`. There's no default password: the first boot generates one, prints it to the server console and writes it to `FIRST_RUN_PASSWORD.txt` in KC's data folder ([where that is](docs/troubleshooting.md#fresh-install-admin--admin-doesnt-work))
 
-> **Port note:** The web panel runs on port **8890**, not port 8888. Port 8888 is used internally for the API backend, but a lightweight frontend server on port 8890 handles login and proxies API calls to 8888 automatically. This split is needed due to a compatibility issue between 7D2D's Unity/Mono runtime and the OWIN OAuth middleware.
+> **Port note:** The web panel runs on port **8890**, not port 8888. Port 8888 is used internally for the API backend, but a lightweight frontend server on port 8890 handles login and proxies API calls to 8888 automatically. All three ports can be changed; see [Configuration](#configuration). This split is needed due to a compatibility issue between 7D2D's Unity/Mono runtime and the OWIN OAuth middleware.
 
 > **Linux note:** The same release ZIP works on both Windows and Linux. The mod auto-detects the platform and loads the correct native libraries. On Linux, SQLite uses the system's `libsqlite3` via Mono DLL mapping.
 
@@ -285,9 +285,11 @@ Settings are stored in `<SaveGameDir>/KitsuneCommand/appsettings.json`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `WebUrl` | `http://*:8888` | Internal API bind address (do not change; access the panel on port **8890**) |
-| `WebPanelPort` | `8890` | Frontend/login port — this is what you open in your browser |
+| `WebUrl` | `http://*:8888` | Internal API bind address. The panel forwards API calls to this port, so you can move it; you still open the panel on `WebPanelPort` |
+| `WebPanelPort` | `8890` | Frontend/login port — this is what you open in your browser or point a reverse proxy at |
 | `WebSocketPort` | `8889` | WebSocket server port |
+
+The three ports must all differ. To run two servers on one host, give the second one its own set (e.g. `http://*:9888`, `9890`, `9889`) and restart it.
 | `DatabasePath` | `KitsuneCommand.db` | SQLite database location |
 | `AccessTokenExpireMinutes` | `1440` | Auth token lifetime (24h) |
 | `EnableCors` | `false` | Enable for frontend dev with Vite |

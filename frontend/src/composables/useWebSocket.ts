@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { webSocketUrl } from '@/lib/webSocketUrl'
 
 export type ModEventType =
   | 'LogCallback'
@@ -36,19 +37,7 @@ export function useWebSocket() {
     const auth = useAuthStore()
     if (!auth.accessToken) return
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.hostname
-    // Dev: page at http://host:8890 → WebSocket server is on sibling port 8889, explicit.
-    // Prod: page behind reverse proxy (standard 80/443 or custom), same origin — the proxy
-    // is responsible for routing /kctunnel to the 8889 backend.
-    //
-    // Path is /kctunnel. Cloudflare's managed WAF blocks an *expanding* list of path
-    // name classes at the edge (HTTP 400 without ever reaching origin). So far: /ws*
-    // (blocks WS Upgrade), /socket* (blocks any request), and /*events* (blocks any
-    // request; /kcevents got us). /kctunnel has tested clean everywhere we've probed.
-    const isDevDirectPort = window.location.port === '8890'
-    const portSuffix = isDevDirectPort ? ':8889' : ''
-    const url = `${protocol}//${host}${portSuffix}/kctunnel?token=${auth.accessToken}`
+    const url = webSocketUrl(window.location, auth.accessToken)
 
     ws.value = new WebSocket(url)
 
