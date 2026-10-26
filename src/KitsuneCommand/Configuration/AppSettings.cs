@@ -6,9 +6,16 @@ namespace KitsuneCommand.Configuration
     public class AppSettings
     {
         /// <summary>
-        /// HTTP server bind URL (e.g., "http://*:8888").
+        /// Internal API (OWIN) bind URL (e.g., "http://*:8888"). The panel listener
+        /// proxies /api/ calls to this URL's port.
         /// </summary>
         public string WebUrl { get; set; } = "http://*:8888";
+
+        /// <summary>
+        /// Frontend + login listener port: the one you open in a browser or point a
+        /// reverse proxy at.
+        /// </summary>
+        public int WebPanelPort { get; set; } = 8890;
 
         /// <summary>
         /// WebSocket server port.
