@@ -12,6 +12,25 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Added
+
+- **Sign in through Steam (opt-in).** Panel users can link their Steam
+  account under Settings → Account and then sign in with Steam instead of
+  their password. It's off until an admin turns it on under Settings → Users
+  and saves the panel's public address, which is pre-filled from the page
+  they're on. Steam is told to send people back to that saved address, not
+  to whatever the request's Host header claims, so a forged Host can't
+  redirect someone's sign-in to another site. A Steam sign-in never creates
+  an account or hands out a role. It only signs you in to the account
+  you linked, and passwords (and `kcresetpw`) keep working. Admins can see
+  who has Steam linked and remove a link from the Users table. Steam's
+  answer is checked with Steam itself before it's trusted. The round trip
+  is tied to the browser that started it, and the result comes back as a
+  two-minute, single-use code, so the session token never appears in a
+  URL. Needs outbound HTTPS to steamcommunity.com. In all 8 languages.
+  Migration `013_steam_login.sql` adds a nullable `steam_id` column to
+  `user_accounts`. It runs automatically on startup.
+
 ## [2.12.0] - 2026-11-02
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.12.0)
@@ -42,22 +61,6 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   Hover a footprint to see the POI's name. A layer switch hides players or
   POIs. Big worlds are read a row at a time, so a 10k world doesn't need
   hundreds of MB to load, and the tile cache stops growing at 64 MB.
-- **Sign in through Steam (opt-in).** Panel users can link their Steam
-  account under Settings → Account and then sign in with Steam instead of
-  their password. It's off until an admin turns it on under Settings → Users
-  and saves the panel's public address, which is pre-filled from the page
-  they're on. Steam is told to send people back to that saved address, not
-  to whatever the request's Host header claims, so a forged Host can't
-  redirect someone's sign-in to another site. A Steam sign-in never creates
-  an account or hands out a role. It only signs you in to the account
-  you linked, and passwords (and `kcresetpw`) keep working. Admins can see
-  who has Steam linked and remove a link from the Users table. Steam's
-  answer is checked with Steam itself before it's trusted. The round trip
-  is tied to the browser that started it, and the result comes back as a
-  two-minute, single-use code, so the session token never appears in a
-  URL. Needs outbound HTTPS to steamcommunity.com. In all 8 languages.
-  Migration `013_steam_login.sql` adds a nullable `steam_id` column to
-  `user_accounts`. It runs automatically on startup.
 
 ## [2.11.1] - 2026-10-26
 
