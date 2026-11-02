@@ -7,7 +7,8 @@ import PrimeVue from 'primevue/config'
 const mockLogin = vi.fn()
 const mockPush = vi.fn()
 
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: mockPush }) }))
+vi.mock('vue-router', () => ({ useRoute: () => ({ query: {} }), useRouter: () => ({ push: mockPush, replace: vi.fn() }) }))
+vi.mock('@/api/auth', () => ({ getSteamLoginEnabled: () => Promise.resolve(false), steamLoginUrl: '/api/auth/steam/login' }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ login: mockLogin }) }))
 vi.mock('@/api/modpack', () => ({
   getPublishedModpack: () => Promise.resolve(null),

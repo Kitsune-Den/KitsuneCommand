@@ -8,6 +8,8 @@ export interface UserResponse {
   lastLoginAt: string | null
   isActive: boolean
   createdAt: string
+  /** SteamID64 when the account has Steam sign-in linked. */
+  steamId?: string | null
 }
 
 export interface CreateUserRequest {
@@ -49,4 +51,8 @@ export async function resetUserPassword(id: number, newPassword: string): Promis
 
 export async function deleteUser(id: number): Promise<void> {
   await apiClient.delete(`/api/users/${id}`)
+}
+
+export async function unlinkUserSteam(id: number): Promise<void> {
+  await apiClient.delete(`/api/users/${id}/steam`)
 }

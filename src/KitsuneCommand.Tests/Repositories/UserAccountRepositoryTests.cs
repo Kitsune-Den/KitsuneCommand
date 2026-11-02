@@ -220,5 +220,59 @@ namespace KitsuneCommand.Tests.Repositories
             var count = _repo.CountActiveAdmins();
             Assert.That(count, Is.EqualTo(1), "Should only count active admins");
         }
+
+        [Test]
+        public void SetSteamId_LinksAndGetBySteamIdFindsIt()
+        {
+            var id = _repo.Create(new UserAccount { Username = "mod1", PasswordHash = "h", Role = "moderator" });
+
+            _repo.SetSteamId(id, "76561197960287930");
+
+            var result = _repo.GetBySteamId("76561197960287930");
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.Id, Is.EqualTo(id));
+            Assert.That(result.SteamId, Is.EqualTo("76561197960287930"));
+        }
+
+        [Test]
+        public void SetSteamId_Null_Unlinks()
+        {
+            var id = _repo.Create(new UserAccount { Username = "mod1", PasswordHash = "h", Role = "moderator" });
+            _repo.SetSteamId(id, "76561197960287930");
+
+            _repo.SetSteamId(id, null);
+
+            Assert.That(_repo.GetBySteamId("76561197960287930"), Is.Null);
+            Assert.That(_repo.GetById(id).SteamId, Is.Null);
+        }
+
+        [Test]
+        public void GetBySteamId_IgnoresInactiveAccounts()
+        {
+            var id = _repo.Create(new UserAccount { Username = "gone", PasswordHash = "h", Role = "viewer" });
+            _repo.SetSteamId(id, "76561197960287930");
+            _repo.Update(new UserAccount { Id = id, DisplayName = "gone", Role = "viewer", IsActive = false });
+
+            Assert.That(_repo.GetBySteamId("76561197960287930"), Is.Null);
+        }
+
+        [Test]
+        public void SetSteamId_SameSteamIdOnTwoAccounts_Throws()
+        {
+            var a = _repo.Create(new UserAccount { Username = "a", PasswordHash = "h", Role = "admin" });
+            var b = _repo.Create(new UserAccount { Username = "b", PasswordHash = "h", Role = "admin" });
+            _repo.SetSteamId(a, "76561197960287930");
+
+            Assert.That(() => _repo.SetSteamId(b, "76561197960287930"), Throws.Exception);
+        }
+
+        [Test]
+        public void UnlinkedAccounts_DoNotCollideOnTheUniqueIndex()
+        {
+            _repo.Create(new UserAccount { Username = "a", PasswordHash = "h", Role = "admin" });
+            _repo.Create(new UserAccount { Username = "b", PasswordHash = "h", Role = "admin" });
+
+            Assert.That(_repo.GetAll().Count(u => u.SteamId == null), Is.EqualTo(2));
+        }
     }
 }

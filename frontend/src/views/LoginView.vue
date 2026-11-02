@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from 'vue-i18n'
 import { SUPPORTED_LOCALES, setLocale, type LocaleCode } from '@/i18n'
 import { getPublishedModpack, publicModpackDownloadUrl } from '@/api/modpack'
+import { getSteamLoginEnabled, steamLoginUrl } from '@/api/auth'
 import type { PublicModpack } from '@/types'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -12,6 +13,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
 
+const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const { t, locale } = useI18n()
@@ -49,7 +51,38 @@ function formatModpackSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
+// "Sign in through Steam" — only offered once an admin has turned it on. Steam
+// sends the browser back here as #/login?steam_code=… (or ?steam_error=…).
+const steamEnabled = ref(false)
+const steamSigningIn = ref(false)
+const STEAM_LOGIN_ERRORS = ['not_linked', 'cancelled', 'expired', 'disabled', 'session_mismatch', 'steam_unreachable', 'invalid']
+
+async function finishSteamLogin() {
+  const { steam_code: code, steam_error: steamError } = route.query
+  if (typeof steamError === 'string') {
+    const key = STEAM_LOGIN_ERRORS.includes(steamError) ? steamError : 'invalid'
+    error.value = t(`login.steamErrors.${key}`)
+  }
+  if (typeof code !== 'string') {
+    if (steamError) router.replace({ query: {} })
+    return
+  }
+
+  steamSigningIn.value = true
+  try {
+    await auth.loginWithSteamCode(code)
+    await router.push({ name: 'Dashboard' })
+  } catch {
+    error.value = t('login.steamErrors.expired')
+    router.replace({ query: {} })
+  } finally {
+    steamSigningIn.value = false
+  }
+}
+
 onMounted(async () => {
+  finishSteamLogin()
+  getSteamLoginEnabled().then((enabled) => (steamEnabled.value = enabled))
   publishedModpack.value = await getPublishedModpack()
 })
 
@@ -144,6 +177,19 @@ async function handleLogin() {
           class="w-full login-button"
           icon="pi pi-sign-in"
         />
+
+        <template v-if="steamEnabled">
+          <div class="login-divider"><span>{{ t('login.or') }}</span></div>
+          <a
+            :href="steamLoginUrl"
+            class="steam-button"
+            :class="{ busy: steamSigningIn }"
+            :aria-disabled="steamSigningIn"
+          >
+            <i :class="steamSigningIn ? 'pi pi-spin pi-spinner' : 'pi pi-external-link'" />
+            {{ t('login.signInWithSteam') }}
+          </a>
+        </template>
 
         <button
           type="button"
@@ -271,6 +317,51 @@ async function handleLogin() {
 
 .login-button:hover {
   background: linear-gradient(135deg, var(--kc-cyan), var(--kc-cyan-dark));
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--kc-text-secondary);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--kc-border);
+}
+
+/* Steam's own dark slate, so it reads as "the Steam option" next to our cyan. */
+.steam-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #2a475e;
+  background: #171a21;
+  color: #c7d5e0;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.steam-button:hover,
+.steam-button:focus-visible {
+  background: #1b2838;
+  border-color: #66c0f4;
+  color: #fff;
+}
+
+.steam-button.busy {
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 .help-toggle {

@@ -17,10 +17,18 @@ vi.mock('@/api/vipperks', () => ({
 }))
 
 // Every other tab's data source — resolve with shapes safe to assign.
-vi.mock('@/api/auth', () => ({ changePassword: vi.fn() }))
+vi.mock('@/api/auth', () => ({
+  changePassword: vi.fn(),
+  getSteamAccount: () => Promise.resolve({ enabled: false, linked: false }),
+  startSteamLink: vi.fn(), unlinkSteam: vi.fn(),
+  getSteamLoginSettings: () => Promise.resolve({ enabled: false, publicUrl: null }),
+  updateSteamLoginSettings: vi.fn(),
+}))
+vi.mock('vue-router', () => ({ useRoute: () => ({ query: {} }), useRouter: () => ({ replace: vi.fn() }) }))
+vi.mock('@/api/server', () => ({ getTimezones: () => Promise.resolve([]) }))
 vi.mock('@/api/users', () => ({
   getUsers: () => Promise.resolve([]), createUser: vi.fn(), updateUser: vi.fn(),
-  resetUserPassword: vi.fn(), deleteUser: vi.fn(),
+  resetUserPassword: vi.fn(), deleteUser: vi.fn(), unlinkUserSteam: vi.fn(),
 }))
 vi.mock('@/api/settings', () => ({
   getChatCommandSettings: () => Promise.resolve({}), updateChatCommandSettings: vi.fn(),

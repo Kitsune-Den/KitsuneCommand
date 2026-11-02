@@ -29,5 +29,6 @@ namespace KitsuneCommand.Web.Models
         public string LastLoginAt { get; set; }
         public bool IsActive { get; set; }
         public string CreatedAt { get; set; }
+        public string SteamId { get; set; }
     }
 }

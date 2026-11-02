@@ -66,6 +66,33 @@ to recover, then update KC. Newer builds: this can't happen.
 
 ---
 
+## "Sign in through Steam" fails or sends me to the wrong address
+
+**Cause:** Steam sends you back to the **Panel address** saved under
+Settings → Users, and nowhere else. If that address isn't the one in your
+browser's address bar (a different hostname, `http` vs `https`, a missing
+port, or a stale address after moving behind a tunnel), Steam returns you
+somewhere else, or the sign-in can't finish in the browser that started it.
+
+**Fix:** Sign in with your password, open Settings → Users, and set Panel
+address to exactly what you type to reach the panel (no trailing `#/...`),
+e.g. `https://panel.example.com` or `http://203.0.113.5:8890`. Then check
+what the login page says:
+
+- **"isn't linked to a panel account"**: Steam worked, but no user has
+  linked that Steam account yet. Sign in with the password and use
+  Settings → Account → **Link Steam account**.
+- **"Couldn't reach Steam"**: the game server can't make outbound HTTPS
+  requests to `steamcommunity.com`. Check its firewall or egress rules.
+- **"has to finish in the same browser"**: the sign-in started and ended
+  in different browsers or profiles, or the browser blocked the
+  `kc_steam_state` cookie. Start again from the panel's own address.
+
+Locked out with Steam not working? Passwords still work, and so does
+`kcresetpw`.
+
+---
+
 ## Live badge never turns green; WebSocket shows "Finished 0 kB"
 
 **Cause:** WebSocketSharp's `WebSocketServer` does strict Host-header
