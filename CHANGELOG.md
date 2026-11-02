@@ -12,6 +12,7 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+<<<<<<< HEAD
 ### Removed
 
 - **Trader Zone Toggle (`ktrader`) and the KitsuneTraderUnlock client mod.**
@@ -26,6 +27,31 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   And V2.5 has no `TraderProtection` option, so V2.5 servers lose the
   ability to unlock trader areas for cleanup. The old `TraderProtection`
   row in the settings table is left alone and is now unused.
+=======
+## [2.12.1] - 2026-11-02
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.12.1)
+> · Shop buys, CD keys and VIP gifts work without TFP_CommandExtensions. KC
+> handed items out through that mod's `give` command and never checked the
+> answer, so on servers without it players were charged and got nothing. KC
+> now drops the items itself, and charges only once they're on the ground.
+> No schema or config changes; minimum 7D2D version unchanged.
+
+### Fixed
+
+- **Shop buys, CD keys and VIP gifts took points but delivered nothing on
+  some servers.** KC handed out items by running the `give` console command,
+  which comes from the TFP_CommandExtensions mod, not the game, and it never
+  checked what `give` printed. On a server without that mod, or with a copy
+  built for a different game version, every delivery failed while points were
+  taken and the panel said "Successfully purchased". KC now drops the items at
+  the player's feet itself. Points are taken, keys counted as redeemed and
+  gifts marked claimed only after the items are on the ground; if a drop fails
+  the panel or chat says why and nothing is charged. Deliveries also stay on
+  the ground for 10 minutes instead of the game's 60 seconds, and the player
+  gets a whisper telling them where to look. Commands attached to a store item
+  still run through the console as before.
+>>>>>>> origin/main
 
 ## [2.12.0] - 2026-11-02
 
@@ -932,7 +958,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.0...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.1...HEAD
+[2.12.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.0...v2.12.1
 [2.12.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.1...v2.12.0
 [2.11.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...v2.11.0

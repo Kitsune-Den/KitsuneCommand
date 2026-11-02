@@ -213,14 +213,17 @@ namespace KitsuneCommand.Web.Controllers
             var itemError = GameIntegration.GameItems.UnknownItemsError(items.Select(i => i.ItemName));
             if (itemError != null) return BadRequest(itemError);
 
-            // 7. Execute item gives
-            var deliveryLog = new List<string>();
-            foreach (var item in items)
+            // 7. Drop the items; the key counts as redeemed only once they're delivered
+            var dropError = GameIntegration.GameItems.DropForPlayer(player.EntityId, items);
+            if (dropError != null)
             {
-                var cmd = $"give {player.EntityId} {item.ItemName} {item.Count} {item.Quality}";
-                var output = ExecuteConsoleCommand(cmd);
-                deliveryLog.Add($"[Item] {item.ItemName} x{item.Count}: {output}");
+                Log.Warning($"[KitsuneCommand] CD key '{cdKey.Key}' for {player.PlayerName} not delivered: {dropError}");
+                return BadRequest($"{dropError} Nothing was delivered and the key was not redeemed.");
             }
+
+            var deliveryLog = items.Select(i => $"[Item] {i.ItemName} x{i.Count}: dropped at the player's feet").ToList();
+            if (items.Count > 0)
+                GameIntegration.GameChat.Whisper(player.EntityId, "[00FF00]Your CD key items are on the ground at your feet.[-]");
 
             // 8. Execute commands with placeholder substitution
             foreach (var cmdDef in commands)

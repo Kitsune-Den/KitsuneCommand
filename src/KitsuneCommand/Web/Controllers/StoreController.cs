@@ -201,17 +201,20 @@ namespace KitsuneCommand.Web.Controllers
             if (pointsInfo == null || pointsInfo.Points < goods.Price)
                 return BadRequest($"Insufficient points. Required: {goods.Price}, Available: {pointsInfo?.Points ?? 0}");
 
-            // 4. Deduct points
+            // 4. Drop the items, then charge: a delivery that fails costs nothing
+            var dropError = GameIntegration.GameItems.DropForPlayer(buyer.EntityId, items);
+            if (dropError != null)
+            {
+                Log.Warning($"[KitsuneCommand] '{goods.Name}' for {buyer.PlayerName} not delivered: {dropError}");
+                return BadRequest($"{dropError} Nothing was delivered and {buyer.PlayerName} was not charged.");
+            }
+
+            // 5. Deduct points
             var newBalance = _pointsRepo.AdjustPoints(request.PlayerId, -goods.Price);
 
-            // 5. Execute item gives
-            var deliveryLog = new List<string>();
-            foreach (var item in items)
-            {
-                var cmd = $"give {buyer.EntityId} {item.ItemName} {item.Count} {item.Quality}";
-                var output = ExecuteConsoleCommand(cmd);
-                deliveryLog.Add($"[Item] {item.ItemName} x{item.Count}: {output}");
-            }
+            var deliveryLog = items.Select(i => $"[Item] {i.ItemName} x{i.Count}: dropped at the player's feet").ToList();
+            if (items.Count > 0)
+                GameIntegration.GameChat.Whisper(buyer.EntityId, $"[00FF00]Your '{goods.Name}' purchase is on the ground at your feet.[-]");
 
             // 6. Execute commands
             foreach (var cmdDef in commands)
