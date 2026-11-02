@@ -344,7 +344,7 @@ namespace KitsuneCommand.Core
                 // Drop item right at the player's position — auto-pickup will collect it
                 var pos = ep.GetPosition();
                 pos.y += 0.25f; // Slightly above feet so it doesn't clip through ground
-                GameManager.Instance.ItemDropServer(stack, pos, UnityEngine.Vector3.zero, entityId, 60f, false);
+                GameManager.Instance.ItemDropServer(stack, pos, UnityEngine.Vector3.zero, entityId, GameItems.DropLifetimeSeconds, false);
                 Log.Out($"[KitsuneCommand] Dropped {count}x {itemName} at ({pos.x:F1}, {pos.y:F1}, {pos.z:F1}) for {ep.EntityName}");
 
                 // Send DM to player
