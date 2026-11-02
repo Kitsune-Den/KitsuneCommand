@@ -67,6 +67,15 @@ export interface MapMarker {
   type: string
 }
 
+// A POI's footprint: south-west (minimum X/Z) corner and size, in blocks
+export interface MapPoi {
+  name: string
+  x: number
+  z: number
+  sizeX: number
+  sizeZ: number
+}
+
 export interface PlayerPositionData {
   entityId: number
   playerName: string
