@@ -295,6 +295,8 @@ const ko: Messages = {
     mapNotAvailable: '서버에서 지도 렌더러를 사용할 수 없습니다.',
     failedToLoad: '지도 데이터를 불러오지 못했습니다.',
     positionLabel: '위치',
+    layerPlayers: '플레이어',
+    layerPois: 'POI',
   },
 
   chat: {

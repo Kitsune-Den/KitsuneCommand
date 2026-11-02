@@ -271,6 +271,8 @@ const es = {
     mapNotAvailable: 'El renderizador de mapa no está disponible en el servidor.',
     failedToLoad: 'No se pudieron cargar los datos del mapa.',
     positionLabel: 'Posición',
+    layerPlayers: 'Jugadores',
+    layerPois: 'Lugares de interés',
   },
 
   chat: {

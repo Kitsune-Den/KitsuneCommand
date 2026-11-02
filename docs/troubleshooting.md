@@ -169,6 +169,29 @@ If it says ARM or i386, you copied the wrong NuGet runtime — pull from
 
 ---
 
+## Map shows only flat biome colors, no players
+
+**Cause:** Versions up to 2.11.1 took the world's size from `biomes.png`,
+which the game writes at 1/8 of the world on generated worlds (1/2 on
+Navezgane). Players were placed off the map and the heightmap was rejected.
+
+**Fix:** Update KC. The server log should then show the real size and each
+layer loading:
+
+```
+MapTileRenderer: World size 8192x8192 (biomes 1024px), max zoom 5
+MapTileRenderer: Heightmap loaded, hill shading enabled.
+MapTileRenderer: Loaded splat3.png.
+MapTileRenderer: Loaded splat4.png.
+MapTileRenderer: 1874 POI footprints.
+```
+
+A layer that's missing says so (`splat3.png not found, no roads.`). Generated
+worlds keep these files in `GeneratedWorlds/<world>/`; a world copied to a
+rented server without them still maps, just without that layer.
+
+---
+
 ## `cloudflared` reports `connect: connection refused` on `[::1]:8889`
 
 **Cause:** Cloudflared resolves `localhost` to IPv6 (`::1`) first.

@@ -12,8 +12,26 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The map showed only flat biome colors, and players weren't on it.** KC
+  took the world's size from `biomes.png`, but the game writes that file
+  smaller than the world: 1/8 on generated worlds, 1/2 on Navezgane. So player
+  markers landed far off the map, zoom stopped early and blurry, and on
+  generated worlds the heightmap was rejected for the wrong size. On Navezgane
+  it was also read upside down. KC now reads the size from `map_info.xml`.
+  Markers, coordinates and zoom match the world, and the heightmap is read the
+  way the game writes it (south to north).
+- **Player names in map popups are escaped.** A name containing HTML was
+  inserted into the page as-is.
+
 ### Added
 
+- **A real map.** Tiles now show hill shading, rivers and lakes, highways,
+  country roads, and town and POI footprints, all from the world's own files.
+  Hover a footprint to see the POI's name. A layer switch hides players or
+  POIs. Big worlds are read a row at a time, so a 10k world doesn't need
+  hundreds of MB to load, and the tile cache stops growing at 64 MB.
 - **Sign in through Steam (opt-in).** Panel users can link their Steam
   account under Settings → Account and then sign in with Steam instead of
   their password. It's off until an admin turns it on under Settings → Users

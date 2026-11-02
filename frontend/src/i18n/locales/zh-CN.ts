@@ -295,6 +295,8 @@ const zhCN: Messages = {
     mapNotAvailable: '服务器上的地图渲染器不可用。',
     failedToLoad: '加载地图数据失败。',
     positionLabel: '坐标',
+    layerPlayers: '玩家',
+    layerPois: '兴趣点',
   },
 
   chat: {
