@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getMapInfo, getMapMarkers, getMapPois } from '@/api/map'
 import type { MapInfo, MapPoi } from '@/types'
+import { escapeHtml } from '@/lib/escapeHtml'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -27,11 +28,6 @@ let resizeObserver: ResizeObserver | null = null
 // The server sends the real world size; biomes.png is smaller than the world.
 let _worldSize = 6144
 let _halfWorld = 3072
-
-// Player and POI names go into Leaflet's HTML popups and tooltips
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)
-}
 
 function gameToLatLng(gameX: number, gameZ: number): L.LatLng {
   const lng = (gameX + _halfWorld) / _worldSize * 256
