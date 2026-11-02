@@ -27,6 +27,37 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   ability to unlock trader areas for cleanup. The old `TraderProtection`
   row in the settings table is left alone and is now unused.
 
+## [2.12.0] - 2026-11-02
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.12.0)
+> · The map is a real map now. Until this release it showed little more than
+> flat biome colors, with players placed off its edge, because KC took the
+> world's size from a file the game writes at a fraction of it. Tiles now
+> show the terrain's shape, rivers and lakes, highways and dirt roads, and
+> every town and POI, which you can hover to name. No schema or config
+> changes; minimum 7D2D version unchanged.
+
+### Fixed
+
+- **The map showed only flat biome colors, and players weren't on it.** KC
+  took the world's size from `biomes.png`, but the game writes that file
+  smaller than the world: 1/8 on generated worlds, 1/2 on Navezgane. So player
+  markers landed far off the map, zoom stopped early and blurry, and on
+  generated worlds the heightmap was rejected for the wrong size. On Navezgane
+  it was also read upside down. KC now reads the size from `map_info.xml`.
+  Markers, coordinates and zoom match the world, and the heightmap is read the
+  way the game writes it (south to north).
+- **Player names in map popups are escaped.** A name containing HTML was
+  inserted into the page as-is.
+
+### Added
+
+- **A real map.** Tiles now show hill shading, rivers and lakes, highways,
+  country roads, and town and POI footprints, all from the world's own files.
+  Hover a footprint to see the POI's name. A layer switch hides players or
+  POIs. Big worlds are read a row at a time, so a 10k world doesn't need
+  hundreds of MB to load, and the tile cache stops growing at 64 MB.
+
 ## [2.11.1] - 2026-10-26
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.11.1)
@@ -901,7 +932,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.1...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.0...HEAD
+[2.12.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.1...v2.12.0
 [2.11.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.0...v2.10.1
