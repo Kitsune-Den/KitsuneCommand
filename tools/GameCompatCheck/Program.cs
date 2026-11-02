@@ -34,7 +34,7 @@ if (managed == null)
 var repo = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 var mods = args.Length > 1
     ? args.Skip(1).ToArray()
-    : new[] { "KitsuneCommand", "KitsunePvPBalance", "KitsuneTraderUnlock", "KitsuneJoinDiag", "KitsunePackRelayLauncher" }
+    : new[] { "KitsuneCommand", "KitsunePvPBalance", "KitsuneJoinDiag", "KitsunePackRelayLauncher" }
         .Select(m => Path.Combine(repo, "src", m, "bin", "Release", m + ".dll"))
         .ToArray();
 

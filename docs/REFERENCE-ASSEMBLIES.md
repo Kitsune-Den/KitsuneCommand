@@ -103,7 +103,7 @@ The csproj `<HintPath>` for every game DLL points at `refs\<name>.dll`. To confi
 grep HintPath src/KitsuneCommand/KitsuneCommand.csproj | grep -v 'lib\|Microsoft\.'
 ```
 
-Every hit should reference `refs\`. Same for `KitsuneCommand.Tests`, `KitsunePvPBalance`, `KitsuneTraderUnlock` csprojs.
+Every hit should reference `refs\`. Same for the `KitsuneCommand.Tests` and `KitsunePvPBalance` csprojs.
 
 CI build (windows-latest runner) has no access to the real DLLs, so a successful CI build proves the refs/ DLLs are sufficient for compilation.
 
