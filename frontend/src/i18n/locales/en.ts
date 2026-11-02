@@ -279,6 +279,8 @@ const en = {
     mapNotAvailable: 'Map renderer not available on the server.',
     failedToLoad: 'Failed to load map data.',
     positionLabel: 'Position',
+    layerPlayers: 'Players',
+    layerPois: 'Points of interest',
   },
 
   chat: {

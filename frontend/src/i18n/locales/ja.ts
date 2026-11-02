@@ -284,6 +284,8 @@ const ja: Messages = {
     mapNotAvailable: 'サーバーでマップレンダラーが利用できません。',
     failedToLoad: 'マップデータの読み込みに失敗しました。',
     positionLabel: '座標',
+    layerPlayers: 'プレイヤー',
+    layerPois: 'POI',
   },
 
   chat: {

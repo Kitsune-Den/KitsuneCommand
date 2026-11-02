@@ -260,6 +260,8 @@ const fr = {
     mapNotAvailable: 'Le moteur de rendu de carte n\'est pas disponible sur le serveur.',
     failedToLoad: 'Impossible de charger les données de la carte.',
     positionLabel: 'Position',
+    layerPlayers: 'Joueurs',
+    layerPois: 'Points d\'intérêt',
   },
 
   chat: {

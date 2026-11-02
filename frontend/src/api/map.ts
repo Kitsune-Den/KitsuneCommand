@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { MapInfo, MapMarker } from '@/types'
+import type { MapInfo, MapMarker, MapPoi } from '@/types'
 
 export async function getMapInfo(): Promise<MapInfo> {
   const response = await apiClient.get('/api/map/info')
@@ -8,6 +8,11 @@ export async function getMapInfo(): Promise<MapInfo> {
 
 export async function getMapMarkers(): Promise<MapMarker[]> {
   const response = await apiClient.get('/api/map/markers')
+  return response.data.data
+}
+
+export async function getMapPois(): Promise<MapPoi[]> {
+  const response = await apiClient.get('/api/map/pois')
   return response.data.data
 }
 

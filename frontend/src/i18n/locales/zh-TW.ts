@@ -284,6 +284,8 @@ const zhTW: Messages = {
     mapNotAvailable: '伺服器上的地圖渲染器不可用。',
     failedToLoad: '無法載入地圖資料。',
     positionLabel: '位置',
+    layerPlayers: '玩家',
+    layerPois: '興趣點',
   },
 
   chat: {

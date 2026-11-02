@@ -260,6 +260,8 @@ const de = {
     mapNotAvailable: 'Karten-Renderer auf dem Server nicht verfügbar.',
     failedToLoad: 'Kartendaten konnten nicht geladen werden.',
     positionLabel: 'Position',
+    layerPlayers: 'Spieler',
+    layerPois: 'Orte (POIs)',
   },
 
   chat: {
