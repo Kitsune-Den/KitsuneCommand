@@ -95,6 +95,12 @@ const router = createRouter({
           component: () => import('@/views/TicketsView.vue'),
         },
         {
+          // Admin-only (the API enforces it too): log-only cheat signals for review.
+          path: 'suspicion',
+          name: 'SuspicionLog',
+          component: () => import('@/views/SuspicionLogView.vue'),
+        },
+        {
           path: 'teleport/cities',
           name: 'TeleportCities',
           component: () => import('@/views/TeleportCitiesView.vue'),

@@ -2,8 +2,8 @@
 <xml>
     <Name value="KitsunePackRelayLauncher" />
     <DisplayName value="Kitsune PackRelay Launcher (Auto-Connect)" />
-    <Version value="0.1.0" />
-    <Description value="Client-side companion to the PackRelay launcher. When the launcher writes a `packrelay-quickjoin.json` sentinel into the userdatafolder before spawning 7DTD, this mod reads it on main-menu-ready and (in v0.2) drives the Direct Connect dialog automatically. v0.1 ships the scaffold + sentinel reader + verified Harmony hook on XUiC_MainMenu.OnOpen; the auto-click invoke lands in v0.2. Harmless on dedicated servers (XUiC code path doesn't fire server-side)." />
+    <Version value="0.2.0" />
+    <Description value="Client-side companion to the PackRelay launcher. When the launcher writes a `packrelay-quickjoin.json` sentinel into the userdatafolder before spawning 7DTD, this mod picks it up when the main menu opens and joins that server through the game's own Direct Connect dialog, so Connect in the launcher lands you in the server. Needs 7DTD 3.x for the auto-join; on older versions it logs the address instead. Harmless on dedicated servers (the main menu never opens there)." />
     <Author value="AdaInTheLab" />
     <Website value="https://github.com/Kitsune-Den/KitsuneCommand" />
 </xml>

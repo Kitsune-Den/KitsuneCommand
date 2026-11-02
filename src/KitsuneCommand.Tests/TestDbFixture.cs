@@ -71,6 +71,9 @@ namespace KitsuneCommand.Tests
 
             // 013_steam_login.sql — user_accounts.steam_id + its unique index.
             connection.Execute(Schema013);
+
+            // 014_suspicion_log.sql
+            connection.Execute(Schema014);
         }
 
         /// <summary>
@@ -386,6 +389,34 @@ CREATE TABLE IF NOT EXISTS first_login_grants (
         private const string Schema013 = @"
 ALTER TABLE user_accounts ADD COLUMN steam_id TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_accounts_steam_id ON user_accounts(steam_id);
+";
+
+        // Mirrors Config/Migrations/014_suspicion_log.sql verbatim. Update
+        // both when the schema changes.
+        private const string Schema014 = @"
+CREATE TABLE IF NOT EXISTS suspicion_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    player_id TEXT,
+    player_name TEXT,
+    entity_id INTEGER,
+    detector TEXT NOT NULL,
+    rule TEXT NOT NULL,
+    severity TEXT NOT NULL DEFAULT 'low',
+    summary TEXT,
+    details TEXT,
+    pos_x REAL,
+    pos_y REAL,
+    pos_z REAL,
+    reviewed INTEGER NOT NULL DEFAULT 0,
+    reviewed_by TEXT,
+    reviewed_at TEXT,
+    review_note TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_suspicion_events_created_at ON suspicion_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_suspicion_events_player_id ON suspicion_events(player_id);
+CREATE INDEX IF NOT EXISTS idx_suspicion_events_reviewed ON suspicion_events(reviewed, created_at);
 ";
 
         #endregion

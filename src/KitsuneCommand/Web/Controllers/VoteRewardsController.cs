@@ -15,7 +15,7 @@ namespace KitsuneCommand.Web.Controllers
     ///   GET    /api/voterewards/grants          — recent audit-log rows (admin)
     ///   GET    /api/voterewards/grants/count    — total grant count (admin)
     ///
-    /// Mirrors TraderProtectionController's pattern: pull the feature instance
+    /// Same pattern as the other feature controllers: pull the feature instance
     /// out of the FeatureManager rather than DI-ing it directly, so the
     /// controller stays cheap to instantiate per request.
     /// </summary>
@@ -51,7 +51,7 @@ namespace KitsuneCommand.Web.Controllers
                 return Ok(ApiResponse.Error(404, "Vote rewards feature not available."));
 
             // The settings blob carries API keys; we'd normally redact them on
-            // GET, but parity with the existing TraderProtection / Discord
+            // GET, but parity with the existing Discord
             // settings endpoints (which also return secrets to admins) wins
             // for now. The role gate is "admin" — if that's compromised we
             // have bigger problems than a vote API key.

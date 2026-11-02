@@ -75,6 +75,20 @@ namespace KitsuneCommand.Abstractions.Models
         public string DeadEntityName { get; set; }
         public int KillerEntityId { get; set; }
         public string KillerName { get; set; }
+
+        /// <summary>The dead entity's EntityType name: Zombie, Animal, Player, Bandit or Unknown.</summary>
+        public string DeadEntityType { get; set; }
+    }
+
+    /// <summary>
+    /// A player is being moved on purpose (KC's home/city/admin teleports).
+    /// Publish this before teleporting a player from a plugin too, so the
+    /// suspicion log doesn't record the move as a cheat.
+    /// </summary>
+    public class PlayerTeleportedEvent
+    {
+        public int EntityId { get; set; }
+        public string Reason { get; set; }
     }
 
     public class SkyChangedEvent
