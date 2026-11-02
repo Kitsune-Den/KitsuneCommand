@@ -12,6 +12,15 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.12.1] - 2026-11-02
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.12.1)
+> · Shop buys, CD keys and VIP gifts work without TFP_CommandExtensions. KC
+> handed items out through that mod's `give` command and never checked the
+> answer, so on servers without it players were charged and got nothing. KC
+> now drops the items itself, and charges only once they're on the ground.
+> No schema or config changes; minimum 7D2D version unchanged.
+
 ### Fixed
 
 - **Shop buys, CD keys and VIP gifts took points but delivered nothing on
@@ -932,7 +941,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.0...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.1...HEAD
+[2.12.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.0...v2.12.1
 [2.12.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.1...v2.12.0
 [2.11.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...v2.11.0
