@@ -222,14 +222,17 @@ namespace KitsuneCommand.Web.Controllers
             var itemError = GameIntegration.GameItems.UnknownItemsError(items.Select(i => i.ItemName));
             if (itemError != null) return BadRequest(itemError);
 
-            // 5. Execute item gives
-            var deliveryLog = new List<string>();
-            foreach (var item in items)
+            // 5. Drop the items; the gift is marked claimed only once they're delivered
+            var dropError = GameIntegration.GameItems.DropForPlayer(player.EntityId, items);
+            if (dropError != null)
             {
-                var cmd = $"give {player.EntityId} {item.ItemName} {item.Count} {item.Quality}";
-                var output = ExecuteConsoleCommand(cmd);
-                deliveryLog.Add($"[Item] {item.ItemName} x{item.Count}: {output}");
+                Log.Warning($"[KitsuneCommand] VIP gift '{gift.Name}' for {player.PlayerName} not delivered: {dropError}");
+                return BadRequest($"{dropError} Nothing was delivered and the gift is still unclaimed.");
             }
+
+            var deliveryLog = items.Select(i => $"[Item] {i.ItemName} x{i.Count}: dropped at the player's feet").ToList();
+            if (items.Count > 0)
+                GameIntegration.GameChat.Whisper(player.EntityId, $"[00FF00]Your VIP gift '{gift.Name}' is on the ground at your feet.[-]");
 
             // 6. Execute commands with placeholder substitution
             foreach (var cmdDef in commands)
