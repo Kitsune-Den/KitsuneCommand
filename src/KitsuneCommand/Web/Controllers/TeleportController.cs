@@ -193,7 +193,8 @@ namespace KitsuneCommand.Web.Controllers
             // 4. Parse city position
             TryParsePosition(city.Position, out var cx, out var cy, out var cz);
 
-            // 5. Execute teleport command on main thread
+            // 5. Execute teleport command on main thread (announced first so the suspicion log doesn't flag the jump)
+            _eventBus.Publish(new PlayerTeleportedEvent { EntityId = player.EntityId, Reason = "city" });
             var cmd = $"teleportplayer {player.EntityId} {cx.ToString(CultureInfo.InvariantCulture)} {cy.ToString(CultureInfo.InvariantCulture)} {cz.ToString(CultureInfo.InvariantCulture)}";
             var output = ExecuteConsoleCommand(cmd);
 
@@ -297,7 +298,8 @@ namespace KitsuneCommand.Web.Controllers
             if (!TryParsePosition(home.Position, out var hx, out var hy, out var hz))
                 return BadRequest("Home has an invalid position format.");
 
-            // 5. Execute teleport
+            // 5. Execute teleport (announced first so the suspicion log doesn't flag the jump)
+            _eventBus.Publish(new PlayerTeleportedEvent { EntityId = player.EntityId, Reason = "home" });
             var cmd = $"teleportplayer {player.EntityId} {hx.ToString(CultureInfo.InvariantCulture)} {hy.ToString(CultureInfo.InvariantCulture)} {hz.ToString(CultureInfo.InvariantCulture)}";
             var output = ExecuteConsoleCommand(cmd);
 

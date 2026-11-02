@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using KitsuneCommand.Features.Suspicion;
 using KitsuneCommand.GameIntegration;
 using KitsuneCommand.Web.Models;
 
@@ -12,6 +13,7 @@ namespace KitsuneCommand.Services
     {
         private List<GameItemInfo> _items = new List<GameItemInfo>();
         private List<string> _groups = new List<string>();
+        private Dictionary<string, ItemMeta> _meta = new Dictionary<string, ItemMeta>(System.StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Enumerate all ItemClass entries from the game engine and cache them.
@@ -21,6 +23,7 @@ namespace KitsuneCommand.Services
         {
             var items = new List<GameItemInfo>();
             var groupSet = new HashSet<string>();
+            var meta = new Dictionary<string, ItemMeta>(System.StringComparer.OrdinalIgnoreCase);
 
             int count = ItemClass.list != null ? ItemClass.list.Length : 0;
             for (int i = 0; i < count; i++)
@@ -65,9 +68,24 @@ namespace KitsuneCommand.Services
                     MaxStack = ic.Stacknumber.Value,
                     Groups = groups
                 });
+
+                // What the suspicion log checks inventories against. CreativeMode is
+                // read by name so the enum's numbering can't matter across versions.
+                try
+                {
+                    meta[itemName] = new ItemMeta
+                    {
+                        CreativeMode = ic.CreativeMode.ToString(),
+                        StackLimit = GameCompat.GetStackLimit(ic),
+                        HasQuality = ic.HasQuality,
+                        IsBlock = ic.IsBlock()
+                    };
+                }
+                catch { /* unknown to the suspicion log; the catalog entry above still stands */ }
             }
 
             _items = items;
+            _meta = meta;
             _groups = groupSet.OrderBy(g => g).ToList();
             Log.Out($"[KitsuneCommand] GameItemCatalog initialized: {_items.Count} items, {_groups.Count} groups.");
         }
@@ -122,6 +140,17 @@ namespace KitsuneCommand.Services
             if (string.IsNullOrEmpty(name)) return null;
             return _items.FirstOrDefault(i =>
                 string.Equals(i.ItemName, name, System.StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Creative mode, stack limit and quality flag for an item, or null if the
+        /// catalog doesn't know it (or hasn't been initialized yet).
+        /// </summary>
+        public ItemMeta GetItemMeta(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            _meta.TryGetValue(name, out var m);
+            return m;
         }
 
         /// <summary>

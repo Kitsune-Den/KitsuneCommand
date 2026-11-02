@@ -16,11 +16,13 @@ namespace KitsuneCommand.Web.Controllers
     {
         private readonly LivePlayerManager _playerManager;
         private readonly IPointsRepository _pointsRepo;
+        private readonly ModEventBus _eventBus;
 
-        public PlayersController(LivePlayerManager playerManager, IPointsRepository pointsRepo)
+        public PlayersController(LivePlayerManager playerManager, IPointsRepository pointsRepo, ModEventBus eventBus)
         {
             _playerManager = playerManager;
             _pointsRepo = pointsRepo;
+            _eventBus = eventBus;
         }
 
         /// <summary>
@@ -226,6 +228,8 @@ namespace KitsuneCommand.Web.Controllers
             if (player == null)
                 return NotFound();
 
+            // Announced first so the suspicion log doesn't flag the jump.
+            _eventBus.Publish(new PlayerTeleportedEvent { EntityId = entityId, Reason = "admin" });
             var output = ExecuteConsoleCommand(
                 $"teleportplayer {entityId} {(int)request.X} {(int)request.Y} {(int)request.Z}");
             return Ok(ApiResponse.Ok(new { output }));
