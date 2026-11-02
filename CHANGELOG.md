@@ -12,7 +12,6 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
-<<<<<<< HEAD
 ### Removed
 
 - **Trader Zone Toggle (`ktrader`) and the KitsuneTraderUnlock client mod.**
@@ -27,7 +26,7 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   And V2.5 has no `TraderProtection` option, so V2.5 servers lose the
   ability to unlock trader areas for cleanup. The old `TraderProtection`
   row in the settings table is left alone and is now unused.
-=======
+
 ## [2.12.1] - 2026-11-02
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.12.1)
@@ -51,7 +50,6 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   the ground for 10 minutes instead of the game's 60 seconds, and the player
   gets a whisper telling them where to look. Commands attached to a store item
   still run through the console as before.
->>>>>>> origin/main
 
 ## [2.12.0] - 2026-11-02
 
