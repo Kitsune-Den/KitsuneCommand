@@ -12,6 +12,16 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.12.0] - 2026-11-02
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.12.0)
+> · The map is a real map now. Until this release it showed little more than
+> flat biome colors, with players placed off its edge, because KC took the
+> world's size from a file the game writes at a fraction of it. Tiles now
+> show the terrain's shape, rivers and lakes, highways and dirt roads, and
+> every town and POI, which you can hover to name. No schema or config
+> changes; minimum 7D2D version unchanged.
+
 ### Fixed
 
 - **The map showed only flat biome colors, and players weren't on it.** KC
@@ -923,7 +933,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.1...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.0...HEAD
+[2.12.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.1...v2.12.0
 [2.11.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.0...v2.11.1
 [2.11.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.10.0...v2.10.1
