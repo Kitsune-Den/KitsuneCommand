@@ -87,6 +87,26 @@ namespace KitsuneCommand.Web.Controllers
         }
 
         /// <summary>
+        /// Returns POI footprints (name, south-west corner, size) for the POI layer.
+        /// </summary>
+        [HttpGet]
+        [Route("pois")]
+        [Authorize]
+        public IHttpActionResult GetPois()
+        {
+            var pois = _renderer.GetPois().Select(p => new
+            {
+                name = p.Name,
+                x = p.X,
+                z = p.Z,
+                sizeX = p.SizeX,
+                sizeZ = p.SizeZ
+            });
+
+            return Ok(ApiResponse.Ok(pois));
+        }
+
+        /// <summary>
         /// Returns map metadata (world size, bounds, zoom levels).
         /// </summary>
         [HttpGet]

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getMapInfo, getMapMarkers } from '@/api/map'
-import type { MapInfo } from '@/types'
+import { getMapInfo, getMapMarkers, getMapPois } from '@/api/map'
+import type { MapInfo, MapPoi } from '@/types'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -21,11 +21,17 @@ let resizeObserver: ResizeObserver | null = null
 //   lng: 0 -> 256 (left to right)
 //   lat: 0 -> -256 (top to bottom, since py = -lat)
 //
-// Game coordinates (Navezgane 3072x3072, centered at 0,0):
-//   X: -1536 (west) -> 1536 (east)  ->  lng 0 -> 256
-//   Z: +1536 (north/top) -> -1536 (south/bottom)  ->  lat 0 -> -256
-let _worldSize = 3072
-let _halfWorld = 1536
+// Game coordinates (e.g. Navezgane, 6144x6144, centered at 0,0):
+//   X: -3072 (west) -> 3072 (east)  ->  lng 0 -> 256
+//   Z: +3072 (north/top) -> -3072 (south/bottom)  ->  lat 0 -> -256
+// The server sends the real world size; biomes.png is smaller than the world.
+let _worldSize = 6144
+let _halfWorld = 3072
+
+// Player and POI names go into Leaflet's HTML popups and tooltips
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)
+}
 
 function gameToLatLng(gameX: number, gameZ: number): L.LatLng {
   const lng = (gameX + _halfWorld) / _worldSize * 256
@@ -105,9 +111,19 @@ async function initMap() {
     })
     resizeObserver.observe(mapContainer.value)
 
+    // POI layer: the footprints are drawn into the tiles; these invisible
+    // rectangles just name them on hover
+    const poiLayer = L.layerGroup().addTo(leafletMap)
+    loadPois(poiLayer)
+
     // Player markers layer
     markersLayer = L.layerGroup().addTo(leafletMap)
     await refreshMarkers()
+
+    L.control.layers(undefined, {
+      [t('map.layerPlayers')]: markersLayer,
+      [t('map.layerPois')]: poiLayer,
+    }, { position: 'topright' }).addTo(leafletMap)
 
     // Refresh markers every 5 seconds
     markerRefreshInterval = setInterval(refreshMarkers, 5000)
@@ -128,6 +144,28 @@ async function initMap() {
   }
 }
 
+async function loadPois(layer: L.LayerGroup) {
+  let pois: MapPoi[]
+  try {
+    pois = await getMapPois()
+  } catch {
+    return // The map is still useful without POI names
+  }
+
+  // One canvas for all of them; a big world has thousands
+  const renderer = L.canvas({ padding: 0.2 })
+  for (const p of pois) {
+    const rect = L.rectangle(
+      L.latLngBounds(gameToLatLng(p.x, p.z), gameToLatLng(p.x + p.sizeX, p.z + p.sizeZ)),
+      { renderer, color: '#ffcc66', weight: 1, opacity: 0, fillOpacity: 0 },
+    )
+    rect.bindTooltip(escapeHtml(p.name), { sticky: true, direction: 'top' })
+    rect.on('mouseover', () => rect.setStyle({ opacity: 0.9, fillOpacity: 0.15 }))
+    rect.on('mouseout', () => rect.setStyle({ opacity: 0, fillOpacity: 0 }))
+    layer.addLayer(rect)
+  }
+}
+
 async function refreshMarkers() {
   if (!markersLayer || !leafletMap) return
 
@@ -145,12 +183,13 @@ async function refreshMarkers() {
         weight: 2,
       })
 
+      const name = escapeHtml(m.name)
       marker.bindPopup(
-        `<b>${m.name}</b><br>` +
+        `<b>${name}</b><br>` +
         `${t('map.positionLabel')}: ${Math.round(m.x)}, ${Math.round(m.y)}, ${Math.round(m.z)}`,
       )
 
-      marker.bindTooltip(m.name, { permanent: false, direction: 'top', offset: [0, -8] })
+      marker.bindTooltip(name, { permanent: false, direction: 'top', offset: [0, -8] })
       markersLayer.addLayer(marker)
     }
   } catch {
@@ -284,5 +323,11 @@ onUnmounted(() => {
 
 .leaflet-control-zoom a:hover {
   background-color: var(--kc-bg-secondary, #1a2332) !important;
+}
+
+.leaflet-control-layers {
+  background: var(--kc-bg-card, #1e1e2e);
+  color: var(--kc-text-primary, #e0e0e0);
+  border: 1px solid var(--kc-border, #333) !important;
 }
 </style>
