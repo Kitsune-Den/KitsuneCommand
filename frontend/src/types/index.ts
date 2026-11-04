@@ -119,6 +119,8 @@ export interface GoodsItem {
 }
 
 export interface GoodsDetail extends GoodsItem {
+  /** What the player is charged: price after the Store price multiplier. */
+  effectivePrice: number
   items: ItemDefinition[]
   commands: CommandDefinition[]
 }

@@ -502,7 +502,7 @@ onMounted(() => {
     <!-- ─── Buy Dialog ───────────────────────────────── -->
     <Dialog v-model:visible="showBuyDialog" :header="t('storeView.purchaseItem')" :modal="true" :style="{ width: '450px' }">
       <div class="dialog-form" v-if="buyTarget">
-        <p><strong>{{ buyTarget.name }}</strong> — {{ buyTarget.price }} points</p>
+        <p><strong>{{ buyTarget.name }}</strong> — {{ buyTarget.effectivePrice ?? buyTarget.price }} points</p>
         <p class="buy-detail" v-if="buyTarget.description">{{ buyTarget.description }}</p>
 
         <div v-if="buyTarget.items.length > 0" class="buy-section">

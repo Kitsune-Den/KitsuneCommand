@@ -16,7 +16,7 @@ namespace KitsuneCommand.Web.Controllers
     public class StoreSettingsController : ApiController
     {
         private readonly ISettingsRepository _settingsRepo;
-        private const string SettingsKey = "Store";
+        private const string SettingsKey = StorePurchasePolicy.SettingsKey;
 
         public StoreSettingsController(ISettingsRepository settingsRepo)
         {
@@ -66,20 +66,6 @@ namespace KitsuneCommand.Web.Controllers
             }
         }
 
-        private StoreSettings LoadSettings()
-        {
-            try
-            {
-                var json = _settingsRepo.Get(SettingsKey);
-                if (!string.IsNullOrEmpty(json))
-                {
-                    var loaded = JsonConvert.DeserializeObject<StoreSettings>(json);
-                    if (loaded != null) return loaded;
-                }
-            }
-            catch { /* fall through to defaults */ }
-
-            return new StoreSettings();
-        }
+        private StoreSettings LoadSettings() => StorePurchasePolicy.LoadSettings(_settingsRepo);
     }
 }

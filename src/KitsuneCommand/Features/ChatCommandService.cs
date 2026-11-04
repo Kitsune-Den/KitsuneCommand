@@ -458,7 +458,8 @@ namespace KitsuneCommand.Features
                 return;
             }
 
-            var lines = goods.Select(g => $"{g.Name} ({g.Price} pts)");
+            var storeSettings = StorePurchasePolicy.LoadSettings(_settingsRepo);
+            var lines = goods.Select(g => $"{g.Name} ({StorePurchasePolicy.EffectivePrice(g.Price, storeSettings)} pts)");
             Reply(entityId, $"Shop: {string.Join(", ", lines)}");
         }
 
@@ -478,11 +479,21 @@ namespace KitsuneCommand.Features
                 return;
             }
 
+            // Store settings: cooldown and daily cap, then the price after the multiplier
+            var storeSettings = StorePurchasePolicy.LoadSettings(_settingsRepo);
+            var limitRefusal = StorePurchasePolicy.LimitRefusal(storeSettings, _purchaseRepo, playerId, DateTime.UtcNow);
+            if (limitRefusal != null)
+            {
+                Reply(entityId, $"{limitRefusal} You were not charged.");
+                return;
+            }
+            var price = StorePurchasePolicy.EffectivePrice(goods.Price, storeSettings);
+
             // Check points
             var pointsInfo = _pointsRepo.GetByPlayerId(playerId);
-            if (pointsInfo == null || pointsInfo.Points < goods.Price)
+            if (pointsInfo == null || pointsInfo.Points < price)
             {
-                Reply(entityId, $"Not enough points. '{goods.Name}' costs {goods.Price} pts, you have {pointsInfo?.Points ?? 0}.");
+                Reply(entityId, $"Not enough points. '{goods.Name}' costs {price} pts, you have {pointsInfo?.Points ?? 0}.");
                 return;
             }
 
@@ -505,7 +516,7 @@ namespace KitsuneCommand.Features
             }
 
             // Deduct points
-            var newBalance = _pointsRepo.AdjustPoints(playerId, -goods.Price);
+            var newBalance = _pointsRepo.AdjustPoints(playerId, -price);
 
             // Execute commands
             var commands = _goodsRepo.GetCommandsForGoods(goods.Id).ToList();
@@ -525,7 +536,7 @@ namespace KitsuneCommand.Features
                 PlayerName = playerName,
                 GoodsId = goods.Id,
                 GoodsName = goods.Name,
-                Price = goods.Price
+                Price = price
             });
 
             // Broadcast points update
@@ -534,13 +545,13 @@ namespace KitsuneCommand.Features
                 PlayerId = playerId,
                 PlayerName = playerName,
                 Points = newBalance,
-                Change = -goods.Price,
+                Change = -price,
                 Reason = $"Purchased {goods.Name}"
             });
 
             // The items are on the ground at the player's feet, not in their bag
             var pickup = items.Count > 0 ? " Your items were dropped at your feet." : "";
-            Reply(entityId, $"Purchased '{goods.Name}' for {goods.Price} pts. Balance: {newBalance}.{pickup}");
+            Reply(entityId, $"Purchased '{goods.Name}' for {price} pts. Balance: {newBalance}.{pickup}");
         }
 
         // ─── VIP Commands ───────────────────────────────────────────────
