@@ -12,6 +12,15 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.13.1] - 2026-11-04
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.13.1)
+> · The Store settings now do something. Purchase Cooldown, Max Daily
+> Purchases and Price Multiplier were saved but never checked; `/buy`, `/shop`
+> and the panel's Buy for Player now apply them. If you set any of these
+> before and forgot, players will notice. No schema or config changes;
+> minimum 7D2D version unchanged.
+
 ### Fixed
 
 - **Store settings now apply to purchases.** The Purchase Cooldown, Max
@@ -1036,7 +1045,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.13.0...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.13.1...HEAD
+[2.13.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.13.0...v2.13.1
 [2.13.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.1...v2.13.0
 [2.12.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.0...v2.12.1
 [2.12.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.11.1...v2.12.0
