@@ -2,6 +2,7 @@ using System.Web.Http;
 using KitsuneCommand.Core;
 using KitsuneCommand.Data.Entities;
 using KitsuneCommand.Data.Repositories;
+using KitsuneCommand.Features;
 using KitsuneCommand.Web.Auth;
 using KitsuneCommand.Web.Models;
 
@@ -20,6 +21,7 @@ namespace KitsuneCommand.Web.Controllers
         private readonly ICommandDefinitionRepository _cmdDefRepo;
         private readonly IPurchaseHistoryRepository _purchaseRepo;
         private readonly IPointsRepository _pointsRepo;
+        private readonly ISettingsRepository _settingsRepo;
         private readonly LivePlayerManager _playerManager;
         private readonly ModEventBus _eventBus;
 
@@ -29,6 +31,7 @@ namespace KitsuneCommand.Web.Controllers
             ICommandDefinitionRepository cmdDefRepo,
             IPurchaseHistoryRepository purchaseRepo,
             IPointsRepository pointsRepo,
+            ISettingsRepository settingsRepo,
             LivePlayerManager playerManager,
             ModEventBus eventBus)
         {
@@ -37,6 +40,7 @@ namespace KitsuneCommand.Web.Controllers
             _cmdDefRepo = cmdDefRepo;
             _purchaseRepo = purchaseRepo;
             _pointsRepo = pointsRepo;
+            _settingsRepo = settingsRepo;
             _playerManager = playerManager;
             _eventBus = eventBus;
         }
@@ -84,6 +88,7 @@ namespace KitsuneCommand.Web.Controllers
                 CreatedAt = goods.CreatedAt,
                 Name = goods.Name,
                 Price = goods.Price,
+                EffectivePrice = StorePurchasePolicy.EffectivePrice(goods.Price, StorePurchasePolicy.LoadSettings(_settingsRepo)),
                 Description = goods.Description,
                 Items = _goodsRepo.GetItemsForGoods(id).ToList(),
                 Commands = _goodsRepo.GetCommandsForGoods(id).ToList()
@@ -196,12 +201,20 @@ namespace KitsuneCommand.Web.Controllers
             if (buyer == null)
                 return BadRequest("Player is not online. They must be connected to receive items.");
 
-            // 3. Check sufficient points
-            var pointsInfo = _pointsRepo.GetByPlayerId(request.PlayerId);
-            if (pointsInfo == null || pointsInfo.Points < goods.Price)
-                return BadRequest($"Insufficient points. Required: {goods.Price}, Available: {pointsInfo?.Points ?? 0}");
+            // 3. Store settings: cooldown and daily cap apply here too, since it's the
+            //    player's points being spent; then the price after the multiplier
+            var storeSettings = StorePurchasePolicy.LoadSettings(_settingsRepo);
+            var limitRefusal = StorePurchasePolicy.LimitRefusal(storeSettings, _purchaseRepo, request.PlayerId, DateTime.UtcNow);
+            if (limitRefusal != null)
+                return BadRequest($"{limitRefusal} Nothing was delivered and {buyer.PlayerName} was not charged.");
+            var price = StorePurchasePolicy.EffectivePrice(goods.Price, storeSettings);
 
-            // 4. Drop the items, then charge: a delivery that fails costs nothing
+            // 4. Check sufficient points
+            var pointsInfo = _pointsRepo.GetByPlayerId(request.PlayerId);
+            if (pointsInfo == null || pointsInfo.Points < price)
+                return BadRequest($"Insufficient points. Required: {price}, Available: {pointsInfo?.Points ?? 0}");
+
+            // 5. Drop the items, then charge: a delivery that fails costs nothing
             var dropError = GameIntegration.GameItems.DropForPlayer(buyer.EntityId, items);
             if (dropError != null)
             {
@@ -209,14 +222,14 @@ namespace KitsuneCommand.Web.Controllers
                 return BadRequest($"{dropError} Nothing was delivered and {buyer.PlayerName} was not charged.");
             }
 
-            // 5. Deduct points
-            var newBalance = _pointsRepo.AdjustPoints(request.PlayerId, -goods.Price);
+            // 6. Deduct points
+            var newBalance = _pointsRepo.AdjustPoints(request.PlayerId, -price);
 
             var deliveryLog = items.Select(i => $"[Item] {i.ItemName} x{i.Count}: dropped at the player's feet").ToList();
             if (items.Count > 0)
                 GameIntegration.GameChat.Whisper(buyer.EntityId, $"[00FF00]Your '{goods.Name}' purchase is on the ground at your feet.[-]");
 
-            // 6. Execute commands
+            // 7. Execute commands
             foreach (var cmdDef in commands)
             {
                 var cmd = cmdDef.Command
@@ -228,23 +241,23 @@ namespace KitsuneCommand.Web.Controllers
                 deliveryLog.Add($"[Cmd] {cmdDef.Command}: {output}");
             }
 
-            // 7. Record purchase
+            // 8. Record purchase
             _purchaseRepo.Insert(new PurchaseRecord
             {
                 PlayerId = request.PlayerId,
                 PlayerName = request.PlayerName ?? buyer.PlayerName,
                 GoodsId = goods.Id,
                 GoodsName = goods.Name,
-                Price = goods.Price
+                Price = price
             });
 
-            // 8. Broadcast points update
+            // 9. Broadcast points update
             _eventBus.Publish(new PointsUpdateEvent
             {
                 PlayerId = request.PlayerId,
                 PlayerName = buyer.PlayerName,
                 Points = newBalance,
-                Change = -goods.Price,
+                Change = -price,
                 Reason = $"Purchased {goods.Name}"
             });
 

@@ -8,6 +8,8 @@ namespace KitsuneCommand.Web.Models
         public string CreatedAt { get; set; }
         public string Name { get; set; }
         public int Price { get; set; }
+        /// <summary>What the player is charged: Price after the Store price multiplier.</summary>
+        public int EffectivePrice { get; set; }
         public string Description { get; set; }
         public List<ItemDefinition> Items { get; set; } = new List<ItemDefinition>();
         public List<CommandDefinition> Commands { get; set; } = new List<CommandDefinition>();

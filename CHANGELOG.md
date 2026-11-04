@@ -12,6 +12,20 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Store settings now apply to purchases.** The Purchase Cooldown, Max
+  Daily Purchases and Price Multiplier under Store → Settings were saved but
+  never checked. Now both in-game `/buy` and the panel's Buy for Player
+  respect them. The multiplier changes what players are charged and what
+  `/shop` lists (rounded to the nearest point). The cooldown and daily cap
+  apply per player and are read from purchase history, so a restart doesn't
+  reset them. The daily cap resets at 00:00 UTC, the same as `/signin`.
+  Buy for Player counts too, because it spends the player's points. A refused
+  purchase says how long to wait and is checked before anything drops, so it
+  costs nothing. The buy dialog in the panel shows the price after the
+  multiplier; the goods list still shows base prices.
+
 ## [2.13.0] - 2026-11-02
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.13.0)
