@@ -172,6 +172,18 @@ describe('PlayerEditDialog — admin level', () => {
     expect(mockSetAdminLevel).toHaveBeenCalledWith(42, to)
   })
 
+  it('treats a player with no reported level as normal', async () => {
+    const wrapper = mountDialog({ ...player, adminLevel: undefined as unknown as number })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    await save(wrapper)
+    expect(mockSetAdminLevel).not.toHaveBeenCalled()
+
+    choose(wrapper, 0)
+    await save(wrapper)
+    expect(mockSetAdminLevel).toHaveBeenCalledWith(42, 0)
+  })
+
   it('shows why the server refused the change', async () => {
     mockSetAdminLevel.mockRejectedValue({ response: { data: { message: 'still level 0, from a Steam group' } } })
     const wrapper = await openAt(0)
