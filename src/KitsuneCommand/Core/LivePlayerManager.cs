@@ -326,7 +326,11 @@ namespace KitsuneCommand.Core
             info.Score = ep.Score;
             info.IsOnline = true;
             info.Ip = clientInfo?.ip;
-            var permLevel = GameManager.Instance?.adminTools?.Users?.GetUserPermissionLevel(clientInfo?.InternalId) ?? 1000;
+            // The ClientInfo overload checks the platform id, the crossplatform id and group
+            // memberships. Looking up InternalId alone (the EOS id) misses the usual
+            // serveradmin.xml entry, which lists admins by their Steam id.
+            var permLevel = clientInfo == null ? 1000
+                : GameManager.Instance?.adminTools?.Users?.GetUserPermissionLevel(clientInfo) ?? 1000;
             info.IsAdmin = permLevel == 0;
             info.AdminLevel = permLevel;
         }

@@ -12,6 +12,14 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Admins listed by Steam ID are recognized as admins.** KC looked up a
+  player's permission level by their EOS ID only, so anyone listed in
+  `serveradmin.xml` under `platform="Steam"` (or through a Steam group) read as
+  a normal player. The suspicion log flagged them, and the Players page showed
+  them as non-admins.
+
 ## [2.13.1] - 2026-11-04
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.13.1)
