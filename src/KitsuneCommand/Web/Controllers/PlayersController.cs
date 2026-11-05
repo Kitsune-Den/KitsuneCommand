@@ -1,3 +1,4 @@
+using System.Net;
 using System.Web.Http;
 using KitsuneCommand.Abstractions.Models;
 using KitsuneCommand.Core;
@@ -250,23 +251,20 @@ namespace KitsuneCommand.Web.Controllers
             if (request == null)
                 return BadRequest("Request body is required.");
 
-            // Prefer PlayerId (EOS crossplatform ID) for admin commands, fall back to PlatformId
-            var adminId = !string.IsNullOrEmpty(player.PlayerId) ? player.PlayerId : player.PlatformId;
+            var effective = _playerManager.SetAdminLevel(entityId, request.Level);
+            if (effective == null)
+                return NotFound();
 
-            string output;
-            if (request.Level >= 1000)
-            {
-                // Remove admin privileges
-                output = ExecuteConsoleCommand($"admin remove {adminId}");
-            }
-            else
-            {
-                // Set admin level (0 = admin, 1 = moderator)
-                output = ExecuteConsoleCommand($"admin add {adminId} {request.Level}");
-            }
+            // Their own entries are settled by now, so only a Steam group can hold the level lower.
+            if (!AdminLevelApplied(request.Level, effective.Value))
+                return Content(HttpStatusCode.Conflict, ApiResponse.Error(409,
+                    $"{player.PlayerName} is still at permission level {effective.Value}, from a Steam group in serveradmin.xml."));
 
-            return Ok(ApiResponse.Ok(new { output }));
+            return Ok(ApiResponse.Ok(new { level = effective.Value }));
         }
+
+        /// <summary>Whether the level in effect is the one asked for. Anything from 1000 up means no permissions, which reads as 1000.</summary>
+        public static bool AdminLevelApplied(int requested, int effective) => Math.Min(requested, 1000) == effective;
 
         /// <summary>
         /// Executes a console command on the main thread and returns the output.
