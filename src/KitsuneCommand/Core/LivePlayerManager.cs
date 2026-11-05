@@ -43,7 +43,7 @@ namespace KitsuneCommand.Core
             return _players.Values.ToList();
         }
 
-        public PlayerInfo GetByEntityId(int entityId)
+        public virtual PlayerInfo GetByEntityId(int entityId)
         {
             _players.TryGetValue(entityId, out var player);
             return player;
@@ -56,7 +56,7 @@ namespace KitsuneCommand.Core
         /// Returns the level now in effect, which a Steam group can hold below the one asked for,
         /// or null if the player isn't online.
         /// </summary>
-        public int? SetAdminLevel(int entityId, int level)
+        public virtual int? SetAdminLevel(int entityId, int level)
         {
             return RunOnMainThread<int?>(() =>
             {
