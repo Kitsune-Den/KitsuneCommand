@@ -43,13 +43,44 @@ namespace KitsuneCommand.Core
             return _players.Values.ToList();
         }
 
-        public PlayerInfo GetByEntityId(int entityId)
+        public virtual PlayerInfo GetByEntityId(int entityId)
         {
             _players.TryGetValue(entityId, out var player);
             return player;
         }
 
         public int OnlineCount => _players.Count;
+
+        /// <summary>
+        /// Gives an online player one permission entry at this level, or none at 1000 and above.
+        /// Returns the level now in effect, which a Steam group can hold below the one asked for,
+        /// or null if the player isn't online.
+        /// </summary>
+        public virtual int? SetAdminLevel(int entityId, int level)
+        {
+            return RunOnMainThread<int?>(() =>
+            {
+                var clientInfo = ConnectionManager.Instance?.Clients?.ForEntityId(entityId);
+                var users = GameManager.Instance?.adminTools?.Users;
+                if (clientInfo == null || users == null) return null;
+
+                // Not the admin console command: for an online player it resolves any id to
+                // InternalId, so it can't reach an entry under their Steam id. The effective level
+                // is the lowest of all their entries, so one left behind would keep overriding this.
+                // Adding first means a failure part way leaves their old level, not none.
+                var kept = level < 1000 ? clientInfo.InternalId : null;
+                if (kept != null) users.AddUser(clientInfo.playerName, kept, level);
+                if (clientInfo.PlatformId != null && !clientInfo.PlatformId.Equals(kept))
+                    users.RemoveUser(clientInfo.PlatformId);
+                if (clientInfo.CrossplatformId != null && !clientInfo.CrossplatformId.Equals(kept))
+                    users.RemoveUser(clientInfo.CrossplatformId);
+
+                var effective = ReadAdminLevel(clientInfo);
+                if (_players.TryGetValue(entityId, out var cached)) ApplyAdminLevel(cached, effective);
+                Log.Out($"[KitsuneCommand] Permission level of {clientInfo.playerName} set to {level}, now {effective}.");
+                return effective;
+            });
+        }
 
         /// <summary>
         /// Reads full player detail (inventory + skills) from the game API on the main thread.
@@ -223,6 +254,15 @@ namespace KitsuneCommand.Core
                             cached.PositionZ = pos.z;
                             cached.Health = ep.Health;
                             cached.Stamina = ep.Stamina;
+
+                            // Spawn only reads the level once, and may not have had a client yet.
+                            // With no client now, keep the last level rather than read as a non-admin.
+                            try
+                            {
+                                var client = ConnectionManager.Instance?.Clients?.ForEntityId(ep.entityId);
+                                if (client != null) ApplyAdminLevel(cached, ReadAdminLevel(client));
+                            }
+                            catch { /* keep the last known level */ }
                         }
                     }
                     return result;
@@ -326,7 +366,20 @@ namespace KitsuneCommand.Core
             info.Score = ep.Score;
             info.IsOnline = true;
             info.Ip = clientInfo?.ip;
-            var permLevel = GameManager.Instance?.adminTools?.Users?.GetUserPermissionLevel(clientInfo?.InternalId) ?? 1000;
+            ApplyAdminLevel(info, ReadAdminLevel(clientInfo));
+        }
+
+        // The ClientInfo overload checks the platform id, the crossplatform id and group
+        // memberships. Looking up InternalId alone (the EOS id) misses the usual
+        // serveradmin.xml entry, which lists admins by their Steam id.
+        private static int ReadAdminLevel(ClientInfo clientInfo)
+        {
+            return clientInfo == null ? 1000
+                : GameManager.Instance?.adminTools?.Users?.GetUserPermissionLevel(clientInfo) ?? 1000;
+        }
+
+        private static void ApplyAdminLevel(PlayerInfo info, int permLevel)
+        {
             info.IsAdmin = permLevel == 0;
             info.AdminLevel = permLevel;
         }

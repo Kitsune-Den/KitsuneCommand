@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
+using Moq;
 using NUnit.Framework;
+using KitsuneCommand.Data.Repositories;
 using KitsuneCommand.Features;
 using KitsuneCommand.Features.Suspicion;
 
@@ -37,6 +39,41 @@ namespace KitsuneCommand.Tests.Features
 
         private static InventoryItemSample Slot(string name, int count = 1, int quality = 0) =>
             new InventoryItemSample { ItemName = name, Count = count, Quality = quality };
+
+        // The admin exemption is SuspicionRecorder's, so these go through the same two steps as a scan.
+        private List<string> ScanAndRecord(bool isAdmin, SuspicionSettings settings, string item)
+        {
+            var holder = new SuspectPlayer { PlayerId = "EOS_holder", PlatformId = "Steam_76561198000000001", PlayerName = "Holder", EntityId = 1, IsAdmin = isAdmin };
+            var recorder = new SuspicionRecorder(new Mock<ISuspicionEventRepository>().Object, null);
+            return Check(holder.EntityId, Slot(item))
+                .Select(flag => recorder.Record(holder, flag, settings))
+                .Where(evt => evt != null)
+                .Select(evt => evt.Rule)
+                .ToList();
+        }
+
+        [TestCase("meleeToolHammerOfGodAdmin")]
+        [TestCase("TEST_ITEM_1")]
+        [TestCase("decoDevBlock")]
+        public void DevItem_HeldByAnAdmin_IsNotRecorded(string item)
+        {
+            Assert.That(ScanAndRecord(true, new SuspicionSettings(), item), Is.Empty);
+        }
+
+        [TestCase("meleeToolHammerOfGodAdmin")]
+        [TestCase("TEST_ITEM_1")]
+        [TestCase("decoDevBlock")]
+        public void DevItem_HeldByANonAdmin_IsRecorded(string item)
+        {
+            Assert.That(ScanAndRecord(false, new SuspicionSettings(), item), Is.EqualTo(new[] { "creative_item" }));
+        }
+
+        [Test]
+        public void DevItem_HeldByAnAdmin_IsRecorded_WhenIgnoreAdminsIsOff()
+        {
+            var settings = new SuspicionSettings { IgnoreAdmins = false };
+            Assert.That(ScanAndRecord(true, settings, "meleeToolHammerOfGodAdmin"), Is.EqualTo(new[] { "creative_item" }));
+        }
 
         [Test]
         public void DevItem_IsHighSeverity()

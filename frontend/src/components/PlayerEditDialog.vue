@@ -86,14 +86,13 @@ async function save() {
     await setPlayerTier(props.player.playerId, vipTier.value || null)
 
     // Change admin level if needed
-    const currentIsAdmin = props.player.isAdmin
-    const wantsAdmin = adminLevel.value < 1000
-    if (currentIsAdmin !== wantsAdmin || (wantsAdmin && currentIsAdmin)) {
+    if (adminLevel.value !== (props.player.adminLevel ?? 1000)) {
       try {
         await setAdminLevel(props.player.entityId, adminLevel.value)
         toast.add({ severity: 'success', summary: t('players.adminLevelChanged', { name: props.player.playerName }), life: 3000 })
-      } catch {
-        toast.add({ severity: 'error', summary: t('common.error'), detail: t('players.adminLevelFailed'), life: 3000 })
+      } catch (err: any) {
+        const detail = err?.response?.data?.message || t('players.adminLevelFailed')
+        toast.add({ severity: 'error', summary: t('common.error'), detail, life: 5000 })
       }
     }
 
@@ -166,6 +165,7 @@ async function save() {
           optionLabel="label"
           optionValue="value"
           class="full-width"
+          data-testid="admin-level-select"
         />
       </div>
 
