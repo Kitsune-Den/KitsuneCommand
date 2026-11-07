@@ -8,7 +8,7 @@ vi.mock('@/api/client', () => ({
   },
 }))
 
-import { getMapInfo, getMapMarkers, getMapPois, getTileUrl } from '@/api/map'
+import { getMapInfo, getMapMarkers, getMapPois, getLandClaims, getTileUrl } from '@/api/map'
 
 describe('Map API', () => {
   beforeEach(() => {
@@ -33,6 +33,13 @@ describe('Map API', () => {
     mockGet.mockResolvedValue({ data: { data: pois } })
     expect(await getMapPois()).toEqual(pois)
     expect(mockGet).toHaveBeenCalledWith('/api/map/pois')
+  })
+
+  it('getLandClaims calls GET /api/map/landclaims', async () => {
+    const snapshot = { claimSize: 41, claims: [{ ownerId: 'Steam_1', ownerName: 'Ada', x: 10, y: 60, z: -20 }] }
+    mockGet.mockResolvedValue({ data: { data: snapshot } })
+    expect(await getLandClaims()).toEqual(snapshot)
+    expect(mockGet).toHaveBeenCalledWith('/api/map/landclaims')
   })
 
   it('getTileUrl points at the tile endpoint on this origin', () => {
