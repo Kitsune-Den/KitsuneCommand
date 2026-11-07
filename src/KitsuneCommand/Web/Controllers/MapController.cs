@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Web.Http;
 using KitsuneCommand.Core;
 using KitsuneCommand.Services;
+using KitsuneCommand.Web.Auth;
 using KitsuneCommand.Web.Models;
 
 namespace KitsuneCommand.Web.Controllers
@@ -17,11 +18,13 @@ namespace KitsuneCommand.Web.Controllers
     {
         private readonly MapTileRenderer _renderer;
         private readonly LivePlayerManager _playerManager;
+        private readonly LandClaimService _landClaims;
 
-        public MapController(MapTileRenderer renderer, LivePlayerManager playerManager)
+        public MapController(MapTileRenderer renderer, LivePlayerManager playerManager, LandClaimService landClaims)
         {
             _renderer = renderer;
             _playerManager = playerManager;
+            _landClaims = landClaims;
         }
 
         /// <summary>
@@ -104,6 +107,18 @@ namespace KitsuneCommand.Web.Controllers
             });
 
             return Ok(ApiResponse.Ok(pois));
+        }
+
+        /// <summary>
+        /// Every placed land claim block with its owner, plus the claim width.
+        /// Staff only: on a PvP server this is a map of everyone's base.
+        /// </summary>
+        [HttpGet]
+        [Route("landclaims")]
+        [RoleAuthorize("admin", "moderator")]
+        public IHttpActionResult GetLandClaims()
+        {
+            return Ok(ApiResponse.Ok(_landClaims.GetClaims()));
         }
 
         /// <summary>

@@ -29,6 +29,7 @@ namespace KitsuneCommand.Core
             builder.RegisterType<SteamLoginService>().AsSelf().SingleInstance();
             builder.RegisterType<LivePlayerManager>().AsSelf().SingleInstance();
             builder.RegisterType<MapTileRenderer>().AsSelf().SingleInstance();
+            builder.RegisterType<LandClaimService>().AsSelf().SingleInstance();
             builder.RegisterType<ChatPersistenceService>().AsSelf().SingleInstance();
             builder.RegisterType<GameItemCatalog>().AsSelf().SingleInstance();
             builder.RegisterType<ItemIconService>().AsSelf().SingleInstance();
