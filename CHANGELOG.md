@@ -12,6 +12,17 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.14.0] - 2026-11-10
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.14.0)
+> · Safe zones: draw a rectangle on the Map page and zombies that wander in
+> are despawned within a couple of seconds, with per-zone options for
+> animals and the blood moon horde. Admins and moderators also get a land
+> claims layer on the map. Steam-listed admins in `serveradmin.xml` are now
+> recognized as admins (no more suspicion-log lines for them), and level
+> changes in the player dialog actually stick. No schema changes; minimum
+> 7D2D version unchanged.
+
 ### Added
 
 - **Safe zones.** Admins can draw rectangles on the Map page (click two
@@ -1081,7 +1092,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.13.1...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.14.0...HEAD
+[2.14.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.13.1...v2.14.0
 [2.13.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.13.0...v2.13.1
 [2.13.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.1...v2.13.0
 [2.12.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.0...v2.12.1
