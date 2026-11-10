@@ -29,6 +29,25 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   claims are included. Only admins and moderators see it, since on a PvP
   server it shows where the bases are.
 
+### Fixed
+
+- **Admins listed by Steam ID are recognized as admins.** KC looked up a
+  player's permission level by their EOS ID only, so anyone listed in
+  `serveradmin.xml` under `platform="Steam"` (or through a Steam group) read as
+  a normal player. The suspicion log flagged them, and the Players page showed
+  them as non-admins.
+- **Changing a level in the player dialog now takes effect for Steam-listed
+  admins.** The dialog wrote only to the player's EOS entry, and the lowest entry
+  wins, so a Steam entry kept them at their old level while the panel reported
+  success. Saving now leaves the player one entry at the chosen level (under
+  their EOS ID when they have one), and removing a level clears both. If a Steam
+  group still holds them at a lower level, the dialog says so. Saving other edits
+  no longer rewrites the player's level.
+- **Admin level changes apply while the player is online.** KC read the level
+  once at spawn, so a level changed in game or in `serveradmin.xml` didn't count
+  until the player reconnected, and a demoted admin stayed exempt from the
+  suspicion log. It's now refreshed every 3 seconds.
+
 ## [2.13.1] - 2026-11-04
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.13.1)

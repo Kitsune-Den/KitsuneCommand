@@ -183,8 +183,8 @@ function formatLastSeen(unixSeconds: number): string {
 }
 
 function onMetadataSaved() {
-  // Refresh metadata after edit
-  getAllPlayerMetadata().then(data => playersStore.setMetadata(data)).catch(() => {})
+  // Refresh metadata and players after edit, so the dialog reopens on the new admin level
+  fetchPlayers()
 }
 
 onMounted(fetchPlayers)

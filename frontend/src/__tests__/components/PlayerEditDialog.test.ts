@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import PlayerEditDialog from '@/components/PlayerEditDialog.vue'
@@ -9,7 +9,11 @@ const mockUpdatePlayerMetadata = vi.fn()
 const mockSetAdminLevel = vi.fn()
 const mockSetPlayerTier = vi.fn()
 const mockGetVipTiers = vi.fn()
+const mockToastAdd = vi.fn()
 
+vi.mock('primevue/usetoast', () => ({
+  useToast: () => ({ add: (...a: any[]) => mockToastAdd(...a) }),
+}))
 vi.mock('@/api/players', () => ({
   updatePlayerMetadata: (...a: any[]) => mockUpdatePlayerMetadata(...a),
   setAdminLevel: (...a: any[]) => mockSetAdminLevel(...a),
@@ -48,9 +52,9 @@ const player: PlayerInfo = {
   adminLevel: 1000,
 }
 
-function mountDialog() {
+function mountDialog(target: PlayerInfo = player) {
   return mount(PlayerEditDialog, {
-    props: { player, visible: false },
+    props: { player: target, visible: false },
     global: {
       plugins: [createPinia(), [PrimeVue, { theme: 'none' }]],
       stubs: {
@@ -117,5 +121,88 @@ describe('PlayerEditDialog — VIP tier', () => {
     await wrapper.find('button:last-of-type').trigger('click')
     await flushPromises()
     expect(mockSetPlayerTier).toHaveBeenCalledWith('EOS_abc', null)
+  })
+})
+
+describe('PlayerEditDialog — admin level', () => {
+  beforeEach(() => {
+    mockUpdatePlayerMetadata.mockReset().mockResolvedValue({})
+    mockSetAdminLevel.mockReset().mockResolvedValue(undefined)
+    mockSetPlayerTier.mockReset().mockResolvedValue({})
+    mockGetVipTiers.mockReset().mockResolvedValue([])
+    mockGetMetadata.mockReset().mockReturnValue(undefined)
+    mockToastAdd.mockReset()
+  })
+
+  async function openAt(adminLevel: number) {
+    const wrapper = mountDialog({ ...player, adminLevel, isAdmin: adminLevel === 0 })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    return wrapper
+  }
+
+  async function save(wrapper: Awaited<ReturnType<typeof openAt>>) {
+    await wrapper.find('button:last-of-type').trigger('click')
+    await flushPromises()
+  }
+
+  function choose(wrapper: Awaited<ReturnType<typeof openAt>>, level: number) {
+    const select = wrapper.findComponent('[data-testid="admin-level-select"]') as VueWrapper
+    select.vm.$emit('update:modelValue', level)
+  }
+
+  it.each([0, 1, 1000])('leaves level %i alone when saving other changes', async (level) => {
+    const wrapper = await openAt(level)
+    await save(wrapper)
+    expect(mockUpdatePlayerMetadata).toHaveBeenCalled()
+    expect(mockSetAdminLevel).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [0, 1],
+    [0, 1000],
+    [1, 0],
+    [1, 1000],
+    [1000, 0],
+    [1000, 1],
+  ])('sends a change from level %i to %i', async (from, to) => {
+    const wrapper = await openAt(from)
+    choose(wrapper, to)
+    await save(wrapper)
+    expect(mockSetAdminLevel).toHaveBeenCalledWith(42, to)
+  })
+
+  it('treats a player with no reported level as normal', async () => {
+    const wrapper = mountDialog({ ...player, adminLevel: undefined as unknown as number })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    await save(wrapper)
+    expect(mockSetAdminLevel).not.toHaveBeenCalled()
+
+    choose(wrapper, 0)
+    await save(wrapper)
+    expect(mockSetAdminLevel).toHaveBeenCalledWith(42, 0)
+  })
+
+  it('shows why the server refused the change', async () => {
+    mockSetAdminLevel.mockRejectedValue({ response: { data: { message: 'still level 0, from a Steam group' } } })
+    const wrapper = await openAt(0)
+    choose(wrapper, 1000)
+    await save(wrapper)
+    expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({
+      severity: 'error',
+      detail: 'still level 0, from a Steam group',
+    }))
+  })
+
+  it('falls back to the generic message without a server reason', async () => {
+    mockSetAdminLevel.mockRejectedValue(new Error('network'))
+    const wrapper = await openAt(0)
+    choose(wrapper, 1000)
+    await save(wrapper)
+    expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({
+      severity: 'error',
+      detail: 'players.adminLevelFailed',
+    }))
   })
 })
