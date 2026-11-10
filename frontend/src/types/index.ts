@@ -76,6 +76,40 @@ export interface MapPoi {
   sizeZ: number
 }
 
+export interface LandClaim {
+  ownerId: string | null
+  ownerName: string
+  x: number
+  y: number
+  z: number
+}
+
+export interface LandClaimSnapshot {
+  /** Claim width in blocks (LandClaimSize), centred on the block. */
+  claimSize: number
+  claims: LandClaim[]
+}
+
+export interface SafeZone {
+  id: string
+  name: string
+  enabled: boolean
+  minX: number
+  minZ: number
+  maxX: number
+  maxZ: number
+  removeAnimals: boolean
+  allowBloodMoon: boolean
+  /** Entities this zone has removed since the server started (read-only). */
+  removedCount?: number
+}
+
+export interface SafeZoneSettings {
+  enabled: boolean
+  sweepIntervalSeconds: number
+  zones: SafeZone[]
+}
+
 export interface PlayerPositionData {
   entityId: number
   playerName: string

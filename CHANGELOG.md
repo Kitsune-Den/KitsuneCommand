@@ -12,6 +12,23 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Added
+
+- **Safe zones.** Admins can draw rectangles on the Map page (click two
+  corners) where zombies can't stay. Every couple of seconds, any living
+  enemy inside an enabled zone is despawned the way the game despawns
+  zombies it no longer needs: no loot, no kill credit. That covers
+  wanderers, screamer hordes and POI sleepers. Each zone can also remove
+  passive animals, and can let the blood moon horde in on horde night.
+  Zones show on the map for everyone. Only admins can draw, edit, pause or
+  delete them, and each zone counts what it has removed since the server
+  started. Stored as the `SafeZones` setting, so no schema change.
+- **Land claims on the map.** A new map layer draws every placed land claim
+  block with the area it protects (from the server's `LandClaimSize`),
+  coloured per owner, with the owner's name on hover. Offline players'
+  claims are included. Only admins and moderators see it, since on a PvP
+  server it shows where the bases are.
+
 ### Fixed
 
 - **Admins listed by Steam ID are recognized as admins.** KC looked up a
