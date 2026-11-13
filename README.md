@@ -58,7 +58,7 @@ KitsuneCommand is a source-available mod for 7 Days to Die dedicated servers tha
 - **Game Item Database** — Browse all game items with localized names and icons
 
 ### Server Management (Self-Hoster Tools)
-- **Server Control** — Save world, shutdown server, live resource monitoring
+- **Server Control** — Save world, restart or shut down the server, live resource monitoring. Restart works on Windows and Linux with or without a service supervisor: under systemd or NSSM the supervisor brings the server back, otherwise KC relaunches it itself ([details](docs/troubleshooting.md#restart-shuts-the-server-down-and-it-never-comes-back))
 - **Graceful Restart** — Schedule daily restarts with player-friendly in-game countdown warnings. Configurable warning ladder, IANA-timezone schedule (DST-aware), and a `krestart` console command for one-off restarts
 - **Config Editor** — Edit `serverconfig.xml` with a rich form UI (10 grouped categories) or raw XML, plus a full 7D2D 3.x Sandbox editor
 - **Mods Manager** — Browse, upload (ZIP), delete, and enable/disable server mods
@@ -312,7 +312,7 @@ The three ports must all differ. To run two servers on one host, give the second
 
 A growing index of prod-only failures, in symptom → cause → fix shape. Lives at [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
-Current entries cover: panel lockout recovery (`kcresetpw`), finding the first-run admin password, the Cloudflared + WebSocketSharp host-header gotcha, SkiaSharp Linux native loading, IPv6 vs IPv4 tunnel routing, and frontend deploy hygiene.
+Current entries cover: restarts that leave the server down, panel lockout recovery (`kcresetpw`), finding the first-run admin password, the Cloudflared + WebSocketSharp host-header gotcha, SkiaSharp Linux native loading, IPv6 vs IPv4 tunnel routing, and frontend deploy hygiene.
 
 If you fix a gnarly prod bug, the last commit of the fix PR should add an entry.
 

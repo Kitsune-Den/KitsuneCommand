@@ -233,6 +233,10 @@ namespace KitsuneCommand.Web.Controllers
             if (delay < 0) delay = 0;
             if (delay > 300) delay = 300; // Max 5 minute delay
 
+            // A plain shutdown means "stay down": cancel any relaunch helper
+            // left armed by an earlier restart attempt.
+            ServerRelauncher.Disarm();
+
             ModEntry.MainThreadContext.Post(_ =>
             {
                 try
@@ -249,17 +253,20 @@ namespace KitsuneCommand.Web.Controllers
         }
 
         /// <summary>
-        /// Restart the server. OS-aware:
-        ///   - Linux: try `sudo -n systemctl restart 7daystodie.service` first
-        ///     (works if install-linux-updater.sh has been run to add the
+        /// Restart the server. KC runs inside the game process, so something
+        /// outside it has to start the game again:
+        ///   - Linux under systemd: try `sudo -n systemctl restart 7daystodie.service`
+        ///     first (works if install-linux-updater.sh has been run to add the
         ///     sudoers entry). If that fails, fall back to in-game shutdown
         ///     and rely on systemd `Restart=always` to bounce the service.
-        ///   - Windows: skip the systemctl probe entirely — `systemctl`
-        ///     doesn't exist on Windows, so probing it just wastes ~5s and
-        ///     produces a misleading "systemctl failed" warning. Go straight
-        ///     to in-game shutdown; NSSM (the standard Windows service
-        ///     supervisor for 7DTD) ships with `AppExit Restart` as its
-        ///     default and auto-bounces the service when the game exits.
+        ///   - Windows under a service: skip the systemctl probe entirely —
+        ///     `systemctl` doesn't exist on Windows, so probing it just wastes
+        ///     ~5s and produces a misleading "systemctl failed" warning. Go
+        ///     straight to in-game shutdown; NSSM ships with `AppExit Restart`
+        ///     as its default and auto-bounces the service when the game exits.
+        ///   - No supervisor (started from startdedicated.bat / startserver.sh):
+        ///     arm <see cref="ServerRelauncher"/>'s helper, then shut down
+        ///     in-game. The helper starts the server again once it has exited.
         ///
         /// The strategy decision is delegated to <see cref="OsRestartStrategy"/>
         /// so it stays testable and shareable with any other restart entry
@@ -276,28 +283,42 @@ namespace KitsuneCommand.Web.Controllers
                 return BadRequest("Invalid service name.");
 
             var strategy = OsRestartStrategy.DecideForCurrentHost();
+            string message;
 
             if (strategy == OsRestartStrategy.Kind.SystemctlThenInGameShutdown)
             {
-                // Try systemctl first (Linux path).
+                // Try systemctl first (Linux under systemd).
                 if (TryStart("sudo", $"-n systemctl restart {serviceName}", out var stderr, 5000))
                 {
                     return Ok(ApiResponse.Ok($"Restart triggered via systemctl ({serviceName}). Server bouncing."));
                 }
 
                 global::Log.Warning($"[KitsuneCommand] systemctl restart failed or not available ({stderr}). Falling back to in-game shutdown.");
+                message = "Restart requested via in-game shutdown (5s delay). If systemd Restart=always is not set, server will stay down - run scripts/linux-updater/install-linux-updater.sh to configure.";
+            }
+            else if (strategy == OsRestartStrategy.Kind.InGameShutdownOnly)
+            {
+                // Windows service: NSSM (AppExit Restart) handles the bounce
+                // after the game process exits. INFO log so the operator sees
+                // we *chose* this path rather than failed into it.
+                global::Log.Out("[KitsuneCommand] Windows service detected; using in-game shutdown + service-supervisor restart (NSSM AppExit Restart).");
+                message = "Restart requested via in-game shutdown (5s delay). The Windows service supervisor (NSSM) will auto-bounce 7DTD when the game exits, provided AppExit Restart is configured (the NSSM default).";
             }
             else
             {
-                // Windows: NSSM (AppExit Restart) handles the bounce after the
-                // game process exits. INFO log so the operator sees we *chose*
-                // this path rather than failed into it.
-                global::Log.Out("[KitsuneCommand] Windows install detected; using in-game shutdown + service-supervisor restart (NSSM AppExit Restart).");
+                // No supervisor. Refuse rather than shut down with no way
+                // back: an admin who clicked Restart did not ask for an outage.
+                if (!ServerRelauncher.TryArm(out var detail))
+                {
+                    global::Log.Error($"[KitsuneCommand] Restart aborted: could not start the relaunch helper ({detail}).");
+                    return Ok(ApiResponse.Error(500, $"Restart cancelled: the server is not running under a service supervisor and the relaunch helper could not be started ({detail}). The server was left running."));
+                }
+
+                global::Log.Out($"[KitsuneCommand] No service supervisor detected; relaunch {detail}.");
+                message = $"Restart requested via in-game shutdown (5s delay). No service supervisor detected, so KitsuneCommand will relaunch the server itself about {RelaunchPlan.GraceSeconds} seconds after it exits.";
             }
 
-            // Common path: in-game shutdown with short delay. On Linux this is
-            // the fallback after systemctl failed; on Windows it's the only
-            // path we take.
+            // Common path: in-game shutdown with short delay.
             ModEntry.MainThreadContext.Post(_ =>
             {
                 try
@@ -310,12 +331,7 @@ namespace KitsuneCommand.Web.Controllers
                 }
             }, null);
 
-            if (strategy == OsRestartStrategy.Kind.InGameShutdownOnly)
-            {
-                return Ok(ApiResponse.Ok("Restart requested via in-game shutdown (5s delay). The Windows service supervisor (NSSM) will auto-bounce 7DTD when the game exits, provided AppExit Restart is configured (the NSSM default)."));
-            }
-
-            return Ok(ApiResponse.Ok("Restart requested via in-game shutdown (5s delay). If systemd Restart=always is not set, server will stay down - run scripts/linux-updater/install-linux-updater.sh to configure."));
+            return Ok(ApiResponse.Ok(message));
         }
 
         private static bool TryStart(string fileName, string arguments, out string stderr, int timeoutMs)

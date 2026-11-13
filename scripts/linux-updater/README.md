@@ -2,6 +2,10 @@
 
 One-time setup for the Linux `ServerUpdateFeature` — mirrors the Windows `launch.bat` pattern (steamcmd update → restore config → rotate logs → start server) but hooks it into systemd.
 
+You only need this if the server runs as a systemd unit. A server started
+straight from `startserver.sh` needs no setup for the Restart button: KC
+relaunches it itself (it won't run the steamcmd update step, though).
+
 ## Install
 
 From any machine with SSH access to the server (or directly on the server):

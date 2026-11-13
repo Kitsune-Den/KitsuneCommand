@@ -10,7 +10,7 @@ vi.mock('@/api/client', () => ({
   },
 }))
 
-import { getServerInfo, getServerStats, saveWorld, shutdownServer } from '@/api/serverControl'
+import { getServerInfo, getServerStats, saveWorld, shutdownServer, restartServer } from '@/api/serverControl'
 
 describe('Server Control API', () => {
   beforeEach(() => {
@@ -39,6 +39,18 @@ describe('Server Control API', () => {
     const result = await saveWorld()
     expect(mockPost).toHaveBeenCalledWith('/api/server/save')
     expect(result).toBe('World saved')
+  })
+
+  it('restartServer returns the server message', async () => {
+    mockPost.mockResolvedValue({ data: { code: 200, message: 'Restart requested.' } })
+    const result = await restartServer()
+    expect(mockPost).toHaveBeenCalledWith('/api/server/restart', {})
+    expect(result).toBe('Restart requested.')
+  })
+
+  it('restartServer throws the reason when the server refuses', async () => {
+    mockPost.mockResolvedValue({ data: { code: 500, message: 'Restart cancelled: no helper.' } })
+    await expect(restartServer()).rejects.toThrow('Restart cancelled: no helper.')
   })
 
   it('shutdownServer calls POST with delay', async () => {
