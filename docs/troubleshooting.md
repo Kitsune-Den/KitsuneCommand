@@ -40,6 +40,41 @@ save:
 
 ---
 
+## Restart shuts the server down and it never comes back
+
+**Cause:** KC runs inside the game process, so it can't start the game
+again once it has exited. Something outside the game has to. How a restart
+is finished depends on how the server was started:
+
+| Server was started by | Who brings it back |
+| --- | --- |
+| `startdedicated.bat` / `startserver.sh`, by hand or in tmux/screen | KC's relaunch helper (no setup) |
+| A Windows service (NSSM) | NSSM, via `AppExit Restart` (its default) |
+| A systemd unit | systemd, once the installer below has been run |
+
+**Fix:**
+
+- **No supervisor (either OS):** nothing to set up. KC leaves a small
+  helper script running that waits for the server to exit, then starts it
+  with the same command line about 10 seconds later. If it doesn't, read
+  `relaunch/relaunch.log` in KC's data folder: it records each attempt and
+  why it stopped. The helper stands down if it finds the server already
+  running again, so a looping launcher script won't end up with two copies.
+- **systemd:** run `scripts/linux-updater/install-linux-updater.sh
+  <server-dir> <unit-name>` once. It adds `Restart=always` to the unit and
+  lets the service user restart it without a password. See
+  [`scripts/linux-updater/README.md`](../scripts/linux-updater/README.md).
+- **NSSM:** check `nssm get <service> AppExit Default` says `Restart`.
+- **Windows Task Scheduler ("run whether user is logged on or not"):** the
+  task runs in the services session, so KC assumes a service will restart
+  it and doesn't use the helper. Run the server under NSSM instead, or
+  start it from a logged-in session.
+
+Two servers sharing one install folder are told apart by their
+`-configfile=` argument, which the stock launch scripts always pass.
+
+---
+
 ## "Fresh install: admin / admin doesn't work."
 
 **Cause:** There's no default password. On its first boot KC creates the

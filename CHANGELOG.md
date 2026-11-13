@@ -12,6 +12,21 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Restart no longer leaves an unsupervised server down.** KC runs inside
+  the game, so a restart always relied on systemd or NSSM to start the
+  server again. A server started from `startdedicated.bat` or
+  `startserver.sh` had neither, so Restart saved, shut down and stayed
+  down. KC now detects that case on Windows and Linux and leaves a small
+  helper running that starts the server again with the same command line
+  (and a fresh log file) about 10 seconds after it exits. This covers the
+  Restart button, scheduled restarts and `krestart`. Servers under systemd
+  or a Windows service behave as before. The helper stands down if the
+  server is already back, the Shutdown button cancels it, and if it can't
+  be started the Restart button now refuses instead of shutting down. Its
+  log is `relaunch/relaunch.log` in KC's data folder.
+
 ## [2.14.0] - 2026-11-10
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.14.0)

@@ -14,8 +14,9 @@ namespace KitsuneCommand.Features
     /// Schedules graceful daily restarts with in-game warning broadcasts.
     /// At the configured wall-clock time (in the configured IANA timezone), the
     /// feature plays a warning ladder over the say channel and then issues
-    /// `shutdown` so 7D2D exits cleanly with a save. The systemd unit's
-    /// Restart=always brings the service back up automatically.
+    /// `shutdown` so 7D2D exits cleanly with a save. The service supervisor
+    /// (systemd Restart=always, NSSM) brings it back up; when there is none,
+    /// <see cref="ServerRelauncher"/> does.
     ///
     /// Two trigger paths share the same countdown core:
     ///   • Daily timer — once per scheduled wall-clock minute
@@ -224,6 +225,17 @@ namespace KitsuneCommand.Features
 
                     if (sleepSec > 0)
                         await Task.Delay(TimeSpan.FromSeconds(sleepSec)).ConfigureAwait(false);
+                }
+
+                // Nothing supervising the server? Leave the relaunch helper
+                // behind so "restart" doesn't turn into "shutdown". Players
+                // have already been warned, so go ahead either way.
+                if (OsRestartStrategy.DecideForCurrentHost() == OsRestartStrategy.Kind.SelfRelaunch)
+                {
+                    if (ServerRelauncher.TryArm(out var detail))
+                        Log.Out($"[KitsuneCommand] GracefulRestart: no service supervisor detected; relaunch {detail}.");
+                    else
+                        Log.Warning($"[KitsuneCommand] GracefulRestart: could not start the relaunch helper ({detail}). The server will stay down after this shutdown.");
                 }
 
                 Log.Out($"[KitsuneCommand] GracefulRestart: issuing shutdown ({source}).");

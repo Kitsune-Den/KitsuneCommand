@@ -61,5 +61,8 @@ export async function shutdownServer(delaySeconds: number = 10): Promise<string>
 
 export async function restartServer(): Promise<string> {
   const res = await apiClient.post('/api/server/restart', {})
+  // The server refuses (rather than shutting down with no way back) when it
+  // has no supervisor and can't start its relaunch helper.
+  if (res.data.code >= 400) throw new Error(res.data.message ?? 'Restart failed.')
   return res.data.data ?? res.data.message ?? 'Restart triggered.'
 }

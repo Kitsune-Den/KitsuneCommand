@@ -84,8 +84,9 @@ async function handleRestart() {
   try {
     const msg = await restartServer()
     toast.add({ severity: 'warn', summary: t('serverControl.restartInitiated'), detail: msg, life: 10000 })
-  } catch {
-    toast.add({ severity: 'error', summary: t('common.error'), detail: t('serverControl.restartFailed'), life: 4000 })
+  } catch (e) {
+    const reason = e instanceof Error && !('isAxiosError' in e) ? e.message : t('serverControl.restartFailed')
+    toast.add({ severity: 'error', summary: t('common.error'), detail: reason, life: 10000 })
   } finally {
     restarting.value = false
   }
