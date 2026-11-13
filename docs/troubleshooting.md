@@ -49,6 +49,7 @@ is finished depends on how the server was started:
 | Server was started by | Who brings it back |
 | --- | --- |
 | `startdedicated.bat` / `startserver.sh`, by hand or in tmux/screen | KC's relaunch helper (no setup) |
+| A control panel that launches the game and lets go of it (e.g. PackRelay) | KC's relaunch helper (no setup), even when the panel itself is a systemd service |
 | A Windows service (NSSM) | NSSM, via `AppExit Restart` (its default) |
 | A systemd unit | systemd, once the installer below has been run |
 

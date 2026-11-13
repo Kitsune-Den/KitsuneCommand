@@ -40,23 +40,59 @@ namespace KitsuneCommand.Tests.Core
                 "With no supervisor, nothing else will start the server again.");
         }
 
-        [Test]
-        public void IsSupervised_Linux_FollowsSystemdInvocationId()
+        // Process tree used below: 1 (systemd) → 500 (startserver.sh) → 600 (game).
+        private static int ParentOf(int pid)
         {
-            Assert.That(ServerRelauncher.IsSupervised(false, "0123456789abcdef", -1), Is.True);
-            Assert.That(ServerRelauncher.IsSupervised(false, null, -1), Is.False);
-            Assert.That(ServerRelauncher.IsSupervised(false, "", -1), Is.False);
+            switch (pid)
+            {
+                case 600: return 500;
+                case 500: return 1;
+                default: return 0;
+            }
         }
 
         [Test]
-        public void IsSupervised_Windows_OnlyInTheServicesSession()
+        public void IsSupervisedOnLinux_NotUnderSystemd_IsFalse()
         {
-            Assert.That(ServerRelauncher.IsSupervised(true, null, 0), Is.True);
-            Assert.That(ServerRelauncher.IsSupervised(true, null, 1), Is.False);
-            Assert.That(ServerRelauncher.IsSupervised(true, null, -1), Is.False,
+            Assert.That(ServerRelauncher.IsSupervisedOnLinux(null, null, 600, ParentOf), Is.False);
+            Assert.That(ServerRelauncher.IsSupervisedOnLinux("", "600", 600, ParentOf), Is.False);
+        }
+
+        [Test]
+        public void IsSupervisedOnLinux_GameIsTheUnitsProcess_IsTrue()
+        {
+            Assert.That(ServerRelauncher.IsSupervisedOnLinux("abc123", "600", 600, ParentOf), Is.True);
+        }
+
+        [Test]
+        public void IsSupervisedOnLinux_UnitStartedAWrapperScript_IsTrue()
+        {
+            Assert.That(ServerRelauncher.IsSupervisedOnLinux("abc123", "500", 600, ParentOf), Is.True);
+        }
+
+        [Test]
+        public void IsSupervisedOnLinux_SpawnedByAPanelService_IsFalse()
+        {
+            // The panel's unit started PID 400; the game was detached from it
+            // (parent is now init) and only inherited the environment.
+            Assert.That(ServerRelauncher.IsSupervisedOnLinux("abc123", "400", 700, pid => pid == 700 ? 1 : 0), Is.False,
+                "systemd restarts the panel, not a game the panel launched.");
+        }
+
+        [Test]
+        public void IsSupervisedOnLinux_OldSystemdWithoutExecPid_AssumesSupervised()
+        {
+            Assert.That(ServerRelauncher.IsSupervisedOnLinux("abc123", null, 600, ParentOf), Is.True);
+            Assert.That(ServerRelauncher.IsSupervisedOnLinux("abc123", "garbage", 600, ParentOf), Is.True);
+        }
+
+        [Test]
+        public void IsSupervisedOnWindows_OnlyInTheServicesSession()
+        {
+            Assert.That(ServerRelauncher.IsSupervisedOnWindows(0), Is.True);
+            Assert.That(ServerRelauncher.IsSupervisedOnWindows(1), Is.False);
+            Assert.That(ServerRelauncher.IsSupervisedOnWindows(-1), Is.False,
                 "An unknown session must not be mistaken for a service.");
-            Assert.That(ServerRelauncher.IsSupervised(true, "leaked-from-wsl", 2), Is.False,
-                "INVOCATION_ID means nothing on Windows.");
         }
     }
 }

@@ -30,23 +30,72 @@ namespace KitsuneCommand.Core
         /// </summary>
         public static bool IsSupervised()
         {
-            return IsSupervised(
-                PlatformHelper.IsWindows,
+            if (PlatformHelper.IsWindows)
+                return IsSupervisedOnWindows(CurrentWindowsSessionId());
+
+            int selfPid;
+            using (var self = Process.GetCurrentProcess()) selfPid = self.Id;
+
+            return IsSupervisedOnLinux(
                 Environment.GetEnvironmentVariable("INVOCATION_ID"),
-                PlatformHelper.IsWindows ? CurrentWindowsSessionId() : -1);
+                Environment.GetEnvironmentVariable("SYSTEMD_EXEC_PID"),
+                selfPid,
+                ReadParentPid);
         }
 
         /// <summary>
-        /// Pure form of <see cref="IsSupervised()"/>.
-        ///   - Linux: systemd sets INVOCATION_ID for every process of a unit.
-        ///   - Windows: services run in session 0; a server started from a
-        ///     desktop, RDP or console session never does.
+        /// Services run in session 0; a server started from a desktop, RDP or
+        /// console session never does.
         /// </summary>
-        public static bool IsSupervised(bool isWindows, string systemdInvocationId, int windowsSessionId)
+        public static bool IsSupervisedOnWindows(int sessionId)
         {
-            return isWindows
-                ? windowsSessionId == 0
-                : !string.IsNullOrEmpty(systemdInvocationId);
+            return sessionId == 0;
+        }
+
+        /// <summary>
+        /// systemd sets INVOCATION_ID for a unit's processes, but every
+        /// descendant inherits it — including a game server that a control
+        /// panel (itself a systemd service) spawned and detached. systemd
+        /// restarts the panel in that case, not the game. SYSTEMD_EXEC_PID
+        /// (systemd 248+) names the process systemd itself started, so the
+        /// game is only supervised when that process is the game or one of
+        /// its living ancestors (a wrapper such as startserver.sh).
+        /// </summary>
+        /// <param name="parentOf">Returns a PID's parent, or 0 if unknown.</param>
+        public static bool IsSupervisedOnLinux(
+            string systemdInvocationId, string systemdExecPid, int selfPid, Func<int, int> parentOf)
+        {
+            if (string.IsNullOrEmpty(systemdInvocationId)) return false;
+
+            // Older systemd doesn't say which process it started. Assume the
+            // unit is ours rather than risk racing systemd with a second copy.
+            if (!int.TryParse(systemdExecPid, out var execPid) || execPid <= 1) return true;
+
+            var pid = selfPid;
+            for (int hops = 0; hops < 64 && pid > 1; hops++)
+            {
+                if (pid == execPid) return true;
+                pid = parentOf(pid);
+            }
+            return false;
+        }
+
+        /// <summary>Parent PID from /proc/&lt;pid&gt;/stat, or 0 if it can't be read.</summary>
+        private static int ReadParentPid(int pid)
+        {
+            try
+            {
+                // "pid (comm) state ppid ..." — comm can contain spaces and
+                // parentheses, so parse from the last ')'.
+                var stat = File.ReadAllText("/proc/" + pid + "/stat");
+                var fields = stat.Substring(stat.LastIndexOf(')') + 1)
+                    .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                return fields.Length > 1 && int.TryParse(fields[1], out var ppid) ? ppid : 0;
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         /// <summary>
