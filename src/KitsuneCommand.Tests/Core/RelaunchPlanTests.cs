@@ -64,6 +64,23 @@ namespace KitsuneCommand.Tests.Core
         }
 
         [Test]
+        public void Constructor_RejectsAPlanThatCouldNotBeLaunched()
+        {
+            Assert.Throws<ArgumentException>(() => new RelaunchPlan(1, "", "/srv/7d2d", null));
+            Assert.Throws<ArgumentException>(() => new RelaunchPlan(1, "/srv/7d2d/server", " ", null));
+        }
+
+        [Test]
+        public void FromCommandLine_WithNoArguments_RendersABareLaunch()
+        {
+            var plan = RelaunchPlan.FromCommandLine(9, "/srv/7d2d/server", "/srv/7d2d", null, Now);
+
+            Assert.That(plan.Arguments, Is.Empty);
+            Assert.That(plan.RenderLinuxScript("/a", "/l"), Does.Contain("nohup \"$EXE\" </dev/null"));
+            Assert.That(plan.RenderWindowsScript("a", "l"), Does.Contain("$argLine = ''"));
+        }
+
+        [Test]
         public void QuotePowerShell_DoublesSingleQuotes()
         {
             Assert.That(RelaunchPlan.QuotePowerShell(@"C:\Ada's Server"), Is.EqualTo(@"'C:\Ada''s Server'"));

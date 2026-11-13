@@ -105,65 +105,77 @@ namespace KitsuneCommand.Core
         /// </summary>
         public static bool TryArm(out string detail)
         {
+            string dir = null;
             try
             {
                 var plan = BuildPlanForCurrentProcess();
-                var dir = Path.Combine(ConfigManager.ResolveWorldAgnosticDataDir(), HelperDirName);
-                Directory.CreateDirectory(dir);
-
-                var armedFile = Path.Combine(dir, ArmedFileName);
-                var logFile = Path.Combine(dir, LogFileName);
-                TrimLog(logFile);
-                File.WriteAllText(armedFile, plan.ProcessId.ToString());
-
-                ProcessStartInfo psi;
-                if (PlatformHelper.IsWindows)
-                {
-                    var script = Path.Combine(dir, "relaunch-server.ps1");
-                    // BOM so Windows PowerShell reads non-ASCII paths correctly.
-                    File.WriteAllText(script, plan.RenderWindowsScript(armedFile, logFile), new UTF8Encoding(true));
-                    psi = new ProcessStartInfo
-                    {
-                        FileName = "powershell.exe",
-                        Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File " + RelaunchPlan.QuoteWindowsArg(script),
-                    };
-                }
-                else
-                {
-                    var script = Path.Combine(dir, "relaunch-server.sh");
-                    File.WriteAllText(script, plan.RenderLinuxScript(armedFile, logFile), new UTF8Encoding(false));
-                    psi = new ProcessStartInfo
-                    {
-                        FileName = "/bin/sh",
-                        Arguments = RelaunchPlan.QuoteShell(script),
-                    };
-                }
-
-                // No redirected pipes: they would break when the game exits
-                // and take the helper down with them.
-                psi.UseShellExecute = false;
-                psi.CreateNoWindow = true;
-                psi.WorkingDirectory = dir;
+                dir = HelperDirectory();
+                var psi = PrepareHelper(dir, plan, PlatformHelper.IsWindows);
 
                 using (var helper = Process.Start(psi))
                 {
                     if (helper == null)
                     {
-                        Disarm();
+                        Disarm(dir);
                         detail = "the helper process did not start";
                         return false;
                     }
                 }
 
-                detail = $"helper armed for PID {plan.ProcessId}; log at {logFile}";
+                detail = $"helper armed for PID {plan.ProcessId}; log at {Path.Combine(dir, LogFileName)}";
                 return true;
             }
             catch (Exception ex)
             {
-                Disarm();
+                if (dir != null) Disarm(dir);
                 detail = ex.Message;
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Writes the helper script and the "armed" marker into
+        /// <paramref name="dir"/> and returns how to start the helper. Split
+        /// from <see cref="TryArm"/> so it can be tested without a game.
+        /// </summary>
+        public static ProcessStartInfo PrepareHelper(string dir, RelaunchPlan plan, bool isWindows)
+        {
+            Directory.CreateDirectory(dir);
+
+            var armedFile = Path.Combine(dir, ArmedFileName);
+            var logFile = Path.Combine(dir, LogFileName);
+            TrimLog(logFile);
+            File.WriteAllText(armedFile, plan.ProcessId.ToString());
+
+            ProcessStartInfo psi;
+            if (isWindows)
+            {
+                var script = Path.Combine(dir, "relaunch-server.ps1");
+                // BOM so Windows PowerShell reads non-ASCII paths correctly.
+                File.WriteAllText(script, plan.RenderWindowsScript(armedFile, logFile), new UTF8Encoding(true));
+                psi = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File " + RelaunchPlan.QuoteWindowsArg(script),
+                };
+            }
+            else
+            {
+                var script = Path.Combine(dir, "relaunch-server.sh");
+                File.WriteAllText(script, plan.RenderLinuxScript(armedFile, logFile), new UTF8Encoding(false));
+                psi = new ProcessStartInfo
+                {
+                    FileName = "/bin/sh",
+                    Arguments = RelaunchPlan.QuoteShell(script),
+                };
+            }
+
+            // No redirected pipes: they would break when the game exits
+            // and take the helper down with them.
+            psi.UseShellExecute = false;
+            psi.CreateNoWindow = true;
+            psi.WorkingDirectory = dir;
+            return psi;
         }
 
         /// <summary>
@@ -175,13 +187,31 @@ namespace KitsuneCommand.Core
         {
             try
             {
-                var armedFile = Path.Combine(ConfigManager.ResolveWorldAgnosticDataDir(), HelperDirName, ArmedFileName);
+                Disarm(HelperDirectory());
+            }
+            catch (Exception ex)
+            {
+                global::Log.Warning($"[KitsuneCommand] Could not disarm the relaunch helper: {ex.Message}");
+            }
+        }
+
+        /// <summary>Removes the "armed" marker the helper checks before relaunching.</summary>
+        public static void Disarm(string dir)
+        {
+            try
+            {
+                var armedFile = Path.Combine(dir, ArmedFileName);
                 if (File.Exists(armedFile)) File.Delete(armedFile);
             }
             catch (Exception ex)
             {
                 global::Log.Warning($"[KitsuneCommand] Could not disarm the relaunch helper: {ex.Message}");
             }
+        }
+
+        private static string HelperDirectory()
+        {
+            return Path.Combine(ConfigManager.ResolveWorldAgnosticDataDir(), HelperDirName);
         }
 
         private static RelaunchPlan BuildPlanForCurrentProcess()
