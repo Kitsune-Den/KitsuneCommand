@@ -18,7 +18,8 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   the game, so a restart always relied on systemd or NSSM to start the
   server again. A server started from `startdedicated.bat` or
   `startserver.sh` had neither, so Restart saved, shut down and stayed
-  down. KC now detects that case on Windows and Linux and leaves a small
+  down. The same went for a server launched by a control panel such as
+  PackRelay, where systemd supervises the panel, not the game. KC now detects that case on Windows and Linux and leaves a small
   helper running that starts the server again with the same command line
   (and a fresh log file) about 10 seconds after it exits. This covers the
   Restart button, scheduled restarts and `krestart`. Servers under systemd
