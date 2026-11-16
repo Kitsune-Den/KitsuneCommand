@@ -12,6 +12,26 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.14.1] - 2026-11-16
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.14.1)
+> · `/home` works again. It was telling players they'd been teleported
+> without moving them, because saved positions carry a decimal point and the
+> game's teleport command refuses those. `/tp` and the panel's teleports had
+> the same flaw. Existing homes work without being re-set. No schema or
+> config changes; minimum 7D2D version unchanged.
+
+### Fixed
+
+- **`/home` and `/tp` actually teleport.** The game's `teleportplayer`
+  command only accepts whole-number coordinates and quietly refuses anything
+  with a decimal point. `/sethome` saves positions with one decimal place, so
+  `/home` replied "Teleported to home" while the player stayed put. `/tp` to
+  a city saved with decimals, and the panel's home and city teleports, failed
+  the same way. Coordinates are now sent as whole numbers, landing the player
+  on the saved block and on top of the surface. Homes that are already saved
+  work as they are; nobody needs to `/sethome` again.
+
 ## [2.14.0] - 2026-11-10
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.14.0)
@@ -1092,7 +1112,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.14.0...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.14.1...HEAD
+[2.14.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.14.0...v2.14.1
 [2.14.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.13.1...v2.14.0
 [2.13.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.13.0...v2.13.1
 [2.13.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.12.1...v2.13.0
