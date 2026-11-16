@@ -224,7 +224,7 @@ namespace KitsuneCommand.Features
 
             // Execute teleport (announced first so the suspicion log doesn't flag the jump)
             _eventBus.Publish(new PlayerTeleportedEvent { EntityId = entityId, Reason = "home" });
-            var cmd = $"teleportplayer {entityId} {x.ToString(CultureInfo.InvariantCulture)} {y.ToString(CultureInfo.InvariantCulture)} {z.ToString(CultureInfo.InvariantCulture)}";
+            var cmd = TeleportCommand.Build(entityId, x, y, z);
             SdtdConsole.Instance.ExecuteSync(cmd, null);
 
             // Record teleport
@@ -380,7 +380,7 @@ namespace KitsuneCommand.Features
 
             // Execute teleport (announced first so the suspicion log doesn't flag the jump)
             _eventBus.Publish(new PlayerTeleportedEvent { EntityId = entityId, Reason = "city" });
-            var cmd = $"teleportplayer {entityId} {cx.ToString(CultureInfo.InvariantCulture)} {cy.ToString(CultureInfo.InvariantCulture)} {cz.ToString(CultureInfo.InvariantCulture)}";
+            var cmd = TeleportCommand.Build(entityId, cx, cy, cz);
             SdtdConsole.Instance.ExecuteSync(cmd, null);
 
             // Record teleport
