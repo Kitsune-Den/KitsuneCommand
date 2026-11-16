@@ -195,7 +195,7 @@ namespace KitsuneCommand.Web.Controllers
 
             // 5. Execute teleport command on main thread (announced first so the suspicion log doesn't flag the jump)
             _eventBus.Publish(new PlayerTeleportedEvent { EntityId = player.EntityId, Reason = "city" });
-            var cmd = $"teleportplayer {player.EntityId} {cx.ToString(CultureInfo.InvariantCulture)} {cy.ToString(CultureInfo.InvariantCulture)} {cz.ToString(CultureInfo.InvariantCulture)}";
+            var cmd = KitsuneCommand.Features.TeleportCommand.Build(player.EntityId, cx, cy, cz);
             var output = ExecuteConsoleCommand(cmd);
 
             // 6. Record teleport
@@ -300,7 +300,7 @@ namespace KitsuneCommand.Web.Controllers
 
             // 5. Execute teleport (announced first so the suspicion log doesn't flag the jump)
             _eventBus.Publish(new PlayerTeleportedEvent { EntityId = player.EntityId, Reason = "home" });
-            var cmd = $"teleportplayer {player.EntityId} {hx.ToString(CultureInfo.InvariantCulture)} {hy.ToString(CultureInfo.InvariantCulture)} {hz.ToString(CultureInfo.InvariantCulture)}";
+            var cmd = KitsuneCommand.Features.TeleportCommand.Build(player.EntityId, hx, hy, hz);
             var output = ExecuteConsoleCommand(cmd);
 
             // 6. Record teleport
