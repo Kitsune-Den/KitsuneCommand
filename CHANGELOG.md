@@ -42,6 +42,12 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   the game uses, and the player is told when they can try again. A refused
   teleport doesn't start the cooldown or charge the city's points. Admin and
   moderator teleports from the panel still work.
+- **The dashboard's blood moon Force Skip no longer races the chat vote.** It
+  reset the vote from the web server's thread while `/skipbm` votes changed
+  it on the game's main thread, so a vote cast at the same moment could
+  corrupt the list of voters. The skip now runs on the main thread. If the
+  game doesn't get to it within five seconds, nothing is skipped and the
+  dashboard says the skip failed instead of reporting success.
 
 ## [2.14.1] - 2026-11-16
 

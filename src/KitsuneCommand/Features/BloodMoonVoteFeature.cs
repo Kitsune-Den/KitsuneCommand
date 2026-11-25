@@ -182,12 +182,29 @@ namespace KitsuneCommand.Features
         }
 
         /// <summary>
-        /// Admin force-skip: immediately skips the blood moon.
-        /// Called from the API controller (runs on OWIN thread).
+        /// Admin force-skip: skips the blood moon now, whether or not a vote is open.
+        /// The web API calls this from its own thread, so the skip runs on the main
+        /// thread, where chat votes and disconnects already change the vote state.
+        /// Returns false when the main thread didn't get to it in time; the skip
+        /// then never happens.
         /// </summary>
-        public void ForceSkip()
+        public bool ForceSkip()
         {
-            ExecuteSkip();
+            return RunOnMainThread(() =>
+            {
+                ExecuteSkip();
+                return true;
+            });
+        }
+
+        /// <summary>
+        /// Runs <paramref name="work"/> on the main thread and returns its answer, or false
+        /// if the main thread didn't get to it in time (it then never runs). Virtual so
+        /// tests can supply a main thread: the real one lives in the game.
+        /// </summary>
+        protected virtual bool RunOnMainThread(Func<bool> work)
+        {
+            return GameThread.Run("Blood moon force-skip", work, false);
         }
 
         /// <summary>
@@ -222,11 +239,27 @@ namespace KitsuneCommand.Features
                 return Math.Max(1, Math.Min(Settings.ThresholdValue, online));
         }
 
+        /// <summary>
+        /// Ends the vote and moves the clock past the blood moon. Runs on the main
+        /// thread: chat votes and disconnects arrive there, and ForceSkip goes
+        /// there first, so the vote state only ever changes on one thread.
+        /// </summary>
         private void ExecuteSkip()
         {
-            var voteCount = _currentVoters.Count;
+            SkipToMorning(_currentVoters.Count);
 
-            // Advance game time to the morning after via main thread
+            _lastSkipTimeUtc = DateTime.UtcNow;
+            ResetVoteSession();
+            BroadcastVoteState();
+        }
+
+        /// <summary>
+        /// Moves the game clock to the morning after and announces the skip, on the
+        /// next frame rather than inside the chat or disconnect handler that passed
+        /// the vote. Virtual so tests can stand in for the game.
+        /// </summary>
+        protected virtual void SkipToMorning(int voteCount)
+        {
             ModEntry.MainThreadContext.Post(_ =>
             {
                 try
@@ -252,10 +285,6 @@ namespace KitsuneCommand.Features
                     Log.Error($"[KitsuneCommand] BloodMoonVote: Failed to execute skip: {ex.Message}");
                 }
             }, null);
-
-            _lastSkipTimeUtc = DateTime.UtcNow;
-            ResetVoteSession();
-            BroadcastVoteState();
         }
 
         private bool CheckCooldown()
