@@ -8,6 +8,7 @@ using KitsuneCommand.Abstractions.Models;
 using KitsuneCommand.Configuration;
 using KitsuneCommand.Core;
 using KitsuneCommand.Data.Repositories;
+using KitsuneCommand.GameIntegration;
 using KitsuneCommand.Services;
 using Newtonsoft.Json;
 
@@ -313,10 +314,22 @@ namespace KitsuneCommand.Features
         {
             try
             {
+                var clock = GameClock.ReadLive();
+                if (clock == null)
+                {
+                    await command.RespondAsync(
+                        "The world isn't loaded yet. Try again once the server has finished starting.",
+                        ephemeral: true);
+                    return;
+                }
+
+                var now = clock.Value;
                 var embed = new EmbedBuilder()
-                    .WithColor(Color.Blue)
+                    .WithColor(now.IsBloodMoonNow ? Color.DarkRed : Color.Blue)
                     .WithTitle("In-Game Time")
-                    .AddField("Info", "Use /status for server details", false)
+                    .AddField("Day", now.Day.ToString(), true)
+                    .AddField("Time", now.TimeText, true)
+                    .AddField("Blood Moon", now.DescribeBloodMoon(), false)
                     .WithFooter(Settings.ServerName)
                     .WithCurrentTimestamp();
 
