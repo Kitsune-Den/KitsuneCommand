@@ -36,6 +36,16 @@ namespace KitsuneCommand.Features
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, DateTime>> _cooldowns
             = new ConcurrentDictionary<string, ConcurrentDictionary<string, DateTime>>();
 
+        /// <summary>How often pending teleports are looked at, in real milliseconds.</summary>
+        public const int CountdownTickMs = 500;
+
+        // /home and /tp waiting out the Teleport delay, one per player, by entity id. Only the
+        // main thread changes it; the timer thread only asks whether it's empty.
+        private readonly ConcurrentDictionary<int, PendingTeleport> _pendingTeleports
+            = new ConcurrentDictionary<int, PendingTeleport>();
+        private Timer _countdownTimer;
+        private int _countdownTickQueued;
+
         public ChatCommandService(
             IHomeLocationRepository homeRepo,
             ICityLocationRepository cityRepo,
@@ -208,10 +218,11 @@ namespace KitsuneCommand.Features
                 return;
             }
 
-            if (RefuseTeleportDuringBloodMoon(entityId))
+            var teleport = TeleportPolicy.LoadSettings(_settingsRepo);
+            if (RefuseTeleportDuringBloodMoon(entityId, teleport))
                 return;
 
-            if (!CheckCooldown(playerId, entityId, "home", settings.HomeCooldownSeconds))
+            if (!CooldownAllows(playerId, entityId, "home", settings.HomeCooldownSeconds))
                 return;
 
             if (!TryParsePosition(home.Position, out var x, out var y, out var z))
@@ -220,29 +231,18 @@ namespace KitsuneCommand.Features
                 return;
             }
 
-            // Get player's current position for teleport record
-            var player = _playerManager.GetByEntityId(entityId);
-            var originPos = player != null
-                ? $"{player.PositionX.ToString("F1", CultureInfo.InvariantCulture)} {player.PositionY.ToString("F1", CultureInfo.InvariantCulture)} {player.PositionZ.ToString("F1", CultureInfo.InvariantCulture)}"
-                : "0 0 0";
-
-            // Execute teleport (announced first so the suspicion log doesn't flag the jump)
-            _eventBus.Publish(new PlayerTeleportedEvent { EntityId = entityId, Reason = "home" });
-            var cmd = TeleportCommand.Build(entityId, x, y, z);
-            SdtdConsole.Instance.ExecuteSync(cmd, null);
-
-            // Record teleport
-            _teleRecordRepo.Insert(new TeleRecord
+            BeginTeleport(new PendingTeleport
             {
                 PlayerId = playerId,
                 PlayerName = playerName,
-                TargetType = 1, // Home
+                EntityId = entityId,
+                Kind = TeleportTargetKind.Home,
                 TargetName = home.HomeName,
-                OriginPosition = originPos,
-                TargetPosition = home.Position
-            });
-
-            Reply(entityId, $"Teleported to home '{home.HomeName}'.");
+                TargetPosition = home.Position,
+                X = x,
+                Y = y,
+                Z = z
+            }, teleport);
         }
 
         private void HandleSetHome(string playerId, int entityId, string playerName, string args, ChatCommandSettings settings)
@@ -334,14 +334,200 @@ namespace KitsuneCommand.Features
         /// Replies and returns true when the Teleport settings forbid teleporting during the
         /// blood moon that's running now. Runs on the game thread, so reading the clock is safe.
         /// </summary>
-        private bool RefuseTeleportDuringBloodMoon(int entityId)
+        private bool RefuseTeleportDuringBloodMoon(int entityId, TeleportSettings teleport)
         {
-            var refusal = TeleportPolicy.BloodMoonRefusal(
-                TeleportPolicy.LoadSettings(_settingsRepo), GameClock.ReadLive());
+            var refusal = TeleportPolicy.BloodMoonRefusal(teleport, GameClock.ReadLive());
             if (refusal == null) return false;
 
             Reply(entityId, refusal);
             return true;
+        }
+
+        /// <summary>
+        /// Starts a /home or /tp that has passed its checks: right away with no Teleport delay,
+        /// otherwise after the countdown (see <see cref="TeleportCountdown"/> for what cancels it).
+        /// A teleport the player already had counting down is replaced. Game thread.
+        /// </summary>
+        private void BeginTeleport(PendingTeleport next, TeleportSettings teleport)
+        {
+            if (_pendingTeleports.TryRemove(next.EntityId, out var old))
+            {
+                var notice = TeleportCountdown.ReplacedMessage(old, next);
+                if (notice != null) Reply(next.EntityId, notice);
+            }
+
+            // No timer means chat commands haven't started their countdowns, so nothing would
+            // ever finish this one: teleport now rather than leave the player waiting forever.
+            var delay = TeleportCountdown.DelaySeconds(teleport);
+            if (delay <= 0 || _countdownTimer == null)
+            {
+                CompleteTeleport(next, afterCountdown: false);
+                return;
+            }
+
+            var player = ReadPlayer(next.EntityId);
+            if (player == null)
+            {
+                Reply(next.EntityId, "Could not determine your position.");
+                return;
+            }
+
+            TeleportCountdown.Start(next, player.Value, DateTime.UtcNow, delay);
+            _pendingTeleports[next.EntityId] = next;
+            Reply(next.EntityId, TeleportCountdown.StartMessage(next, delay));
+        }
+
+        /// <summary>
+        /// Moves the player, then charges the city's points, records the teleport and starts the
+        /// command's cooldown, so a teleport that doesn't happen costs nothing. After a countdown
+        /// the blood moon and the points are checked again first: either can have changed while
+        /// the player waited. Game thread.
+        /// </summary>
+        private void CompleteTeleport(PendingTeleport p, bool afterCountdown)
+        {
+            if (afterCountdown)
+            {
+                var refusal = TeleportPolicy.BloodMoonRefusal(
+                    TeleportPolicy.LoadSettings(_settingsRepo), GameClock.ReadLive());
+                if (refusal != null)
+                {
+                    Reply(p.EntityId, TeleportCountdown.BloodMoonMessage(p, refusal));
+                    return;
+                }
+            }
+
+            if (p.PointsCost > 0)
+            {
+                var have = _pointsRepo.GetByPlayerId(p.PlayerId)?.Points ?? 0;
+                if (have < p.PointsCost)
+                {
+                    Reply(p.EntityId, TeleportCountdown.NotEnoughPointsMessage(p, have));
+                    return;
+                }
+            }
+
+            // Origin for the teleport record
+            var player = _playerManager.GetByEntityId(p.EntityId);
+            var originPos = player != null
+                ? $"{player.PositionX.ToString("F1", CultureInfo.InvariantCulture)} {player.PositionY.ToString("F1", CultureInfo.InvariantCulture)} {player.PositionZ.ToString("F1", CultureInfo.InvariantCulture)}"
+                : "0 0 0";
+
+            // Execute teleport (announced first so the suspicion log doesn't flag the jump)
+            var isHome = p.Kind == TeleportTargetKind.Home;
+            _eventBus.Publish(new PlayerTeleportedEvent { EntityId = p.EntityId, Reason = isHome ? "home" : "city" });
+            SdtdConsole.Instance.ExecuteSync(TeleportCommand.Build(p.EntityId, p.X, p.Y, p.Z), null);
+
+            // Charge after the move, like /buy: same thread, so the balance checked above still holds
+            if (p.PointsCost > 0)
+            {
+                var newBalance = _pointsRepo.AdjustPoints(p.PlayerId, -p.PointsCost);
+                _eventBus.Publish(new PointsUpdateEvent
+                {
+                    PlayerId = p.PlayerId,
+                    PlayerName = p.PlayerName,
+                    Points = newBalance,
+                    Change = -p.PointsCost,
+                    Reason = $"Teleport to {p.TargetName}"
+                });
+            }
+
+            _teleRecordRepo.Insert(new TeleRecord
+            {
+                PlayerId = p.PlayerId,
+                PlayerName = p.PlayerName,
+                TargetType = isHome ? 1 : 0, // 1 = Home, 0 = City
+                TargetName = p.TargetName,
+                OriginPosition = originPos,
+                TargetPosition = p.TargetPosition
+            });
+
+            StampCooldown(p.PlayerId, p.CooldownGroup);
+
+            var costMsg = p.PointsCost > 0 ? $" (-{p.PointsCost} pts)" : "";
+            Reply(p.EntityId, isHome ? $"Teleported to home '{p.TargetName}'." : $"Teleported to {p.TargetName}.{costMsg}");
+        }
+
+        // ─── Teleport countdowns ───────────────────────────────────────
+
+        /// <summary>
+        /// Starts looking at pending teleports twice a second. Called when chat commands start.
+        /// </summary>
+        public void StartTeleportCountdowns()
+        {
+            StopTeleportCountdowns();
+            _eventBus.Subscribe<PlayerDisconnectedEvent>(OnPlayerDisconnected);
+            _countdownTimer = new Timer(_ => QueueCountdownTick(), null, CountdownTickMs, CountdownTickMs);
+        }
+
+        /// <summary>Stops the countdowns and drops any pending teleports. Called when chat commands stop.</summary>
+        public void StopTeleportCountdowns()
+        {
+            _countdownTimer?.Dispose();
+            _countdownTimer = null;
+            _eventBus.Unsubscribe<PlayerDisconnectedEvent>(OnPlayerDisconnected);
+            _pendingTeleports.Clear();
+        }
+
+        // Published on the main thread. They're gone, so there's nobody to tell.
+        private void OnPlayerDisconnected(PlayerDisconnectedEvent e) => _pendingTeleports.TryRemove(e.EntityId, out _);
+
+        /// <summary>
+        /// Posts one countdown tick to the main thread, the same way the safe zone sweep does,
+        /// and never stacks them. Does nothing while no one is waiting to teleport.
+        /// </summary>
+        private void QueueCountdownTick()
+        {
+            if (_pendingTeleports.IsEmpty) return;
+
+            var main = ModEntry.MainThreadContext;
+            if (main == null) return;
+            if (Interlocked.Exchange(ref _countdownTickQueued, 1) == 1) return;
+
+            main.Post(_ =>
+            {
+                try { TickCountdowns(DateTime.UtcNow); }
+                catch (Exception ex) { Log.Warning($"[KitsuneCommand] Teleport countdown failed: {ex.Message}"); }
+                finally { Interlocked.Exchange(ref _countdownTickQueued, 0); }
+            }, null);
+        }
+
+        /// <summary>Main thread only.</summary>
+        private void TickCountdowns(DateTime utcNow)
+        {
+            foreach (var pending in _pendingTeleports.Values)
+            {
+                var step = TeleportCountdown.Step(pending, ReadPlayer(pending.EntityId), utcNow);
+                if (step.Outcome == CountdownOutcome.Waiting) continue;
+
+                // Out before anything else, so a failure below can't run it twice.
+                _pendingTeleports.TryRemove(pending.EntityId, out _);
+
+                if (step.Outcome == CountdownOutcome.Cancelled)
+                {
+                    if (step.Reason != null) Reply(pending.EntityId, TeleportCountdown.CancelMessage(pending, step.Reason));
+                    continue;
+                }
+
+                try
+                {
+                    CompleteTeleport(pending, afterCountdown: true);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[KitsuneCommand] Teleport to {pending.Label} for {pending.PlayerName} failed: {ex.Message}");
+                    Reply(pending.EntityId, "An error occurred processing your teleport.");
+                }
+            }
+        }
+
+        /// <summary>The player as the world has them now, or null if they're not in it. Main thread only.</summary>
+        private static PlayerSnapshot? ReadPlayer(int entityId)
+        {
+            var players = GameManager.Instance?.World?.Players?.dict;
+            if (players == null || !players.TryGetValue(entityId, out var ep) || ep == null) return null;
+
+            var pos = ep.GetPosition();
+            return new PlayerSnapshot(pos.x, pos.y, pos.z, ep.Health, ep.IsDead());
         }
 
         private void HandleTeleportToCity(string playerId, int entityId, string playerName, string args, ChatCommandSettings settings)
@@ -361,13 +547,15 @@ namespace KitsuneCommand.Features
             }
 
             // Before the cooldown and the points, so a refused teleport costs nothing.
-            if (RefuseTeleportDuringBloodMoon(entityId))
+            var teleport = TeleportPolicy.LoadSettings(_settingsRepo);
+            if (RefuseTeleportDuringBloodMoon(entityId, teleport))
                 return;
 
-            if (!CheckCooldown(playerId, entityId, "teleport", settings.TeleportCooldownSeconds))
+            if (!CooldownAllows(playerId, entityId, "teleport", settings.TeleportCooldownSeconds))
                 return;
 
-            // Check & deduct points
+            // Checked now so nobody waits out the countdown to hear they can't afford it.
+            // Charged only when the teleport happens (CompleteTeleport).
             if (city.PointsRequired > 0)
             {
                 var pointsInfo = _pointsRepo.GetByPlayerId(playerId);
@@ -376,16 +564,6 @@ namespace KitsuneCommand.Features
                     Reply(entityId, $"Not enough points. {city.CityName} costs {city.PointsRequired} pts, you have {pointsInfo?.Points ?? 0}.");
                     return;
                 }
-
-                var newBalance = _pointsRepo.AdjustPoints(playerId, -city.PointsRequired);
-                _eventBus.Publish(new PointsUpdateEvent
-                {
-                    PlayerId = playerId,
-                    PlayerName = playerName,
-                    Points = newBalance,
-                    Change = -city.PointsRequired,
-                    Reason = $"Teleport to {city.CityName}"
-                });
             }
 
             if (!TryParsePosition(city.Position, out var cx, out var cy, out var cz))
@@ -394,30 +572,19 @@ namespace KitsuneCommand.Features
                 return;
             }
 
-            // Get origin position
-            var player = _playerManager.GetByEntityId(entityId);
-            var originPos = player != null
-                ? $"{player.PositionX.ToString("F1", CultureInfo.InvariantCulture)} {player.PositionY.ToString("F1", CultureInfo.InvariantCulture)} {player.PositionZ.ToString("F1", CultureInfo.InvariantCulture)}"
-                : "0 0 0";
-
-            // Execute teleport (announced first so the suspicion log doesn't flag the jump)
-            _eventBus.Publish(new PlayerTeleportedEvent { EntityId = entityId, Reason = "city" });
-            var cmd = TeleportCommand.Build(entityId, cx, cy, cz);
-            SdtdConsole.Instance.ExecuteSync(cmd, null);
-
-            // Record teleport
-            _teleRecordRepo.Insert(new TeleRecord
+            BeginTeleport(new PendingTeleport
             {
                 PlayerId = playerId,
                 PlayerName = playerName,
-                TargetType = 0, // City
+                EntityId = entityId,
+                Kind = TeleportTargetKind.City,
                 TargetName = city.CityName,
-                OriginPosition = originPos,
-                TargetPosition = city.Position
-            });
-
-            var costMsg = city.PointsRequired > 0 ? $" (-{city.PointsRequired} pts)" : "";
-            Reply(entityId, $"Teleported to {city.CityName}.{costMsg}");
+                TargetPosition = city.Position,
+                X = cx,
+                Y = cy,
+                Z = cz,
+                PointsCost = city.PointsRequired
+            }, teleport);
         }
 
         private void HandleListCities(int entityId)
@@ -973,11 +1140,23 @@ namespace KitsuneCommand.Features
         private bool CheckCooldown(string playerId, int entityId, string group, int cooldownSeconds)
         {
             if (cooldownSeconds <= 0) return true;
+            if (!CooldownAllows(playerId, entityId, group, cooldownSeconds)) return false;
 
-            var playerCooldowns = _cooldowns.GetOrAdd(playerId,
-                _ => new ConcurrentDictionary<string, DateTime>());
+            StampCooldown(playerId, group);
+            return true;
+        }
 
-            if (playerCooldowns.TryGetValue(group, out var lastUsed))
+        /// <summary>
+        /// Like <see cref="CheckCooldown"/> but doesn't start the cooldown: for teleports, which
+        /// start it with <see cref="StampCooldown"/> only once the player has actually moved.
+        /// Returns true if the player can proceed, false if on cooldown (reply sent).
+        /// </summary>
+        private bool CooldownAllows(string playerId, int entityId, string group, int cooldownSeconds)
+        {
+            if (cooldownSeconds <= 0) return true;
+
+            if (_cooldowns.TryGetValue(playerId, out var playerCooldowns) &&
+                playerCooldowns.TryGetValue(group, out var lastUsed))
             {
                 var elapsed = (DateTime.UtcNow - lastUsed).TotalSeconds;
                 if (elapsed < cooldownSeconds)
@@ -987,9 +1166,12 @@ namespace KitsuneCommand.Features
                     return false;
                 }
             }
-
-            playerCooldowns[group] = DateTime.UtcNow;
             return true;
+        }
+
+        private void StampCooldown(string playerId, string group)
+        {
+            _cooldowns.GetOrAdd(playerId, _ => new ConcurrentDictionary<string, DateTime>())[group] = DateTime.UtcNow;
         }
 
         /// <summary>
