@@ -29,11 +29,11 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   the day the game chose, so a `BloodMoonRange` that adds random days moves
   them too, and they show nothing when blood moons are off. The vote opens
   the set number of hours before dusk, which follows `DayLightLength` instead
-  of always being 22:00. With "Allow Vote During Blood Moon" off, voting now
-  closes at dusk. A vote that passes after midnight skips to that morning
-  rather than a day further on. `/api/server/info` gains `bloodMoonDay` and
-  `isBloodMoon`, and plugins get `BloodMoonDay`, `DuskHour` and `DawnHour` on
-  `SkyChangedEvent`.
+  of always being 22:00, and the settings hints in every language now say
+  dusk. With "Allow Vote During Blood Moon" off, voting now closes at dusk. A
+  vote that passes after midnight skips to that morning rather than a day
+  further on. `/api/server/info` gains `bloodMoonDay` and `isBloodMoon`, and
+  plugins get `BloodMoonDay`, `DuskHour` and `DawnHour` on `SkyChangedEvent`.
 
 ## [2.14.1] - 2026-11-16
 
