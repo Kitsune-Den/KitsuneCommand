@@ -34,6 +34,14 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   vote that passes after midnight skips to that morning rather than a day
   further on. `/api/server/info` gains `bloodMoonDay` and `isBloodMoon`, and
   plugins get `BloodMoonDay`, `DuskHour` and `DawnHour` on `SkyChangedEvent`.
+- **"Allow Teleport During Blood Moon" now does something.** The setting
+  (Settings > Blood Moon Restrictions) was saved but never checked, so
+  players could still `/home` and `/tp` to a city in the middle of a horde
+  after an admin turned it off. With it off, both commands are refused from
+  dusk on the blood moon day until dawn the next morning, the same window
+  the game uses, and the player is told when they can try again. A refused
+  teleport doesn't start the cooldown or charge the city's points. Admin and
+  moderator teleports from the panel still work.
 
 ## [2.14.1] - 2026-11-16
 

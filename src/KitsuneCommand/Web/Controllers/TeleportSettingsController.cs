@@ -16,7 +16,7 @@ namespace KitsuneCommand.Web.Controllers
     public class TeleportSettingsController : ApiController
     {
         private readonly ISettingsRepository _settingsRepo;
-        private const string SettingsKey = "Teleport";
+        private const string SettingsKey = TeleportPolicy.SettingsKey;
 
         public TeleportSettingsController(ISettingsRepository settingsRepo)
         {
@@ -64,20 +64,6 @@ namespace KitsuneCommand.Web.Controllers
             }
         }
 
-        private TeleportSettings LoadSettings()
-        {
-            try
-            {
-                var json = _settingsRepo.Get(SettingsKey);
-                if (!string.IsNullOrEmpty(json))
-                {
-                    var loaded = JsonConvert.DeserializeObject<TeleportSettings>(json);
-                    if (loaded != null) return loaded;
-                }
-            }
-            catch { /* fall through to defaults */ }
-
-            return new TeleportSettings();
-        }
+        private TeleportSettings LoadSettings() => TeleportPolicy.LoadSettings(_settingsRepo);
     }
 }
