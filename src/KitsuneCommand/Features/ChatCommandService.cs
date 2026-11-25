@@ -5,6 +5,7 @@ using KitsuneCommand.Abstractions.Models;
 using KitsuneCommand.Core;
 using KitsuneCommand.Data.Entities;
 using KitsuneCommand.Data.Repositories;
+using KitsuneCommand.GameIntegration;
 using KitsuneCommand.Services;
 using Newtonsoft.Json;
 
@@ -207,6 +208,9 @@ namespace KitsuneCommand.Features
                 return;
             }
 
+            if (RefuseTeleportDuringBloodMoon(entityId))
+                return;
+
             if (!CheckCooldown(playerId, entityId, "home", settings.HomeCooldownSeconds))
                 return;
 
@@ -326,6 +330,20 @@ namespace KitsuneCommand.Features
 
         // ─── Teleport Commands ─────────────────────────────────────────
 
+        /// <summary>
+        /// Replies and returns true when the Teleport settings forbid teleporting during the
+        /// blood moon that's running now. Runs on the game thread, so reading the clock is safe.
+        /// </summary>
+        private bool RefuseTeleportDuringBloodMoon(int entityId)
+        {
+            var refusal = TeleportPolicy.BloodMoonRefusal(
+                TeleportPolicy.LoadSettings(_settingsRepo), GameClock.ReadLive());
+            if (refusal == null) return false;
+
+            Reply(entityId, refusal);
+            return true;
+        }
+
         private void HandleTeleportToCity(string playerId, int entityId, string playerName, string args, ChatCommandSettings settings)
         {
             if (string.IsNullOrWhiteSpace(args))
@@ -341,6 +359,10 @@ namespace KitsuneCommand.Features
                 Reply(entityId, $"City '{cityName}' not found. Use /cities to see available locations.");
                 return;
             }
+
+            // Before the cooldown and the points, so a refused teleport costs nothing.
+            if (RefuseTeleportDuringBloodMoon(entityId))
+                return;
 
             if (!CheckCooldown(playerId, entityId, "teleport", settings.TeleportCooldownSeconds))
                 return;
