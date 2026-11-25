@@ -13,15 +13,17 @@ using KitsuneCommand.Features;
 namespace KitsuneCommand.Tests.Features
 {
     /// <summary>
-    /// The panel's force-skip arrives on a web thread. It used to change the vote
-    /// state right there while chat votes changed it on the main thread, so the two
-    /// could corrupt the voter set between them. It now hops to the main thread.
+    /// The panel's force-skip and vote status arrive on web threads while chat votes
+    /// change the vote on the main thread. The force-skip used to reset the vote right
+    /// there, so the two could corrupt the voter set between them; it now hops to the
+    /// main thread. The status used to walk the voter set mid-change; it now reads a
+    /// finished copy the main thread saves after every change.
     ///
     /// The game's main thread (ModEntry.MainThreadContext) can't be loaded in tests,
     /// so a stand-in thread plays it through the feature's RunOnMainThread seam.
     /// </summary>
     [TestFixture]
-    public class BloodMoonForceSkipTests
+    public class BloodMoonVoteThreadingTests
     {
         private ModEventBus _bus;
         private FakeGameVoteFeature _feature;
@@ -93,6 +95,78 @@ namespace KitsuneCommand.Tests.Features
             OpenVote();
 
             Assert.That(_feature.GetVoteStatus().IsActive, Is.False);
+        }
+
+        [Test]
+        public void StatusReadOnAWebThreadIsNeverHalfAChange()
+        {
+            const int rounds = 20000;
+            var problems = new List<string>();
+            var reads = 0;
+
+            using (var main = new MainThreadPump())
+            using (var finished = new ManualResetEventSlim(false))
+            {
+                // The main thread opens the vote and a chat vote passes it, over and over.
+                main.Post(_ =>
+                {
+                    for (var i = 0; i < rounds; i++)
+                    {
+                        OpenVote();
+                        _feature.CastVote("steam_" + i, "Fox", 171);
+                    }
+                    finished.Set();
+                }, null);
+
+                // Meanwhile the panel polls the status.
+                while (!finished.IsSet && problems.Count == 0)
+                {
+                    reads++;
+                    try
+                    {
+                        var status = _feature.GetVoteStatus();
+                        if (status.CurrentVotes != status.Voters.Count)
+                            problems.Add($"{status.CurrentVotes} votes but {status.Voters.Count} voters");
+                        else if (!status.IsActive && status.CurrentVotes > 0)
+                            problems.Add($"closed with {status.CurrentVotes} votes");
+                    }
+                    catch (Exception ex)
+                    {
+                        problems.Add(ex.GetType().Name + ": " + ex.Message);
+                    }
+                }
+
+                Assert.That(finished.Wait(TimeSpan.FromSeconds(30)), Is.True, "The main thread never finished its rounds.");
+            }
+
+            Assert.That(problems, Is.Empty, $"after {reads} reads");
+            Assert.That(_feature.SkippedVoteCounts, Has.Count.EqualTo(rounds));
+        }
+
+        [Test]
+        public void StatusFollowsTheVote()
+        {
+            Assert.That(_feature.GetVoteStatus().IsActive, Is.False);
+
+            OpenVote();
+            var open = _feature.GetVoteStatus();
+            Assert.That(open.IsActive, Is.True);
+            Assert.That(open.BloodMoonDay, Is.EqualTo(9));
+            Assert.That(open.Voters, Is.Empty);
+
+            _feature.Stop();
+            Assert.That(_feature.GetVoteStatus().IsActive, Is.False);
+        }
+
+        [Test]
+        public void StatusVotersAreACopy()
+        {
+            OpenVote();
+
+            _feature.GetVoteStatus().Voters.Add("steam_9");
+
+            Assert.That(_feature.GetVoteStatus().Voters, Is.Empty);
+            Assert.That(_feature.CastVote("steam_9", "Fox", 171), Is.EqualTo(VoteResult.Passed));
         }
 
         private void OpenVote()
