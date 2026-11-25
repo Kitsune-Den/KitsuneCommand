@@ -17,11 +17,20 @@ describe('Server Store', () => {
 
   it('updateGameTime updates all time fields', () => {
     const store = useServerStore()
-    store.updateGameTime({ day: 7, hour: 22, minute: 30, isBloodMoon: true })
+    store.updateGameTime({ day: 7, hour: 22, minute: 30, isBloodMoon: true, bloodMoonDay: 7 })
     expect(store.gameDay).toBe(7)
     expect(store.gameHour).toBe(22)
     expect(store.gameMinute).toBe(30)
     expect(store.isBloodMoon).toBe(true)
+    expect(store.bloodMoonDay).toBe(7)
+  })
+
+  it('updateGameTime keeps the blood moon day the game picked', () => {
+    const store = useServerStore()
+    store.updateGameTime({ day: 7, hour: 12, minute: 0, isBloodMoon: false, bloodMoonDay: 9 })
+    expect(store.bloodMoonDay).toBe(9)
+    store.updateGameTime({ day: 7, hour: 12, minute: 1, isBloodMoon: false, bloodMoonDay: 0 })
+    expect(store.bloodMoonDay).toBe(0)
   })
 
   it('updateBloodMoonVote updates vote state', () => {

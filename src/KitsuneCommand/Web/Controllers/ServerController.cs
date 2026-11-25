@@ -38,6 +38,7 @@ namespace KitsuneCommand.Web.Controllers
             var world = GameManager.Instance?.World;
             var gameManager = GameManager.Instance;
             var serverVisibility = GamePrefs.GetInt(GameCompat.Pref(nameof(EnumGamePrefs.ServerVisibility)));
+            var clock = GameClock.ReadLive();
 
             var info = new
             {
@@ -50,6 +51,9 @@ namespace KitsuneCommand.Web.Controllers
                 difficulty = GamePrefs.GetInt(GameCompat.Pref(nameof(EnumGamePrefs.GameDifficulty))),
                 dayNightLength = GamePrefs.GetInt(GameCompat.Pref(nameof(EnumGamePrefs.DayNightLength))),
                 bloodMoonFrequency = GamePrefs.GetInt(GameCompat.Pref(nameof(EnumGamePrefs.BloodMoonFrequency))),
+                // The day the game has actually picked, BloodMoonRange included; 0 when blood moons are off.
+                bloodMoonDay = clock?.BloodMoonDay ?? 0,
+                isBloodMoon = clock?.IsBloodMoonNow ?? false,
                 currentDay = world != null ? GameUtils.WorldTimeToDays(world.worldTime) : 0,
                 currentTime = world != null ? GameUtils.WorldTimeToString(world.worldTime) : "N/A",
                 onlinePlayers = gameManager?.World?.Players?.Count ?? 0,

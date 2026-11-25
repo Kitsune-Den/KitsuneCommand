@@ -4,6 +4,7 @@ using KitsuneCommand.Abstractions.Models;
 using KitsuneCommand.Configuration;
 using KitsuneCommand.Core;
 using KitsuneCommand.Data.Repositories;
+using KitsuneCommand.GameIntegration;
 using Newtonsoft.Json;
 
 namespace KitsuneCommand.Features
@@ -62,32 +63,7 @@ namespace KitsuneCommand.Features
         {
             if (!Settings.Enabled) return;
 
-            var bmFrequency = GameStats.GetInt(GameIntegration.GameCompat.Stat(nameof(EnumGameStats.BloodMoonDay)));
-            if (bmFrequency <= 0) return;
-
-            // Calculate the next blood moon day
-            var nextBmDay = e.Day <= 0 ? bmFrequency : (int)Math.Ceiling((double)e.Day / bmFrequency) * bmFrequency;
-            var isBloodMoonDay = e.Day == nextBmDay;
-
-            var shouldBeActive = false;
-
-            if (isBloodMoonDay)
-            {
-                // Vote window: from (22 - AllowVoteHoursBefore) until end of blood moon night
-                var voteStartHour = 22 - Settings.AllowVoteHoursBefore;
-                if (voteStartHour < 0) voteStartHour = 0;
-
-                if (e.Hour >= voteStartHour)
-                    shouldBeActive = true;
-            }
-
-            // Also allow during active blood moon if configured
-            if (e.IsBloodMoon && Settings.AllowVoteDuringBloodMoon)
-                shouldBeActive = true;
-
-            // Check cooldown
-            if (shouldBeActive && CheckCooldown())
-                shouldBeActive = false;
+            var shouldBeActive = IsVoteWindowOpen(e, Settings) && !CheckCooldown();
 
             // Session state transitions
             if (_voteSessionActive && !shouldBeActive)
@@ -100,9 +76,39 @@ namespace KitsuneCommand.Features
             {
                 // Vote window opened
                 _voteSessionActive = true;
-                _bloodMoonDay = isBloodMoonDay ? e.Day : nextBmDay;
+                _bloodMoonDay = e.BloodMoonDay;
                 BroadcastVoteState();
             }
+        }
+
+        /// <summary>
+        /// Whether players can vote right now: from AllowVoteHoursBefore hours
+        /// before dusk on the blood moon day, and while the blood moon runs if
+        /// AllowVoteDuringBloodMoon is on.
+        ///
+        /// The blood moon day is the game's own BloodMoonDay stat, not worked
+        /// out from BloodMoonFrequency, so a BloodMoonRange that adds random
+        /// days moves the vote with it.
+        /// </summary>
+        public static bool IsVoteWindowOpen(SkyChangedEvent sky, BloodMoonVoteSettings settings)
+        {
+            if (sky.IsBloodMoon) return settings.AllowVoteDuringBloodMoon;
+            if (sky.BloodMoonDay <= 0 || sky.Day != sky.BloodMoonDay) return false;
+
+            // Before dusk on the day itself (from dusk on, IsBloodMoon is true).
+            return sky.Hour >= Math.Max(0, sky.DuskHour - settings.AllowVoteHoursBefore);
+        }
+
+        /// <summary>
+        /// Where a skip moves the clock: the morning after the blood moon, at
+        /// 06:00 or at dawn if that's later. After midnight the blood moon is
+        /// already on its second day, so that morning is the current day.
+        /// </summary>
+        public static (int Day, int Hour) SkipTarget(GameClock clock)
+        {
+            var hour = Math.Max(6, clock.DawnHour);
+            var afterMidnight = clock.IsBloodMoonNow && clock.Day == clock.BloodMoonDay + 1;
+            return (afterMidnight ? clock.Day : clock.Day + 1, hour);
         }
 
         private void OnPlayerDisconnected(PlayerDisconnectedEvent e)
@@ -220,23 +226,20 @@ namespace KitsuneCommand.Features
         {
             var voteCount = _currentVoters.Count;
 
-            // Advance game time to next day 6:00 AM via main thread
+            // Advance game time to the morning after via main thread
             ModEntry.MainThreadContext.Post(_ =>
             {
                 try
                 {
-                    // Get current world time to calculate next day
-                    var world = GameManager.Instance?.World;
-                    if (world == null)
+                    var clock = GameClock.ReadLive();
+                    if (clock == null)
                     {
                         Log.Warning("[KitsuneCommand] BloodMoonVote: Cannot skip — world is null.");
                         return;
                     }
 
-                    var currentDay = GameUtils.WorldTimeToDays(world.worldTime);
-                    var nextDay = currentDay + 1;
-
-                    SdtdConsole.Instance.ExecuteSync($"st {nextDay} 6 0", null);
+                    var (day, hour) = SkipTarget(clock.Value);
+                    SdtdConsole.Instance.ExecuteSync($"st {day} {hour} 0", null);
 
                     // Announce to all players
                     SdtdConsole.Instance.ExecuteSync(

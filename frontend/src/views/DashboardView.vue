@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getServerInfo, getServerStats, getDashboardStats, type ServerInfo, type ServerStats } from '@/api/server'
 import { forceSkipBloodMoon } from '@/api/bloodmoonvote'
+import { bloodMoonCountdown } from '@/lib/bloodMoon'
 import type { DashboardStats } from '@/types'
 import { usePlayersStore } from '@/stores/players'
 import { useServerStore } from '@/stores/server'
@@ -48,20 +49,22 @@ const uptimeDisplay = computed(() => {
   return `${minutes}m`
 })
 
+// The live clock from the SkyChanged event once one has arrived, else what
+// /api/server/info said when the page loaded.
+const hasLiveClock = computed(() => serverStore.gameDay > 0)
+
+const bloodMoonActive = computed(() =>
+  hasLiveClock.value ? serverStore.isBloodMoon : !!serverInfo.value?.isBloodMoon,
+)
+
 const bloodMoonDisplay = computed(() => {
-  if (!serverInfo.value) return null
-  const info = serverInfo.value as any
-  const freq = info.bloodMoonFrequency
-  const currentDay = serverStore.gameDay || info.currentDay || 0
-  if (!freq || freq <= 0 || currentDay <= 0) return null
-  const nextBM = Math.ceil(currentDay / freq) * freq
-  const daysUntil = nextBM - currentDay
-  return {
-    frequency: freq,
-    nextDay: nextBM,
-    daysUntil,
-    isTonight: daysUntil === 0,
-  }
+  const info = serverInfo.value
+  if (!info) return null
+  const countdown = hasLiveClock.value
+    ? bloodMoonCountdown(serverStore.gameDay, serverStore.bloodMoonDay)
+    : bloodMoonCountdown(info.currentDay, info.bloodMoonDay ?? 0)
+  if (!countdown) return null
+  return { ...countdown, frequency: info.bloodMoonFrequency }
 })
 
 const votePercent = computed(() => {
@@ -261,12 +264,12 @@ onMounted(() => {
           </template>
         </Card>
 
-        <Card class="stat-card" :class="{ 'blood-moon-card': serverStore.isBloodMoon || bloodMoonDisplay?.isTonight }">
+        <Card class="stat-card" :class="{ 'blood-moon-card': bloodMoonActive || bloodMoonDisplay?.isTonight }">
           <template #content>
             <div class="stat">
-              <i class="pi pi-moon stat-icon" :class="serverStore.isBloodMoon || bloodMoonDisplay?.isTonight ? 'red' : 'orange'"></i>
+              <i class="pi pi-moon stat-icon" :class="bloodMoonActive || bloodMoonDisplay?.isTonight ? 'red' : 'orange'"></i>
               <div style="flex: 1">
-                <div class="stat-value" v-if="serverStore.isBloodMoon">{{ t('dashboard.bloodMoonActive') }}</div>
+                <div class="stat-value" v-if="bloodMoonActive">{{ t('dashboard.bloodMoonActive') }}</div>
                 <div class="stat-value" v-else-if="bloodMoonDisplay?.isTonight">{{ t('dashboard.tonight') }}</div>
                 <div class="stat-value" v-else-if="bloodMoonDisplay">{{ bloodMoonDisplay.daysUntil }}d</div>
                 <div class="stat-value" v-else>{{ t('dashboard.na') }}</div>
@@ -312,7 +315,7 @@ onMounted(() => {
                 <span class="info-label">{{ t('dashboard.gameTime') }}</span>
                 <span class="info-value">
                   {{ gameTimeDisplay }}
-                  <span v-if="serverStore.isBloodMoon" style="color: #ef4444; margin-left: 0.5rem">{{ t('dashboard.bloodMoonLabel') }}</span>
+                  <span v-if="bloodMoonActive" style="color: #ef4444; margin-left: 0.5rem">{{ t('dashboard.bloodMoonLabel') }}</span>
                 </span>
               </div>
               <div class="info-item">

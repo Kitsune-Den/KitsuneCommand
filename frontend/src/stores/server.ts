@@ -9,11 +9,25 @@ export interface ActivityItem {
   timestamp: Date
 }
 
+/** The SkyChanged WebSocket event: the in-game clock, sent about once per in-game minute. */
+export interface SkyChangedData {
+  day: number
+  hour: number
+  minute: number
+  isBloodMoon: boolean
+  /** The day the game has picked for the next blood moon; 0 when blood moons are off. */
+  bloodMoonDay?: number
+  duskHour?: number
+  dawnHour?: number
+}
+
 export const useServerStore = defineStore('server', () => {
   const gameDay = ref(0)
   const gameHour = ref(0)
   const gameMinute = ref(0)
   const isBloodMoon = ref(false)
+  // The day the game has picked for the next blood moon; 0 when they're off or not heard yet.
+  const bloodMoonDay = ref(0)
   const activity = ref<ActivityItem[]>([])
   const bloodMoonVote = ref({
     isActive: false,
@@ -40,11 +54,12 @@ export const useServerStore = defineStore('server', () => {
 
   let activityId = 0
 
-  function updateGameTime(data: { day: number; hour: number; minute: number; isBloodMoon: boolean }) {
+  function updateGameTime(data: SkyChangedData) {
     gameDay.value = data.day
     gameHour.value = data.hour
     gameMinute.value = data.minute
     isBloodMoon.value = data.isBloodMoon
+    bloodMoonDay.value = data.bloodMoonDay ?? 0
   }
 
   function updateBloodMoonVote(data: { isActive: boolean; currentVotes: number; requiredVotes: number; totalOnline: number; bloodMoonDay: number }) {
@@ -64,5 +79,5 @@ export const useServerStore = defineStore('server', () => {
     }
   }
 
-  return { gameDay, gameHour, gameMinute, isBloodMoon, activity, bloodMoonVote, kcVersion, updateGameTime, updateBloodMoonVote, addActivity, fetchKcVersion }
+  return { gameDay, gameHour, gameMinute, isBloodMoon, bloodMoonDay, activity, bloodMoonVote, kcVersion, updateGameTime, updateBloodMoonVote, addActivity, fetchKcVersion }
 })

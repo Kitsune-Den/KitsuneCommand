@@ -91,12 +91,34 @@ namespace KitsuneCommand.Abstractions.Models
         public string Reason { get; set; }
     }
 
+    /// <summary>
+    /// The in-game clock moved on. Published from the main thread at most once
+    /// per in-game minute (and no more often than every couple of seconds),
+    /// and again whenever the blood moon day changes.
+    /// </summary>
     public class SkyChangedEvent
     {
+        /// <summary>The current day, counted from 1 like the game's HUD.</summary>
         public int Day { get; set; }
         public int Hour { get; set; }
         public int Minute { get; set; }
+
+        /// <summary>True from dusk on <see cref="BloodMoonDay"/> until dawn the next morning.</summary>
         public bool IsBloodMoon { get; set; }
+
+        /// <summary>
+        /// The day the next (or current) blood moon falls on, from the game's
+        /// BloodMoonDay stat, so it includes BloodMoonRange's random extra days.
+        /// It stays on the current blood moon until it ends at dawn. 0 when
+        /// blood moons are off.
+        /// </summary>
+        public int BloodMoonDay { get; set; }
+
+        /// <summary>The hour the blood moon starts (22 unless DayLightLength moves it).</summary>
+        public int DuskHour { get; set; }
+
+        /// <summary>The hour the blood moon ends on the morning after (4 unless DayLightLength moves it).</summary>
+        public int DawnHour { get; set; }
     }
 
     public class LogCallbackEvent
