@@ -12,6 +12,19 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+## [2.14.2] - 2026-11-25
+
+> [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.14.2)
+> · Blood moon fixes. The Discord blood moon alert, the `/skipbm` vote and
+> the dashboard's live game time were all waiting for an in-game clock that
+> nothing reported. They work now, and they use the blood moon day the game
+> actually picked. "Allow Teleport During Blood Moon" and "Teleport Delay"
+> were saved but ignored, and both now apply to `/home` and `/tp`. Teleport
+> Delay defaults to 5 seconds, so if you never changed it, those commands
+> now count down for 5 seconds before moving the player: set it to 0 to
+> keep them instant. Discord `/time` shows the in-game day, time and next
+> blood moon. No schema or config changes; minimum 7D2D version unchanged.
+
 ### Fixed
 
 - **The Discord blood moon alert, the blood moon vote and the dashboard's
@@ -1172,7 +1185,8 @@ The 2.0 cut, not a continuation of v1.x.
 
 ---
 
-[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.14.1...HEAD
+[Unreleased]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.14.2...HEAD
+[2.14.2]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.14.1...v2.14.2
 [2.14.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.14.0...v2.14.1
 [2.14.0]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.13.1...v2.14.0
 [2.13.1]: https://github.com/Kitsune-Den/KitsuneCommand/compare/v2.13.0...v2.13.1
