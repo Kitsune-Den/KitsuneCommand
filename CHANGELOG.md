@@ -64,6 +64,13 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   votes were changing it, so it could fail or show a vote count that didn't
   match its voters. It now reads a copy the main thread saves after each
   change.
+- **Discord `/time` shows the in-game time.** It was a placeholder that only
+  said "Use /status for server details", and `/status` doesn't show the time
+  either. It now gives the current day and time and when the next blood moon
+  is: tonight, tomorrow, how many days away, or happening now (the card turns
+  red while it runs). The blood moon day comes from the game itself, so it
+  stays right when `BloodMoonRange` adds random days. If the world hasn't
+  loaded yet, the command says so instead of failing.
 
 ## [2.14.1] - 2026-11-16
 

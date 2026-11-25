@@ -8,6 +8,7 @@ using KitsuneCommand.Abstractions.Models;
 using KitsuneCommand.Configuration;
 using KitsuneCommand.Core;
 using KitsuneCommand.Data.Repositories;
+using KitsuneCommand.GameIntegration;
 using KitsuneCommand.Services;
 using Newtonsoft.Json;
 
@@ -313,20 +314,39 @@ namespace KitsuneCommand.Features
         {
             try
             {
-                var embed = new EmbedBuilder()
-                    .WithColor(Color.Blue)
-                    .WithTitle("In-Game Time")
-                    .AddField("Info", "Use /status for server details", false)
-                    .WithFooter(Settings.ServerName)
-                    .WithCurrentTimestamp();
+                var clock = GameClock.ReadLive();
+                if (clock == null)
+                {
+                    await command.RespondAsync(WorldNotLoadedReply, ephemeral: true);
+                    return;
+                }
 
-                await command.RespondAsync(embed: embed.Build());
+                await command.RespondAsync(embed: BuildTimeEmbed(clock.Value, Settings.ServerName));
             }
             catch (Exception ex)
             {
                 Log.Warning($"[KitsuneCommand] /time command failed: {ex.Message}");
             }
         }
+
+        /// <summary>What /time says, privately, before the world has loaded.</summary>
+        public const string WorldNotLoadedReply =
+            "The world isn't loaded yet. Try again once the server has finished starting.";
+
+        /// <summary>
+        /// The /time card: day, time and the next blood moon, in dark red
+        /// while a blood moon is running.
+        /// </summary>
+        public static Embed BuildTimeEmbed(GameClock now, string serverName) =>
+            new EmbedBuilder()
+                .WithColor(now.IsBloodMoonNow ? Color.DarkRed : Color.Blue)
+                .WithTitle("In-Game Time")
+                .AddField("Day", now.Day.ToString(), true)
+                .AddField("Time", now.TimeText, true)
+                .AddField("Blood Moon", now.DescribeBloodMoon(), false)
+                .WithFooter(serverName)
+                .WithCurrentTimestamp()
+                .Build();
 
         // ---- Settings ----
 
