@@ -1,6 +1,6 @@
 import { useWebSocket } from './useWebSocket'
 import { usePlayersStore } from '@/stores/players'
-import { useServerStore } from '@/stores/server'
+import { useServerStore, type SkyChangedData } from '@/stores/server'
 import { useChatStore } from '@/stores/chat'
 import { useEconomyStore } from '@/stores/economy'
 import { getOnlinePlayers } from '@/api/players'
@@ -60,7 +60,7 @@ export function useAppWebSocket() {
       playersStore.updatePositions(data.players)
     })
 
-    ws.on<{ day: number; hour: number; minute: number; isBloodMoon: boolean }>('SkyChanged', (data) => {
+    ws.on<SkyChangedData>('SkyChanged', (data) => {
       serverStore.updateGameTime(data)
     })
 

@@ -12,6 +12,29 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Discord blood moon alert, the blood moon vote and the dashboard's
+  live game time work.** All three wait for KitsuneCommand to report the
+  in-game time, and nothing ever did. The "Blood Moon Rising!" alert never
+  posted, `/skipbm` always said no vote was open, and the dashboard's game
+  time and blood moon card only moved when the page was reloaded. KC now
+  checks the game clock every couple of seconds and reports each new in-game
+  minute. The blood moon counts as running from dusk on its day until dawn
+  the next morning, the same as the game.
+- **The blood moon vote and the dashboard's blood moon countdown use the day
+  the game has picked.** The dashboard guessed it by rounding the current day
+  up to a multiple of `BloodMoonFrequency`, and the vote did the same while
+  mistaking the game's next blood moon day for the frequency. Both now read
+  the day the game chose, so a `BloodMoonRange` that adds random days moves
+  them too, and they show nothing when blood moons are off. The vote opens
+  the set number of hours before dusk, which follows `DayLightLength` instead
+  of always being 22:00. With "Allow Vote During Blood Moon" off, voting now
+  closes at dusk. A vote that passes after midnight skips to that morning
+  rather than a day further on. `/api/server/info` gains `bloodMoonDay` and
+  `isBloodMoon`, and plugins get `BloodMoonDay`, `DuskHour` and `DawnHour` on
+  `SkyChangedEvent`.
+
 ## [2.14.1] - 2026-11-16
 
 > [Full notes](https://github.com/Kitsune-Den/KitsuneCommand/releases/tag/v2.14.1)

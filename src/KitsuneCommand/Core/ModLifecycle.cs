@@ -149,6 +149,9 @@ namespace KitsuneCommand.Core
             // Initialize feature modules
             InitStep("features", () => _container.Resolve<FeatureManager>().InitializeAll());
 
+            // Start publishing the in-game clock (blood moon alert, vote, panel clock)
+            InitStep("game clock", () => _container.Resolve<GameIntegration.SkyWatcher>().Initialize());
+
             // Initialize game item catalog (reads all ItemClass entries)
             InitStep("item catalog", () => _container.Resolve<GameItemCatalog>().Initialize());
 
@@ -191,6 +194,7 @@ namespace KitsuneCommand.Core
 
             // Shutdown services
             try { _container?.Resolve<LivePlayerManager>()?.Shutdown(); } catch { }
+            try { _container?.Resolve<GameIntegration.SkyWatcher>()?.Shutdown(); } catch { }
             try { _container?.Resolve<BackupService>()?.Shutdown(); } catch { }
 
             _wsServer?.Stop();

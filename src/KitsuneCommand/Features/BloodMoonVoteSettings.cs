@@ -21,10 +21,14 @@ namespace KitsuneCommand.Features
         /// <summary>Real-time minutes to wait after a successful skip before another vote can start.</summary>
         public int CooldownMinutes { get; set; } = 0;
 
-        /// <summary>How many in-game hours before 22:00 (blood moon start) the vote opens.</summary>
+        /// <summary>
+        /// How many in-game hours before dusk on the blood moon day the vote
+        /// opens. Dusk is when the blood moon starts: 22:00 unless
+        /// DayLightLength moves it.
+        /// </summary>
         public int AllowVoteHoursBefore { get; set; } = 2;
 
-        /// <summary>Whether players can still vote after the blood moon has started (22:00).</summary>
+        /// <summary>Whether players can still vote after the blood moon has started at dusk.</summary>
         public bool AllowVoteDuringBloodMoon { get; set; } = true;
 
         /// <summary>Chat command name (without prefix).</summary>

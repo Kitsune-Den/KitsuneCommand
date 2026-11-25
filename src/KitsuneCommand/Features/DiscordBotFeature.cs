@@ -230,7 +230,7 @@ namespace KitsuneCommand.Features
                 var embed = new EmbedBuilder()
                     .WithColor(new Color(0xFF, 0x44, 0x00)) // orange-red
                     .WithTitle("\ud83c\udf11 Blood Moon Rising!")
-                    .WithDescription($"Day {e.Day} — The horde is coming...")
+                    .WithDescription($"Day {e.Day}. The horde is coming...")
                     .WithFooter(Settings.ServerName)
                     .WithCurrentTimestamp();
 

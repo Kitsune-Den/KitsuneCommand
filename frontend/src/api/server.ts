@@ -11,6 +11,9 @@ export interface ServerInfo {
   difficulty: number
   dayNightLength: number
   bloodMoonFrequency: number
+  /** The day the game has picked for the next blood moon, BloodMoonRange included; 0 when off. */
+  bloodMoonDay?: number
+  isBloodMoon?: boolean
   currentDay: number
   currentTime: string
   onlinePlayers: number
