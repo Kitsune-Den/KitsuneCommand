@@ -42,6 +42,18 @@ pulls notes from — it's the minimum, the GitHub release page is the maximum.
   the game uses, and the player is told when they can try again. A refused
   teleport doesn't start the cooldown or charge the city's points. Admin and
   moderator teleports from the panel still work.
+- **The Teleport delay now counts down.** "Teleport Delay (seconds)" was
+  saved but `/home` and `/tp` still moved players instantly. Now the player
+  is told the teleport is coming and moves when the countdown runs out. It's
+  cancelled, with a message saying why, if they walk more than 2 blocks away,
+  lose any health, or die, and it's replaced if they ask for another `/home`
+  or `/tp` (typing the same one again just restarts it). Disconnecting drops
+  it. The blood moon setting and the city's points are checked again when
+  the countdown ends, and the points and the cooldown are only taken once
+  the player has actually moved, so a cancelled teleport costs nothing (a
+  `/tp` to a city whose saved position can't be read no longer takes the
+  points before refusing, either). 0 is still instant. Teleports from the
+  panel are always instant.
 - **The dashboard's blood moon Force Skip and vote status no longer race the
   chat vote.** Force Skip reset the vote from the web server's thread while
   `/skipbm` votes changed it on the game's main thread, so a vote cast at the

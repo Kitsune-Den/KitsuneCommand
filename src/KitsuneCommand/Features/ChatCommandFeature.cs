@@ -32,6 +32,9 @@ namespace KitsuneCommand.Features
             // Load persisted settings from database
             LoadPersistedSettings();
 
+            // The Teleport delay's countdowns for /home and /tp
+            _commandService.StartTeleportCountdowns();
+
             Log.Out($"[KitsuneCommand] Chat commands enabled. Prefix='{Settings.Prefix}', " +
                     $"Home={Settings.HomeEnabled}, Teleport={Settings.TeleportEnabled}, " +
                     $"Points={Settings.PointsEnabled}, Store={Settings.StoreEnabled}");
@@ -39,7 +42,8 @@ namespace KitsuneCommand.Features
 
         protected override void OnDisable()
         {
-            // Nothing to unsubscribe — commands are dispatched directly from ModLifecycle
+            // Commands are dispatched directly from ModLifecycle; only the countdowns run on their own.
+            _commandService.StopTeleportCountdowns();
         }
 
         /// <summary>

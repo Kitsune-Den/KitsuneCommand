@@ -5,7 +5,10 @@ namespace KitsuneCommand.Features
     /// </summary>
     public class TeleportSettings
     {
-        /// <summary>Countdown delay in seconds before a teleport executes.</summary>
+        /// <summary>
+        /// Countdown in seconds before a player's own /home or /tp moves them (0 = instant).
+        /// The panel's admin and moderator teleports are always instant. See TeleportCountdown.
+        /// </summary>
         public int TeleportDelaySeconds { get; set; } = 5;
 
         /// <summary>Default points cost for newly created city waypoints.</summary>
