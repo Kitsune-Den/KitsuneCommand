@@ -1,3 +1,4 @@
+using System.Net;
 using System.Web.Http;
 using KitsuneCommand.Features;
 using KitsuneCommand.Web.Auth;
@@ -79,7 +80,10 @@ namespace KitsuneCommand.Web.Controllers
         [RoleAuthorize("admin")]
         public IHttpActionResult ForceSkip()
         {
-            _feature.ForceSkip();
+            if (!_feature.ForceSkip())
+                return Content(HttpStatusCode.ServiceUnavailable,
+                    ApiResponse.Error(503, "The game didn't answer in time, so the blood moon was not skipped. Try again."));
+
             return Ok(ApiResponse.Ok("Blood moon force-skipped."));
         }
     }

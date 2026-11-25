@@ -21,11 +21,18 @@ namespace KitsuneCommand.Features
 
         private const string SettingsKey = "BloodMoonVote";
 
-        // In-memory vote state (ephemeral — resets on mod reload or blood moon end)
+        // In-memory vote state (ephemeral — resets on mod reload or blood moon end).
+        // Only the main thread touches these: chat votes, disconnects and sky changes
+        // arrive there, and ForceSkip goes there first.
         private readonly HashSet<string> _currentVoters = new HashSet<string>();
         private bool _voteSessionActive;
         private int _bloodMoonDay;
         private DateTime _lastSkipTimeUtc = DateTime.MinValue;
+
+        // A finished copy of the vote for other threads. The main thread replaces it
+        // after every change, so GetVoteStatus on a web thread never walks the voter
+        // set while a chat vote is adding to it, and never sees half a change.
+        private volatile VoteSnapshot _snapshot = VoteSnapshot.Closed;
 
         public BloodMoonVoteFeature(
             ModEventBus eventBus,
@@ -165,29 +172,48 @@ namespace KitsuneCommand.Features
         }
 
         /// <summary>
-        /// Returns the current vote status for the API.
+        /// Returns the current vote status for the API. Safe from any thread: it reads
+        /// the snapshot the main thread saved after its last change.
         /// </summary>
         public BloodMoonVoteStatus GetVoteStatus()
         {
+            var vote = _snapshot;
             return new BloodMoonVoteStatus
             {
-                IsActive = _voteSessionActive,
-                CurrentVotes = _currentVoters.Count,
+                IsActive = vote.IsActive,
+                CurrentVotes = vote.Voters.Count,
                 RequiredVotes = GetRequiredVotes(),
                 TotalOnline = _playerManager.OnlineCount,
-                Voters = _currentVoters.ToList(),
-                BloodMoonDay = _bloodMoonDay,
+                Voters = vote.Voters.ToList(),
+                BloodMoonDay = vote.BloodMoonDay,
                 IsEnabled = Settings.Enabled
             };
         }
 
         /// <summary>
-        /// Admin force-skip: immediately skips the blood moon.
-        /// Called from the API controller (runs on OWIN thread).
+        /// Admin force-skip: skips the blood moon now, whether or not a vote is open.
+        /// The web API calls this from its own thread, so the skip runs on the main
+        /// thread, where chat votes and disconnects already change the vote state.
+        /// Returns false when the main thread didn't get to it in time; the skip
+        /// then never happens.
         /// </summary>
-        public void ForceSkip()
+        public bool ForceSkip()
         {
-            ExecuteSkip();
+            return RunOnMainThread(() =>
+            {
+                ExecuteSkip();
+                return true;
+            });
+        }
+
+        /// <summary>
+        /// Runs <paramref name="work"/> on the main thread and returns its answer, or false
+        /// if the main thread didn't get to it in time (it then never runs). Virtual so
+        /// tests can supply a main thread: the real one lives in the game.
+        /// </summary>
+        protected virtual bool RunOnMainThread(Func<bool> work)
+        {
+            return GameThread.Run("Blood moon force-skip", work, false);
         }
 
         /// <summary>
@@ -222,11 +248,27 @@ namespace KitsuneCommand.Features
                 return Math.Max(1, Math.Min(Settings.ThresholdValue, online));
         }
 
+        /// <summary>
+        /// Ends the vote and moves the clock past the blood moon. Runs on the main
+        /// thread: chat votes and disconnects arrive there, and ForceSkip goes
+        /// there first, so the vote state only ever changes on one thread.
+        /// </summary>
         private void ExecuteSkip()
         {
-            var voteCount = _currentVoters.Count;
+            SkipToMorning(_currentVoters.Count);
 
-            // Advance game time to the morning after via main thread
+            _lastSkipTimeUtc = DateTime.UtcNow;
+            ResetVoteSession();
+            BroadcastVoteState();
+        }
+
+        /// <summary>
+        /// Moves the game clock to the morning after and announces the skip, on the
+        /// next frame rather than inside the chat or disconnect handler that passed
+        /// the vote. Virtual so tests can stand in for the game.
+        /// </summary>
+        protected virtual void SkipToMorning(int voteCount)
+        {
             ModEntry.MainThreadContext.Post(_ =>
             {
                 try
@@ -252,10 +294,6 @@ namespace KitsuneCommand.Features
                     Log.Error($"[KitsuneCommand] BloodMoonVote: Failed to execute skip: {ex.Message}");
                 }
             }, null);
-
-            _lastSkipTimeUtc = DateTime.UtcNow;
-            ResetVoteSession();
-            BroadcastVoteState();
         }
 
         private bool CheckCooldown()
@@ -268,18 +306,47 @@ namespace KitsuneCommand.Features
         {
             _currentVoters.Clear();
             _voteSessionActive = false;
+            SaveSnapshot();
         }
 
         private void BroadcastVoteState()
         {
+            var vote = SaveSnapshot();
             EventBus.Publish(new BloodMoonVoteUpdateEvent
             {
-                IsActive = _voteSessionActive,
-                CurrentVotes = _currentVoters.Count,
+                IsActive = vote.IsActive,
+                CurrentVotes = vote.Voters.Count,
                 RequiredVotes = GetRequiredVotes(),
                 TotalOnline = _playerManager.OnlineCount,
-                BloodMoonDay = _bloodMoonDay
+                BloodMoonDay = vote.BloodMoonDay
             });
+        }
+
+        /// <summary>
+        /// Copies the vote for other threads. Called on the main thread after every
+        /// change; every change either resets the vote or broadcasts it.
+        /// </summary>
+        private VoteSnapshot SaveSnapshot()
+        {
+            var vote = new VoteSnapshot(_voteSessionActive, _bloodMoonDay, _currentVoters.ToList());
+            _snapshot = vote;
+            return vote;
+        }
+
+        private sealed class VoteSnapshot
+        {
+            public static readonly VoteSnapshot Closed = new VoteSnapshot(false, 0, new List<string>());
+
+            public readonly bool IsActive;
+            public readonly int BloodMoonDay;
+            public readonly IReadOnlyList<string> Voters;
+
+            public VoteSnapshot(bool isActive, int bloodMoonDay, List<string> voters)
+            {
+                IsActive = isActive;
+                BloodMoonDay = bloodMoonDay;
+                Voters = voters.AsReadOnly();
+            }
         }
 
         private void LoadPersistedSettings()
